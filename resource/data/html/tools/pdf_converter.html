@@ -1,0 +1,192 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF转换</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 2.5rem 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+            background: var(--bg-muted);
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary);
+            background: var(--bg-muted);
+        }
+
+        .upload-area.disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .upload-area.disabled:hover {
+            border-color: var(--border);
+            background: var(--bg-muted);
+        }
+
+        .upload-icon {
+            font-size: 40px;
+            opacity: 0.4;
+            margin-bottom: 0.75rem;
+        }
+
+        .upload-title {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.25rem;
+        }
+
+        .upload-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .format-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+        }
+
+        @media (min-width: 640px) {
+            .format-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .format-option {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface);
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .format-option .f-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .format-option .f-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .format-option .f-desc {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+
+
+        <div class="tool-banner warn">此工具需要服务端PDF处理库支持,当前版本暂不可用</div>
+
+        <div class="tool-card" style="margin-bottom: 1.5rem;">
+            <h2>转换格式</h2>
+            <div class="format-grid">
+                <div class="format-option">
+                    <span class="f-icon">🖼️</span>
+                    <div>
+                        <div class="f-title">PDF转图片</div>
+                        <div class="f-desc">将PDF每页转换为PNG/JPEG图片</div>
+                    </div>
+                </div>
+                <div class="format-option">
+                    <span class="f-icon">📝</span>
+                    <div>
+                        <div class="f-title">PDF转文本</div>
+                        <div class="f-desc">提取PDF中的文字内容</div>
+                    </div>
+                </div>
+                <div class="format-option">
+                    <span class="f-icon">📕</span>
+                    <div>
+                        <div class="f-title">图片转PDF</div>
+                        <div class="f-desc">将多张图片合并为PDF文件</div>
+                    </div>
+                </div>
+                <div class="format-option">
+                    <span class="f-icon">📄</span>
+                    <div>
+                        <div class="f-title">文本转PDF</div>
+                        <div class="f-desc">将文本内容生成PDF文档</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tool-card">
+            <h2>上传文件</h2>
+            <div id="upload-area" class="upload-area disabled">
+                <div class="upload-icon">📕</div>
+                <div class="upload-title">拖拽文件到此处或点击上传</div>
+                <div class="upload-subtitle">支持PDF格式,最大100MB</div>
+            </div>
+            <div id="upload-msg" class="hidden" style="margin-top: 1rem;"></div>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var uploadArea = Tools.$('upload-area');
+            var uploadMsg = Tools.$('upload-msg');
+
+            function showMessage(text, type) {
+                uploadMsg.classList.remove('hidden');
+                uploadMsg.innerHTML = '';
+                uploadMsg.appendChild(Tools.el('div', { class: 'tool-banner ' + (type || 'warn'), text: text }));
+            }
+
+            // 即使是禁用状态也响应文件拖放,展示"功能开发中"提示
+            uploadArea.addEventListener('dragover', function (e) {
+                e.preventDefault();
+                uploadArea.style.borderColor = 'var(--primary)';
+                uploadArea.style.background = '#f3f4f6';
+            });
+
+            uploadArea.addEventListener('dragleave', function (e) {
+                e.preventDefault();
+                uploadArea.style.borderColor = '';
+                uploadArea.style.background = '#f9fafb';
+            });
+
+            uploadArea.addEventListener('drop', function (e) {
+                e.preventDefault();
+                uploadArea.style.borderColor = '';
+                uploadArea.style.background = '#f9fafb';
+                var files = e.dataTransfer && e.dataTransfer.files;
+                if (files && files.length > 0) {
+                    showMessage('功能开发中,当前版本暂不支持PDF转换。已选择文件:' + files[0].name, 'warn');
+                }
+            });
+
+            uploadArea.addEventListener('click', function () {
+                showMessage('功能开发中,当前版本暂不支持PDF转换。请等待后续版本更新。', 'warn');
+            });
+        });
+    </script>
+</body>
+
+</html>

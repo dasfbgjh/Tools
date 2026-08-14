@@ -1,0 +1,402 @@
+/* ===== FFmpeg 工具专用样式 ===== */
+.ff-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.875rem 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.ff-section h2 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 0.625rem;
+    letter-spacing: 0.01em;
+}
+
+.ff-section h2:not(:first-child) {
+    margin-top: 1rem;
+}
+
+/* FFmpeg 信息行 */
+.ff-ffinfo {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.ff-ffinfo .pill {
+    background: var(--bg-muted);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.0625rem 0.5rem;
+    font-family: ui-monospace, monospace;
+}
+
+.ff-ffinfo .pill.ok {
+    color: #16a34a;
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+}
+
+.ff-ffinfo .pill.err {
+    color: #dc2626;
+    border-color: #fecaca;
+    background: #fef2f2;
+}
+
+/* 主布局：左输入与选项 / 右任务 */
+.ff-main {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+}
+
+@media (min-width: 980px) {
+    .ff-main {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+}
+
+/* 输入文件列表 */
+.ff-file-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    max-height: 220px;
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.375rem;
+    background: var(--bg-muted);
+    min-height: 60px;
+}
+
+.ff-file-list .empty {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-align: center;
+    padding: 0.75rem 0.375rem;
+}
+
+.ff-file-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.ff-file-row .name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ff-file-row .size {
+    color: var(--text-muted);
+    font-family: ui-monospace, monospace;
+    font-size: 0.6875rem;
+}
+
+.ff-file-row .rm {
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0 0.25rem;
+    font-size: 0.875rem;
+    line-height: 1;
+}
+
+.ff-file-row .rm:hover {
+    color: #dc2626;
+}
+
+/* 目录行 */
+.ff-dir-row {
+    display: flex;
+    gap: 0.375rem;
+    align-items: center;
+}
+
+.ff-dir-row .br-input {
+    flex: 1;
+    font-family: ui-monospace, monospace;
+    font-size: 0.75rem;
+}
+
+.ff-dir-row .btn {
+    white-space: nowrap;
+}
+
+/* 操作 Tabs */
+.ff-tabs {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 0.625rem;
+    flex-wrap: wrap;
+}
+
+.ff-tab {
+    padding: 0.25rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: all 0.15s;
+}
+
+.ff-tab.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+.ff-tab:hover:not(.active) {
+    color: var(--text);
+    border-color: var(--primary);
+}
+
+.ff-tab-panel {
+    display: none;
+}
+
+.ff-tab-panel.active {
+    display: block;
+}
+
+/* 处理操作组合（每个操作可启用/禁用，启用时显示其参数区） */
+.ff-op {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+    background: var(--bg-muted);
+}
+
+.ff-op-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4375rem 0.625rem;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    background: var(--surface);
+}
+
+.ff-op-head input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--primary);
+    margin: 0;
+    cursor: pointer;
+}
+
+.ff-op-body {
+    padding: 0.5rem 0.625rem 0.625rem;
+    background: var(--bg-muted);
+    border-top: 1px solid var(--border);
+}
+
+.ff-op-body[hidden] {
+    display: none;
+}
+
+.ff-op-body .br-row {
+    margin-bottom: 0.375rem;
+}
+
+.ff-op-body .br-row:last-child {
+    margin-bottom: 0;
+}
+
+.ff-op-body .ff-hint {
+    margin-top: 0;
+}
+
+/* 任务列表 */
+.ff-task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.ff-task {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface);
+    padding: 0.625rem 0.75rem;
+}
+
+.ff-task-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.375rem;
+    flex-wrap: wrap;
+}
+
+.ff-task-head .name {
+    flex: 1;
+    min-width: 0;
+    font-weight: 500;
+    font-size: 0.8125rem;
+    word-break: break-all;
+}
+
+.ff-task-head .ops {
+    display: flex;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+.ff-task-head .ops .btn {
+    padding: 0.0625rem 0.4375rem;
+    font-size: 0.6875rem;
+}
+
+.ff-status {
+    display: inline-block;
+    padding: 0.0625rem 0.4375rem;
+    border-radius: 999px;
+    font-size: 0.625rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.ff-status.pending {
+    background: #e5e7eb;
+    color: #4b5563;
+}
+
+.ff-status.running {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.ff-status.completed {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.ff-status.failed {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.ff-status.cancelled {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.ff-progress {
+    position: relative;
+    height: 6px;
+    background: var(--bg-muted);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.ff-progress>.bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    background: var(--primary);
+    transition: width 0.2s ease;
+}
+
+.ff-progress>.bar.completed {
+    background: #16a34a;
+}
+
+.ff-progress>.bar.failed {
+    background: #dc2626;
+}
+
+.ff-progress>.bar.cancelled {
+    background: #6b7280;
+}
+
+.ff-task-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
+.ff-task-meta .v {
+    color: var(--text);
+    font-weight: 500;
+    font-family: ui-monospace, monospace;
+}
+
+.ff-task-err {
+    color: #b91c1c;
+    font-size: 0.6875rem;
+    margin-top: 0.25rem;
+    word-break: break-all;
+}
+
+.ff-task-cmd {
+    margin-top: 0.25rem;
+    padding: 0.25rem 0.4375rem;
+    background: var(--bg-muted);
+    border-radius: 4px;
+    font-family: ui-monospace, monospace;
+    font-size: 0.625rem;
+    color: var(--text-muted);
+    word-break: break-all;
+    max-height: 56px;
+    overflow: auto;
+}
+
+.ff-toolbar {
+    display: flex;
+    gap: 0.375rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.ff-hint {
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    margin: 0.25rem 0 0.5rem;
+}
+
+/* 按钮小尺寸（覆盖默认） */
+.ff-section .btn-sm {
+    padding: 0.25rem 0.625rem;
+    font-size: 0.75rem;
+}
+
+/* 表单在 section 内紧凑 */
+.ff-section .br-row {
+    margin-bottom: 0.5rem;
+}
+
+.ff-section .br-label {
+    font-size: 0.75rem;
+}
+
+.ff-section .br-input {
+    font-size: 0.75rem;
+}
+
+.ff-section .br-input[type="range"] {
+    padding: 0;
+}

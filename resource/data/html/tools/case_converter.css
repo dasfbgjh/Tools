@@ -1,0 +1,46 @@
+/* ===== Case Converter ===== */
+
+.case-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+}
+
+.case-row {
+    display: grid;
+    grid-template-columns: 100px 1fr auto;
+    align-items: center;
+    gap: 0.625rem;
+}
+
+@media (max-width: 600px) {
+    .case-row {
+        grid-template-columns: 1fr;
+        gap: 0.25rem;
+    }
+}
+
+.case-row .case-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.case-row .case-value {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.875rem;
+    color: var(--text);
+    background: var(--bg-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.45rem 0.7rem;
+    word-break: break-all;
+    min-height: 2.25rem;
+    display: flex;
+    align-items: center;
+}
+
+.case-row .case-value.empty {
+    color: var(--text-light);
+    font-style: italic;
+}

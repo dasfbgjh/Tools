@@ -1,0 +1,43 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>北约音标字母</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./text_to_nato_alphabet.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div class="tool-card">
+            <label class="tool-label" for="input">输入文本</label>
+            <textarea id="input" class="tool-textarea sm" placeholder="输入字母、数字或单词..."></textarea>
+            <div class="tool-toolbar" style="margin-top:0.75rem;margin-bottom:0;">
+                <label class="tool-check-row" style="margin:0;"><input type="checkbox" id="show-morse" checked> 同时显示摩斯电码</label>
+                <div class="spacer"></div>
+                <button id="btn-copy" class="btn btn-outline btn-sm" type="button">复制结果</button>
+                <button id="btn-clear" class="btn btn-ghost btn-sm" type="button">清空</button>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>转换结果</h2>
+            <div id="result" class="nato-result"></div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>字母对照表</h2>
+            <div id="reference" class="nato-ref"></div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./text_to_nato_alphabet.js"></script>
+</body>
+
+</html>

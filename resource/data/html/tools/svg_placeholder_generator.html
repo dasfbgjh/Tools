@@ -1,0 +1,235 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG占位符生成</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .opt-row {
+            margin-bottom: 1rem;
+        }
+
+        .opt-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .color-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .color-row input[type="color"] {
+            width: 44px;
+            height: 38px;
+            padding: 4px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: transparent;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .color-row input[type="text"] {
+            flex: 1;
+        }
+
+        .num-pair {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+
+        @media (min-width: 640px) {
+            .preset-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .preset-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface);
+            cursor: pointer;
+            font-size: 0.75rem;
+            color: var(--text);
+            transition: border-color 0.15s, background 0.15s;
+        }
+
+        .preset-btn:hover {
+            border-color: var(--primary);
+            background: var(--bg-muted);
+        }
+
+        .preset-swatch {
+            width: 100%;
+            height: 28px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.6875rem;
+            font-weight: 600;
+        }
+
+        .preview-box {
+            background: #fff;
+            background-image:
+                linear-gradient(45deg, #e5e7eb 25%, transparent 25%),
+                linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #e5e7eb 75%),
+                linear-gradient(-45deg, transparent 75%, #e5e7eb 75%);
+            background-size: 16px 16px;
+            background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1rem;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: auto;
+        }
+
+        .preview-box svg {
+            max-width: 100%;
+            height: auto;
+        }
+
+        :root[data-theme="dark"] .preview-box {
+            background-color: var(--bg-muted);
+            background-image:
+                linear-gradient(45deg, #1e293b 25%, transparent 25%),
+                linear-gradient(-45deg, #1e293b 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #1e293b 75%),
+                linear-gradient(-45deg, transparent 75%, #1e293b 75%);
+        }
+
+        .code-box {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 0.875rem;
+            border-radius: var(--radius);
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+            font-size: 0.8125rem;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 320px;
+        }
+
+        :root[data-theme="dark"] .code-box {
+            background: #0f172a;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+        <div class="tool-card">
+            <div id="banner"></div>
+            <div class="tool-grid-2">
+                <div>
+                    <h2>基本设置</h2>
+                    <div class="opt-row">
+                        <label class="tool-label">尺寸 (宽 × 高)</label>
+                        <div class="num-pair">
+                            <input type="number" id="width" class="tool-input" value="600" min="1" max="4096">
+                            <input type="number" id="height" class="tool-input" value="400" min="1" max="4096">
+                        </div>
+                    </div>
+                    <div class="opt-row">
+                        <label class="tool-label">显示文字</label>
+                        <input type="text" id="text" class="tool-input" placeholder="留空则显示 宽x高">
+                    </div>
+                    <div class="opt-row">
+                        <label class="tool-label">字体大小 <span id="font-value" class="range-value">28 px</span></label>
+                        <input type="range" id="font-size" min="8" max="120" step="1" value="28" style="width: 100%;">
+                    </div>
+                    <div class="opt-row">
+                        <label class="tool-label">圆角半径 <span id="radius-value" class="range-value">0 px</span></label>
+                        <input type="range" id="corner-radius" min="0" max="200" step="1" value="0" style="width: 100%;">
+                    </div>
+                </div>
+                <div>
+                    <h2>颜色设置</h2>
+                    <div class="opt-row">
+                        <label class="tool-label">背景色</label>
+                        <div class="color-row">
+                            <input type="color" id="bg-color" value="#e5e7eb">
+                            <input type="text" id="bg-text" class="tool-input" value="#e5e7eb">
+                        </div>
+                    </div>
+                    <div class="opt-row">
+                        <label class="tool-label">文字颜色</label>
+                        <div class="color-row">
+                            <input type="color" id="fg-color" value="#6b7280">
+                            <input type="text" id="fg-text" class="tool-input" value="#6b7280">
+                        </div>
+                    </div>
+                    <div class="opt-row">
+                        <label class="tool-check-row">
+                            <input type="checkbox" id="gradient">
+                            <span>使用渐变背景</span>
+                        </label>
+                    </div>
+                    <div class="opt-row" id="gradient-row" style="display:none;">
+                        <label class="tool-label">渐变颜色 2</label>
+                        <div class="color-row">
+                            <input type="color" id="bg2-color" value="#9ca3af">
+                            <input type="text" id="bg2-text" class="tool-input" value="#9ca3af">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tool-toolbar" style="margin-top: 1rem; margin-bottom: 0;">
+                <div class="spacer"></div>
+                <button id="btn-copy" class="btn btn-outline">复制 SVG 代码</button>
+                <button id="btn-download" class="btn">下载 SVG 文件</button>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top: 1.5rem;">
+            <h2>预设样式</h2>
+            <div class="preset-grid" id="preset-grid"></div>
+        </div>
+
+        <div class="tool-card" style="margin-top: 1.5rem;">
+            <h2>实时预览</h2>
+            <div class="preview-box" id="preview"></div>
+        </div>
+
+        <div class="tool-card" style="margin-top: 1.5rem;">
+            <h2>SVG 源代码</h2>
+            <div id="code-output" class="code-box"></div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./svg_placeholder_generator.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,330 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正则表达式测试</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .regex-flags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .regex-flags .tool-check-row {
+            margin-bottom: 0;
+        }
+
+        .regex-flags .tool-check-row code {
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 0 0.375rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+
+        .match-highlight {
+            background-color: rgba(139, 92, 246, 0.5);
+            color: #fff;
+            font-weight: 600;
+            padding: 0 4px;
+            border-radius: 3px;
+        }
+
+        .match-item {
+            background: var(--bg-muted);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.625rem 0.75rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.8125rem;
+        }
+
+        .match-item .match-head {
+            color: var(--text-light);
+            font-size: 0.75rem;
+            margin-bottom: 0.375rem;
+        }
+
+        .match-item .match-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            margin-top: 0.25rem;
+        }
+
+        .match-item .match-key {
+            color: var(--text-light);
+            min-width: 56px;
+            font-size: 0.75rem;
+        }
+
+        .match-item code {
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--text);
+            padding: 0.125rem 0.375rem;
+            border-radius: 4px;
+            word-break: break-all;
+        }
+
+        .regex-input-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .regex-input-wrap .slash {
+            color: var(--text-light);
+            padding: 0 0.5rem;
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+        }
+
+        .regex-input-wrap input {
+            flex: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+
+
+        <div class="tool-card" style="margin-bottom:1.5rem;">
+            <h2>正则表达式</h2>
+            <div class="regex-input-wrap">
+                <span class="slash">/</span>
+                <input type="text" id="regex-pattern" class="tool-input tool-monospace"
+                    placeholder="输入正则表达式，例如 [a-zA-Z]+">
+                <span class="slash">/</span>
+                <span id="regex-flags-text" class="tool-monospace"
+                    style="min-width:40px;color:var(--text-muted);">g</span>
+            </div>
+            <div class="tool-hint" id="regex-error" style="display:none;color:var(--danger,#dc2626);"></div>
+
+            <label class="tool-label" style="margin-top:0.75rem;">标志位</label>
+            <div class="regex-flags" id="regex-flags">
+                <label class="tool-check-row"><input type="checkbox" value="g" checked> <code>g</code> 全局匹配</label>
+                <label class="tool-check-row"><input type="checkbox" value="i"> <code>i</code> 忽略大小写</label>
+                <label class="tool-check-row"><input type="checkbox" value="m"> <code>m</code> 多行模式</label>
+                <label class="tool-check-row"><input type="checkbox" value="s"> <code>s</code> . 匹配换行</label>
+                <label class="tool-check-row"><input type="checkbox" value="u"> <code>u</code> Unicode</label>
+                <label class="tool-check-row"><input type="checkbox" value="y"> <code>y</code> 粘连</label>
+            </div>
+        </div>
+
+        <div class="tool-grid-2">
+            <div class="tool-card">
+                <div class="tool-toolbar" style="margin-bottom:0.75rem;">
+                    <h2 style="margin:0;">测试文本</h2>
+                    <div class="spacer"></div>
+                    <span class="tool-hint" style="margin:0;">字符数：<span id="char-count"
+                            style="color:var(--primary);font-weight:600;">0</span></span>
+                </div>
+                <textarea id="test-text" class="tool-textarea" placeholder="在此输入要测试的文本..."></textarea>
+                <div class="tool-toolbar" style="margin-top:1rem;margin-bottom:0;">
+                    <button id="btn-test" class="btn btn-sm">测试</button>
+                    <button id="btn-clear" class="btn btn-ghost btn-sm">清空</button>
+                    <div class="spacer"></div>
+                </div>
+            </div>
+
+            <div class="tool-card">
+                <div class="tool-toolbar" style="margin-bottom:0.75rem;">
+                    <h2 style="margin:0;">匹配结果</h2>
+                    <div class="spacer"></div>
+                    <span class="tool-tag" id="match-count">0 个匹配</span>
+                </div>
+                <div id="highlighted-output" class="tool-output"></div>
+                <div id="match-list" style="margin-top:0.75rem;"></div>
+            </div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var patternEl = Tools.$('regex-pattern');
+            var testEl = Tools.$('test-text');
+            var flagsBox = Tools.$('regex-flags');
+            var flagsTextEl = Tools.$('regex-flags-text');
+            var errorEl = Tools.$('regex-error');
+            var charCountEl = Tools.$('char-count');
+            var matchCountEl = Tools.$('match-count');
+            var highlightEl = Tools.$('highlighted-output');
+            var matchListEl = Tools.$('match-list');
+            var btnTest = Tools.$('btn-test');
+            var btnClear = Tools.$('btn-clear');
+
+            function getFlags() {
+                var flags = '';
+                Tools.$$('input[type=checkbox]', flagsBox).forEach(function (cb) {
+                    if (cb.checked) flags += cb.value;
+                });
+                return flags;
+            }
+
+            function updateFlagsText() {
+                flagsTextEl.textContent = getFlags() || '—';
+            }
+
+            flagsBox.addEventListener('change', function () {
+                updateFlagsText();
+                testRegex();
+            });
+
+            function showError(msg) {
+                if (msg) {
+                    errorEl.textContent = msg;
+                    errorEl.style.display = 'block';
+                } else {
+                    errorEl.style.display = 'none';
+                    errorEl.textContent = '';
+                }
+            }
+
+            function buildHighlight(text, matches) {
+                if (!text) return '';
+                if (!matches.length) return Tools.escapeHtml(text);
+
+                // Sort by index ascending
+                var sorted = matches.slice().sort(function (a, b) { return a.index - b.index; });
+                var html = '';
+                var last = 0;
+                for (var i = 0; i < sorted.length; i++) {
+                    var m = sorted[i];
+                    if (m.index < last) continue; // skip overlaps
+                    html += Tools.escapeHtml(text.substring(last, m.index));
+                    html += '<span class="match-highlight">' + Tools.escapeHtml(m[0]) + '</span>';
+                    last = m.index + m[0].length;
+                }
+                if (last < text.length) html += Tools.escapeHtml(text.substring(last));
+                return html;
+            }
+
+            function renderMatchList(text, matches) {
+                matchListEl.innerHTML = '';
+                if (!matches.length) return;
+
+                var title = Tools.el('h3', { class: 'tool-label', text: '捕获组详情' });
+                title.style.fontWeight = '600';
+                title.style.marginBottom = '0.5rem';
+                matchListEl.appendChild(title);
+
+                matches.forEach(function (m, i) {
+                    var card = Tools.el('div', { class: 'match-item' });
+                    card.appendChild(Tools.el('div', { class: 'match-head', text: '匹配 #' + (i + 1) + ' （位置：' + m.index + '）' }));
+
+                    // Full match
+                    card.appendChild(Tools.el('div', { class: 'match-row' }, [
+                        Tools.el('span', { class: 'match-key', text: '完整:' }),
+                        Tools.el('code', { text: m[0] !== undefined ? m[0] : '' })
+                    ]));
+
+                    // Groups
+                    for (var g = 1; g < m.length; g++) {
+                        var groupVal = m[g] !== undefined ? m[g] : '(空)';
+                        card.appendChild(Tools.el('div', { class: 'match-row' }, [
+                            Tools.el('span', { class: 'match-key', text: '组 ' + g + ':' }),
+                            Tools.el('code', { text: groupVal })
+                        ]));
+                    }
+                    matchListEl.appendChild(card);
+                });
+            }
+
+            function testRegex() {
+                charCountEl.textContent = testEl.value.length;
+                var pattern = patternEl.value;
+                var text = testEl.value;
+                showError('');
+
+                if (!pattern || !text) {
+                    highlightEl.innerHTML = '';
+                    highlightEl.className = 'tool-output empty';
+                    highlightEl.textContent = !text ? '请输入测试文本...' : '请输入正则表达式...';
+                    matchCountEl.textContent = '0 个匹配';
+                    matchListEl.innerHTML = '';
+                    return;
+                }
+
+                var flags = getFlags();
+                var regex;
+                try {
+                    regex = new RegExp(pattern, flags);
+                } catch (err) {
+                    showError('正则表达式错误：' + err.message);
+                    highlightEl.innerHTML = '';
+                    highlightEl.className = 'tool-output empty';
+                    highlightEl.textContent = '正则表达式无效';
+                    matchCountEl.textContent = '0 个匹配';
+                    matchListEl.innerHTML = '';
+                    return;
+                }
+
+                var matches = [];
+                try {
+                    if (flags.indexOf('g') !== -1) {
+                        // Reset lastIndex to avoid stale state
+                        regex.lastIndex = 0;
+                        var m;
+                        while ((m = regex.exec(text)) !== null) {
+                            matches.push(m);
+                            // Prevent infinite loop on zero-length matches
+                            if (m.index === regex.lastIndex) regex.lastIndex++;
+                        }
+                    } else {
+                        var single = regex.exec(text);
+                        if (single) matches.push(single);
+                    }
+                } catch (err) {
+                    showError('执行错误：' + err.message);
+                }
+
+                matchCountEl.textContent = matches.length + ' 个匹配';
+
+                if (matches.length === 0) {
+                    highlightEl.innerHTML = '';
+                    highlightEl.className = 'tool-output empty';
+                    highlightEl.textContent = '未找到匹配';
+                    matchListEl.innerHTML = '';
+                    return;
+                }
+
+                highlightEl.className = 'tool-output';
+                highlightEl.innerHTML = buildHighlight(text, matches);
+                renderMatchList(text, matches);
+            }
+
+            btnTest.addEventListener('click', testRegex);
+            btnClear.addEventListener('click', function () {
+                patternEl.value = '';
+                testEl.value = '';
+                showError('');
+                // Reset flags to default 'g'
+                Tools.$$('input[type=checkbox]', flagsBox).forEach(function (cb) {
+                    cb.checked = (cb.value === 'g');
+                });
+                updateFlagsText();
+                testRegex();
+                patternEl.focus();
+            });
+
+            patternEl.addEventListener('input', testRegex);
+            testEl.addEventListener('input', testRegex);
+
+            // Initial state
+            updateFlagsText();
+            testRegex();
+        });
+    </script>
+</body>
+
+</html>

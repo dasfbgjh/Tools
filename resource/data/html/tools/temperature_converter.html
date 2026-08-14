@@ -1,0 +1,56 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>温度转换</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./temperature_converter.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div class="tool-card">
+            <h2>输入温度</h2>
+            <div class="temp-input-row">
+                <input type="number" id="input-value" class="tool-input" value="0" step="any">
+                <select id="input-unit" class="tool-select">
+                    <option value="c" selected>摄氏度 °C</option>
+                    <option value="f">华氏度 °F</option>
+                    <option value="k">开尔文 K</option>
+                    <option value="r">兰氏度 °R</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>转换结果</h2>
+            <ul class="tool-result-list" id="result-list">
+                <li><span class="label">摄氏度 °C</span><span class="value" data-unit="c">—</span></li>
+                <li><span class="label">华氏度 °F</span><span class="value" data-unit="f">—</span></li>
+                <li><span class="label">开尔文 K</span><span class="value" data-unit="k">—</span></li>
+                <li><span class="label">兰氏度 °R</span><span class="value" data-unit="r">—</span></li>
+            </ul>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>常用温度参考</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">绝对零度</span><span class="value">-273.15 °C / -459.67 °F</span></li>
+                <li><span class="label">水冰点</span><span class="value">0 °C / 32 °F</span></li>
+                <li><span class="label">人体正常体温</span><span class="value">37 °C / 98.6 °F</span></li>
+                <li><span class="label">水沸点 (1 atm)</span><span class="value">100 °C / 212 °F</span></li>
+                <li><span class="label">太阳表面</span><span class="value">约 5505 °C</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./temperature_converter.js"></script>
+</body>
+
+</html>

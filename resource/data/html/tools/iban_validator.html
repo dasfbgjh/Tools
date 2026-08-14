@@ -1,0 +1,95 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IBAN 验证器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        #result-list .value {
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        }
+        .iban-status {
+            display: inline-block;
+            padding: 0.125rem 0.625rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            vertical-align: middle;
+            margin-left: 0.5rem;
+            background: var(--bg-muted, #e5e7eb);
+            color: var(--text-muted, #6b7280);
+        }
+        .iban-status.valid { background: rgba(34, 197, 94, 0.18); color: #16a34a; }
+        .iban-status.invalid { background: rgba(239, 68, 68, 0.18); color: #dc2626; }
+        :root[data-theme="dark"] .iban-status.valid { color: #86efac; }
+        :root[data-theme="dark"] .iban-status.invalid { color: #fca5a5; }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner-container"></div>
+
+        <div class="tool-card">
+            <h2>输入 IBAN</h2>
+            <input type="text" id="iban-input" class="tool-input tool-monospace" placeholder="例如 DE89 3704 0044 0532 0130 00" value="DE89 3704 0044 0532 0130 00" autocomplete="off">
+            <p class="tool-hint">支持带空格或不带空格的格式，实时校验并解析结构</p>
+            <div class="tool-toolbar" style="margin-top:0.75rem;margin-bottom:0;">
+                <button id="btn-copy" class="btn btn-outline btn-sm" type="button">复制格式化 IBAN</button>
+                <div class="spacer"></div>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>验证结果 <span id="iban-status" class="iban-status">—</span></h2>
+            <ul class="tool-result-list" id="result-list">
+                <li><span class="label">说明</span><span class="value" data-key="reason">—</span></li>
+                <li><span class="label">国家代码</span><span class="value" data-key="countryCode">—</span></li>
+                <li><span class="label">国家名称</span><span class="value" data-key="countryName">—</span></li>
+                <li><span class="label">校验位</span><span class="value" data-key="checkDigits">—</span></li>
+                <li><span class="label">银行标识</span><span class="value" data-key="bankId">—</span></li>
+                <li><span class="label">账号号码</span><span class="value" data-key="account">—</span></li>
+                <li><span class="label">BBAN</span><span class="value" data-key="bban">—</span></li>
+                <li><span class="label">格式化 IBAN</span><span class="value" data-key="formatted">—</span></li>
+                <li><span class="label">原始输入</span><span class="value" data-key="raw">—</span></li>
+            </ul>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>常见国家 IBAN 长度</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">挪威 NO</span><span class="value">15 位</span></li>
+                <li><span class="label">比利时 BE</span><span class="value">16 位</span></li>
+                <li><span class="label">荷兰 NL</span><span class="value">18 位</span></li>
+                <li><span class="label">瑞士 CH</span><span class="value">21 位</span></li>
+                <li><span class="label">英国 GB</span><span class="value">22 位</span></li>
+                <li><span class="label">德国 DE</span><span class="value">22 位</span></li>
+                <li><span class="label">西班牙 ES</span><span class="value">24 位</span></li>
+                <li><span class="label">法国 FR</span><span class="value">27 位</span></li>
+                <li><span class="label">意大利 IT</span><span class="value">27 位</span></li>
+                <li><span class="label">波兰 PL</span><span class="value">28 位</span></li>
+                <li><span class="label">中国 CN</span><span class="value">无 IBAN（中国未使用 IBAN 体系）</span></li>
+            </ul>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>校验算法说明</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">1. 清理</span><span class="value">移除空格，转大写</span></li>
+                <li><span class="label">2. 重排</span><span class="value">将前 4 位（国家代码 + 校验位）移到末尾</span></li>
+                <li><span class="label">3. 转数字</span><span class="value">字母转为数字 (A=10, B=11, ..., Z=35)</span></li>
+                <li><span class="label">4. 校验</span><span class="value">对大数取 mod 97，结果为 1 即有效</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./iban_validator.js"></script>
+</body>
+
+</html>

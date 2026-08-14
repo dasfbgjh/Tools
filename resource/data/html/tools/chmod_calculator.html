@@ -1,0 +1,92 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chmod 计算器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./chmod_calculator.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div class="tool-grid-2">
+            <div class="tool-card">
+                <h2>权限设置</h2>
+                <table class="chmod-table">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>所有者 (u)</th>
+                            <th>组 (g)</th>
+                            <th>其他 (o)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="chmod-row-label">读 (4)</td>
+                            <td><label class="chmod-check"><input type="checkbox" data-group="owner" data-scope="read"></label></td>
+                            <td><label class="chmod-check"><input type="checkbox" data-group="group" data-scope="read"></label></td>
+                            <td><label class="chmod-check"><input type="checkbox" data-group="public" data-scope="read"></label></td>
+                        </tr>
+                        <tr>
+                            <td class="chmod-row-label">写 (2)</td>
+                            <td><label class="chmod-check"><input type="checkbox" data-group="owner" data-scope="write"></label></td>
+                            <td><label class="chmod-check"><input type="checkbox" data-group="group" data-scope="write"></label></td>
+                            <td><label class="chmod-check"><input type="checkbox" data-group="public" data-scope="write"></label></td>
+                        </tr>
+                        <tr>
+                            <td class="chmod-row-label">执行 (1)</td>
+                            <td><label class="chmod-check"><input type="checkbox" data-group="owner" data-scope="execute"></label></td>
+                            <td><label class="chmod-check"><input type="checkbox" data-group="group" data-scope="execute"></label></td>
+                            <td><label class="chmod-check"><input type="checkbox" data-group="public" data-scope="execute"></label></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div style="margin-top:1rem;">
+                    <label class="tool-label">常用预设</label>
+                    <div class="chmod-presets">
+                        <button class="preset-btn" data-octal="644">644 (文件默认)</button>
+                        <button class="preset-btn" data-octal="755">755 (目录默认)</button>
+                        <button class="preset-btn" data-octal="600">600 (仅所有者)</button>
+                        <button class="preset-btn" data-octal="777">777 (完全开放)</button>
+                        <button class="preset-btn" data-octal="666">666 (全员读写)</button>
+                        <button class="preset-btn" data-octal="700">700 (私有目录)</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tool-card">
+                <h2>结果</h2>
+                <div class="chmod-octal" id="octal">000</div>
+                <div class="chmod-symbolic" id="symbolic">---------</div>
+
+                <label class="tool-label" style="margin-top:1rem;">命令</label>
+                <div class="chmod-cmd" id="cmd">chmod 000 path</div>
+                <div class="tool-toolbar" style="margin-top:0.75rem;margin-bottom:0;">
+                    <div class="spacer"></div>
+                    <button id="btn-copy" class="btn btn-outline btn-sm" type="button">复制命令</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>说明</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">八进制</span><span class="value">三位数字分别对应所有者/组/其他，读=4 写=2 执行=1</span></li>
+                <li><span class="label">符号</span><span class="value">rwx 分别表示读/写/执行，- 表示无权限</span></li>
+                <li><span class="label">常用</span><span class="value">755 目录可执行、644 文件只读、600 私有文件</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./chmod_calculator.js"></script>
+</body>
+
+</html>

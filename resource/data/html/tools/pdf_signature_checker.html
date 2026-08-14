@@ -1,0 +1,518 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF签名检查器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 2rem 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+            background: var(--bg-muted);
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary);
+        }
+
+        .upload-area.dragover {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .upload-icon {
+            font-size: 36px;
+            opacity: 0.5;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-title {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.25rem;
+        }
+
+        .upload-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-top: 0.75rem;
+        }
+
+        .file-info .file-icon {
+            font-size: 28px;
+            flex-shrink: 0;
+        }
+
+        .file-info .file-meta {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-info .file-name {
+            font-weight: 600;
+            font-size: 0.8125rem;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-info .file-size {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 0.2rem;
+        }
+
+        .file-info .file-remove {
+            color: var(--danger);
+            cursor: pointer;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+            padding: 0.25rem;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: var(--surface-2, var(--bg-muted));
+            border-radius: 9999px;
+            overflow: hidden;
+            margin-top: 0.75rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 9999px;
+            transition: width 0.3s;
+            width: 0%;
+        }
+
+        /* ===== Result styles ===== */
+        .sig-status {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.25rem;
+            border-radius: var(--radius);
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .sig-status .sig-status-icon {
+            font-size: 1.75rem;
+            line-height: 1;
+        }
+
+        .sig-status .sig-status-text {
+            flex: 1;
+        }
+
+        .sig-status .sig-status-sub {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 400;
+            opacity: 0.8;
+            margin-top: 0.125rem;
+        }
+
+        .sig-status.signed {
+            background: rgba(74, 222, 128, 0.12);
+            color: #16a34a;
+            border: 1px solid rgba(74, 222, 128, 0.35);
+        }
+
+        :root[data-theme="dark"] .sig-status.signed {
+            color: #86efac;
+        }
+
+        .sig-status.unsigned {
+            background: var(--bg-muted);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.5rem;
+        }
+
+        @media (min-width: 640px) {
+            .info-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 900px) {
+            .info-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .info-item {
+            background: var(--bg-muted);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.625rem 0.75rem;
+        }
+
+        .info-item .info-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-bottom: 0.2rem;
+        }
+
+        .info-item .info-value {
+            font-size: 0.8125rem;
+            color: var(--text);
+            font-weight: 600;
+            word-break: break-all;
+        }
+
+        /* ===== Signature cards ===== */
+        .sig-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .sig-card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.625rem;
+            border-bottom: 1px dashed var(--border);
+        }
+
+        .sig-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 28px;
+            height: 24px;
+            padding: 0 0.5rem;
+            background: var(--primary-light);
+            color: var(--primary);
+            border-radius: var(--radius);
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .sig-type {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .sig-tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.1rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.6875rem;
+            font-weight: 500;
+            background: var(--bg-muted);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+
+        .sig-tag.mdp {
+            background: rgba(251, 191, 36, 0.15);
+            color: #b45309;
+            border-color: rgba(251, 191, 36, 0.4);
+        }
+
+        :root[data-theme="dark"] .sig-tag.mdp {
+            color: #fcd34d;
+        }
+
+        .sig-detail-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .sig-detail-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 0.4rem 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.8125rem;
+        }
+
+        .sig-detail-list li:last-child {
+            border-bottom: none;
+        }
+
+        .sig-detail-list .label {
+            color: var(--text-muted);
+            flex-shrink: 0;
+            min-width: 90px;
+        }
+
+        .sig-detail-list .value {
+            color: var(--text);
+            font-weight: 500;
+            text-align: right;
+            word-break: break-all;
+        }
+
+        .sig-detail-list .value.mono {
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+            font-size: 0.75rem;
+        }
+
+        .sig-detail-list .value.dim {
+            color: var(--text-light);
+            font-weight: 400;
+        }
+
+        /* ===== Certificate block ===== */
+        .cert-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0.625rem;
+            margin-top: 0.5rem;
+            background: var(--bg-muted);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 0.8125rem;
+            color: var(--text);
+            font-weight: 500;
+            user-select: none;
+        }
+
+        .cert-toggle:hover {
+            border-color: var(--primary);
+        }
+
+        .cert-toggle .arrow {
+            transition: transform 0.15s;
+            color: var(--text-muted);
+        }
+
+        .cert-toggle.open .arrow {
+            transform: rotate(90deg);
+        }
+
+        .cert-list {
+            margin-top: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .cert-item {
+            background: var(--bg-muted);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.625rem 0.75rem;
+            font-size: 0.75rem;
+        }
+
+        .cert-item .cert-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.2rem;
+        }
+
+        .cert-item .cert-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .cert-item .cert-key {
+            color: var(--text-muted);
+            flex-shrink: 0;
+            min-width: 70px;
+        }
+
+        .cert-item .cert-val {
+            color: var(--text);
+            word-break: break-all;
+        }
+
+        .cert-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.05rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            margin-left: 0.4rem;
+        }
+
+        .cert-badge.valid {
+            background: rgba(74, 222, 128, 0.15);
+            color: #16a34a;
+        }
+
+        .cert-badge.expired {
+            background: rgba(248, 113, 113, 0.15);
+            color: #dc2626;
+        }
+
+        .cert-badge.notyet {
+            background: rgba(251, 191, 36, 0.15);
+            color: #b45309;
+        }
+
+        :root[data-theme="dark"] .cert-badge.valid {
+            color: #86efac;
+        }
+
+        :root[data-theme="dark"] .cert-badge.expired {
+            color: #fca5a5;
+        }
+
+        :root[data-theme="dark"] .cert-badge.notyet {
+            color: #fcd34d;
+        }
+
+        .cert-empty {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            padding: 0.5rem;
+            font-style: italic;
+        }
+
+        /* ===== Raw structure block ===== */
+        .raw-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text);
+            user-select: none;
+        }
+
+        .raw-toggle:hover {
+            color: var(--primary);
+        }
+
+        .raw-toggle .arrow {
+            transition: transform 0.15s;
+            color: var(--text-muted);
+        }
+
+        .raw-toggle.open .arrow {
+            transform: rotate(90deg);
+        }
+
+        .raw-box {
+            margin-top: 0.75rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2.5rem 1rem;
+            color: var(--text-light);
+        }
+
+        .empty-state .empty-icon {
+            font-size: 40px;
+            opacity: 0.35;
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state p {
+            font-size: 0.8125rem;
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+        <div class="tool-card">
+            <div id="banner"></div>
+
+            <h2>选择 PDF 文件</h2>
+            <div id="upload-area" class="upload-area">
+                <div class="upload-icon">✍️</div>
+                <div class="upload-title">拖拽 PDF 文件到此处或点击上传</div>
+                <div class="upload-subtitle">纯前端解析,文件不会上传到服务器</div>
+            </div>
+            <input type="file" id="file-input" accept=".pdf,application/pdf" style="display:none;">
+
+            <div id="file-info" class="file-info hidden">
+                <span class="file-icon">📄</span>
+                <div class="file-meta">
+                    <div class="file-name" id="file-name">-</div>
+                    <div class="file-size" id="file-size">-</div>
+                </div>
+                <span class="file-remove" id="file-remove">移除</span>
+            </div>
+
+            <div class="tool-hint" style="margin-top:0.5rem;">
+                解析 PDF 结构并检测数字签名。由于不使用外部库,仅做基本检测,无法验证签名有效性。
+            </div>
+
+            <button id="btn-check" class="btn" style="width:100%;margin-top:0.75rem;" disabled>检查签名</button>
+
+            <div id="progress-wrap" class="hidden">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <div style="text-align:center;font-size:0.75rem;color:var(--text-muted);margin-top:0.5rem;"
+                    id="progress-text">解析中...</div>
+            </div>
+        </div>
+
+        <div id="result-area" class="hidden" style="margin-top:1.5rem;">
+            <div class="tool-card">
+                <h2>检查结果</h2>
+                <div id="summary-box"></div>
+            </div>
+
+            <div id="signatures-section" class="hidden" style="margin-top:1.5rem;">
+                <div class="tool-card">
+                    <h2>签名详情</h2>
+                    <div id="signatures-box"></div>
+                </div>
+            </div>
+
+            <div class="tool-card" style="margin-top:1.5rem;">
+                <div class="raw-toggle" id="raw-toggle">
+                    <span>原始 PDF 结构信息</span>
+                    <span class="arrow">▸</span>
+                </div>
+                <div id="raw-box" class="raw-box hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./pdf_signature_checker.js"></script>
+</body>
+
+</html>

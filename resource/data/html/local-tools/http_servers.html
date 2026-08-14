@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTTP 路径挂载 / 代理</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./common.css">
+    <link rel="stylesheet" href="./http_servers.css">
+</head>
+
+<body>
+    <div class="admin-wrap">
+        <div class="lt-head">
+            <a class="lt-back" href="./index.html" title="返回工具列表">← 返回</a>
+            <div class="lt-head-text" style="flex:1;min-width:0;">
+                <h1 class="admin-title">HTTP 路径挂载 / 代理</h1>
+                <p class="admin-subtitle">添加端口，配置不同路径挂载本地目录或代理请求 · 仅本机可访问</p>
+            </div>
+            <div class="lt-head-actions">
+                <button class="btn btn-primary" id="btn-new">+ 新建服务器</button>
+            </div>
+        </div>
+
+        <div id="banner"></div>
+
+        <div class="hs-list" id="hs-list"></div>
+    </div>
+
+    <!-- 编辑/新建弹窗 -->
+    <div class="br-fs" id="hs-modal" hidden>
+        <div class="br-fs-head" style="margin-bottom:0.5rem;">
+            <strong id="hs-modal-title">新建服务器</strong>
+        </div>
+        <div class="hs-form">
+            <div class="br-row">
+                <label class="br-label">名称</label>
+                <input type="text" class="br-input" id="f-name" placeholder="例如 本地静态站点" style="flex:1;">
+                <label class="br-label">端口</label>
+                <input type="number" class="br-input sm" id="f-port" min="1" max="65535" value="8080"
+                    style="width:96px;flex:0 0 96px;">
+            </div>
+            <div class="br-row">
+                <label class="br-toggle" style="margin-left:auto;">
+                    <input type="checkbox" id="f-auto">
+                    <span>应用启动时自动启动</span>
+                </label>
+            </div>
+
+            <div class="br-group">
+                <div class="br-group-title">路径配置（可添加多个，按顺序匹配）</div>
+                <div id="f-mounts"></div>
+                <button class="btn btn-sm" id="f-add-mount">+ 添加路径</button>
+            </div>
+
+            <div class="br-hint" style="margin-top:0.5rem;">
+                路径示例：<code>/</code> <code>/api/</code> <code>/static/</code><br>
+                源示例：本地目录 <code>C:\www</code> 或 URL <code>http://localhost:3000</code>（自动判断）
+            </div>
+        </div>
+        <div class="br-fs-foot">
+            <span id="hs-modal-err" class="banner-err" style="display:none;"></span>
+            <span class="br-spacer"></span>
+            <button class="btn btn-outline" data-modal-close>取消</button>
+            <button class="btn btn-primary" id="f-save">保存</button>
+        </div>
+    </div>
+
+    <script src="../api.js"></script>
+    <script src="./http_servers.js"></script>
+</body>
+
+</html>

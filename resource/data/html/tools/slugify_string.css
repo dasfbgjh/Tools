@@ -1,0 +1,42 @@
+/* ===== Slugify String ===== */
+
+.slug-output {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 1rem;
+    color: var(--text);
+    background: var(--bg-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.85rem 1rem;
+    word-break: break-all;
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+}
+
+.slug-output.empty {
+    color: var(--text-light);
+    font-style: italic;
+}
+
+.slug-examples {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.example-btn {
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.8125rem;
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.example-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}

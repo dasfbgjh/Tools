@@ -1,0 +1,201 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL解析器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div class="tool-page">
+        <div class="tool-card">
+            <div id="banner"></div>
+
+            <label class="tool-label">输入URL</label>
+            <input type="text" id="input-url" class="tool-input" placeholder="输入要解析的URL..." autocomplete="off">
+
+            <div class="tool-toolbar" style="margin-top:1rem;">
+                <button class="btn btn-sm" id="btn-parse">解析</button>
+                <button class="btn btn-outline btn-sm" id="btn-build">构建URL</button>
+                <button class="btn btn-ghost btn-sm" id="btn-copy">复制结果</button>
+                <span class="spacer"></span>
+                <button class="btn btn-outline btn-sm" id="btn-clear">清空</button>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>解析结果</h2>
+            <div id="result" class="url-result">
+                <p class="tool-output empty">输入URL后点击「解析」</p>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>URL组件</h2>
+            <div id="components" class="url-components">
+                <p class="tool-output empty">等待解析...</p>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>查询参数</h2>
+            <div id="params" class="url-params">
+                <p class="tool-output empty">等待解析...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var inputEl = Tools.$('input-url');
+            var resultEl = Tools.$('result');
+            var componentsEl = Tools.$('components');
+            var paramsEl = Tools.$('params');
+
+            function parseUrl(url) {
+                try {
+                    var u = new URL(url);
+                    return {
+                        href: u.href,
+                        protocol: u.protocol,
+                        host: u.host,
+                        hostname: u.hostname,
+                        port: u.port,
+                        pathname: u.pathname,
+                        search: u.search,
+                        hash: u.hash,
+                        origin: u.origin,
+                        username: u.username,
+                        password: u.password,
+                        searchParams: Array.from(u.searchParams.entries())
+                    };
+                } catch (e) {
+                    return null;
+                }
+            }
+
+            function formatResult(info) {
+                if (!info) {
+                    resultEl.innerHTML = '<p class="tool-output empty">无效的URL格式</p>';
+                    componentsEl.innerHTML = '<p class="tool-output empty">等待解析...</p>';
+                    paramsEl.innerHTML = '<p class="tool-output empty">等待解析...</p>';
+                    return;
+                }
+
+                resultEl.innerHTML = '<pre class="tool-output">' + info.href + '</pre>';
+
+                var compHtml = '<ul class="tool-result-list">';
+                compHtml += '<li><span class="label">协议</span><span class="value">' + (info.protocol || '-') + '</span></li>';
+                compHtml += '<li><span class="label">主机</span><span class="value">' + (info.host || '-') + '</span></li>';
+                compHtml += '<li><span class="label">域名</span><span class="value">' + (info.hostname || '-') + '</span></li>';
+                compHtml += '<li><span class="label">端口</span><span class="value">' + (info.port || '-') + '</span></li>';
+                compHtml += '<li><span class="label">路径</span><span class="value">' + (info.pathname || '-') + '</span></li>';
+                compHtml += '<li><span class="label">查询</span><span class="value">' + (info.search || '-') + '</span></li>';
+                compHtml += '<li><span class="label">片段</span><span class="value">' + (info.hash || '-') + '</span></li>';
+                compHtml += '<li><span class="label">源</span><span class="value">' + (info.origin || '-') + '</span></li>';
+                compHtml += '<li><span class="label">用户名</span><span class="value">' + (info.username || '-') + '</span></li>';
+                compHtml += '<li><span class="label">密码</span><span class="value">' + (info.password || '-') + '</span></li>';
+                compHtml += '</ul>';
+                componentsEl.innerHTML = compHtml;
+
+                if (info.searchParams.length === 0) {
+                    paramsEl.innerHTML = '<p class="tool-output empty">无查询参数</p>';
+                } else {
+                    var paramsHtml = '<table class="url-params-table">';
+                    paramsHtml += '<thead><tr><th>参数名</th><th>值</th><th>操作</th></tr></thead><tbody>';
+                    info.searchParams.forEach(function (p) {
+                        paramsHtml += '<tr>';
+                        paramsHtml += '<td class="tool-monospace">' + Tools.escapeHtml(p[0]) + '</td>';
+                        paramsHtml += '<td class="tool-monospace">' + Tools.escapeHtml(p[1]) + '</td>';
+                        paramsHtml += '<td><button class="btn btn-ghost btn-sm" onclick="copyParam(\'' + Tools.escapeHtml(p[1]) + '\')">复制值</button></td>';
+                        paramsHtml += '</tr>';
+                    });
+                    paramsHtml += '</tbody></table>';
+                    paramsEl.innerHTML = paramsHtml;
+                }
+            }
+
+            window.copyParam = function (value) {
+                Tools.copyText(value, event.target, '已复制');
+            };
+
+            function parse() {
+                var url = inputEl.value.trim();
+                Tools.clearBanner('banner');
+                if (!url) {
+                    formatResult(null);
+                    return;
+                }
+
+                if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                    url = 'https://' + url;
+                }
+
+                var info = parseUrl(url);
+                if (!info) {
+                    Tools.showBanner('banner', 'error', '无法解析该URL，请检查格式');
+                    formatResult(null);
+                    return;
+                }
+
+                formatResult(info);
+            }
+
+            function buildUrl() {
+                Tools.showBanner('banner', 'warn', '构建功能开发中，暂仅支持解析');
+            }
+
+            Tools.$('btn-parse').addEventListener('click', parse);
+            Tools.$('btn-build').addEventListener('click', buildUrl);
+            Tools.$('btn-clear').addEventListener('click', function () {
+                inputEl.value = '';
+                formatResult(null);
+                Tools.clearBanner('banner');
+            });
+            Tools.$('btn-copy').addEventListener('click', function () {
+                var output = resultEl.querySelector('.tool-output');
+                if (!output || output.classList.contains('empty')) return;
+                Tools.copyText(output.textContent, this, '已复制');
+            });
+
+            inputEl.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') parse();
+            });
+        });
+    </script>
+    <style>
+        .url-params-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        .url-params-table th,
+        .url-params-table td {
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+
+        .url-params-table th {
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .url-params-table tr:last-child td {
+            border-bottom: none;
+        }
+    </style>
+</body>
+
+</html>

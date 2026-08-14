@@ -1,0 +1,80 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文本与二进制互转</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./text_to_binary.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner-container"></div>
+
+        <div class="tool-grid-2">
+            <div class="tool-card">
+                <h2>文本 → 二进制</h2>
+                <label class="tool-label" for="text-input">输入文本</label>
+                <textarea id="text-input" class="tool-textarea" placeholder="输入要转换的文本...">Hello</textarea>
+                <div style="margin-top:0.75rem;">
+                    <label class="tool-label">分隔方式</label>
+                    <select id="separator" class="tool-select">
+                        <option value=" " selected>空格分隔</option>
+                        <option value="">无分隔</option>
+                        <option value="-">连字符</option>
+                        <option value="\n">换行</option>
+                    </select>
+                </div>
+                <div style="margin-top:0.75rem;">
+                    <label class="tool-check-row"><input type="checkbox" id="use-utf16"> 使用 Unicode (UTF-16)</label>
+                </div>
+                <div class="tool-toolbar" style="margin-top:0.75rem;margin-bottom:0;">
+                    <button id="btn-encode" class="btn btn-sm" type="button">转换</button>
+                    <div class="spacer"></div>
+                    <button id="btn-copy-bin" class="btn btn-outline btn-sm" type="button">复制结果</button>
+                </div>
+            </div>
+
+            <div class="tool-card">
+                <h2>二进制 → 文本</h2>
+                <label class="tool-label" for="bin-input">输入二进制</label>
+                <textarea id="bin-input" class="tool-textarea" placeholder="输入 0 和 1 的字符串...">01001000 01100101 01101100 01101100 01101111</textarea>
+                <div class="tool-toolbar" style="margin-top:0.75rem;margin-bottom:0;">
+                    <button id="btn-decode" class="btn btn-sm" type="button">转换</button>
+                    <div class="spacer"></div>
+                    <button id="btn-copy-text" class="btn btn-outline btn-sm" type="button">复制结果</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tool-grid-2" style="margin-top:1.5rem;">
+            <div class="tool-card">
+                <h2>二进制结果</h2>
+                <textarea id="bin-output" class="tool-textarea" readonly placeholder="二进制结果..."></textarea>
+            </div>
+            <div class="tool-card">
+                <h2>文本结果</h2>
+                <textarea id="text-output" class="tool-textarea" readonly placeholder="文本结果..."></textarea>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>说明</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">ASCII</span><span class="value">每个字符转换为 8 位二进制 (默认)</span></li>
+                <li><span class="label">UTF-16</span><span class="value">使用 codePointAt 处理 Unicode 字符 (如中文、Emoji)</span></li>
+                <li><span class="label">解码</span><span class="value">自动忽略空格、换行等分隔符，按 8/16 位解析</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./text_to_binary.js"></script>
+</body>
+
+</html>

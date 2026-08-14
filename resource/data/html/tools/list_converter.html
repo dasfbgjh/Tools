@@ -1,0 +1,99 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>列表转换器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./list_converter.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div class="tool-grid-2">
+            <div class="tool-card">
+                <h2>输入列表</h2>
+                <textarea id="input" class="tool-textarea" placeholder="每行一项，或用逗号分隔...">apple
+banana
+cherry
+apple
+date</textarea>
+
+                <div style="margin-top:0.75rem;">
+                    <label class="tool-label">输入分隔符</label>
+                    <select id="input-sep" class="tool-select">
+                        <option value="\n" selected>换行</option>
+                        <option value=",">逗号</option>
+                        <option value=";">分号</option>
+                        <option value=" ">空格</option>
+                        <option value="\t">制表符</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="tool-card">
+                <h2>转换选项</h2>
+
+                <label class="tool-label">输出分隔符</label>
+                <select id="output-sep" class="tool-select">
+                    <option value="\n" selected>换行</option>
+                    <option value=",">逗号</option>
+                    <option value=", ">逗号+空格</option>
+                    <option value=";">分号</option>
+                    <option value=" ">空格</option>
+                    <option value=" | ">竖线</option>
+                </select>
+
+                <div style="margin-top:0.75rem;">
+                    <label class="tool-check-row"><input type="checkbox" id="trim" checked> 去除首尾空格</label>
+                    <label class="tool-check-row"><input type="checkbox" id="filter-empty" checked> 过滤空项</label>
+                    <label class="tool-check-row"><input type="checkbox" id="unique"> 去重</label>
+                    <label class="tool-check-row"><input type="checkbox" id="reverse"> 反转顺序</label>
+                </div>
+
+                <div style="margin-top:0.75rem;">
+                    <label class="tool-label">排序</label>
+                    <select id="sort" class="tool-select">
+                        <option value="none" selected>不排序</option>
+                        <option value="asc">A → Z</option>
+                        <option value="desc">Z → A</option>
+                        <option value="len-asc">长度 (短→长)</option>
+                        <option value="len-desc">长度 (长→短)</option>
+                        <option value="num-asc">数字 (小→大)</option>
+                        <option value="num-desc">数字 (大→小)</option>
+                    </select>
+                </div>
+
+                <div style="margin-top:0.75rem; display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+                    <div>
+                        <label class="tool-label">前缀</label>
+                        <input type="text" id="prefix" class="tool-input" placeholder="如 '">
+                    </div>
+                    <div>
+                        <label class="tool-label">后缀</label>
+                        <input type="text" id="suffix" class="tool-input" placeholder="如 '">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>输出结果</h2>
+            <textarea id="output" class="tool-textarea" readonly placeholder="转换结果..."></textarea>
+            <div class="tool-toolbar" style="margin-top:0.75rem;margin-bottom:0;">
+                <span class="tool-hint" id="stats" style="margin:0;"></span>
+                <div class="spacer"></div>
+                <button id="btn-copy" class="btn btn-outline btn-sm" type="button">复制结果</button>
+            </div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./list_converter.js"></script>
+</body>
+
+</html>

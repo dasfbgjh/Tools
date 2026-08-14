@@ -1,0 +1,54 @@
+/* ===== Roman Numeral Converter ===== */
+
+.roman-output {
+    margin-top: 0.75rem;
+    padding: 1rem 1.25rem;
+    background: var(--bg-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--primary);
+    text-align: center;
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0.05em;
+}
+
+.roman-output.empty {
+    color: var(--text-light);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 0.9375rem;
+}
+
+.roman-ref {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.5rem;
+}
+
+.roman-ref-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.875rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-muted);
+}
+
+.roman-ref-item .sym {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.roman-ref-item .num {
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+}

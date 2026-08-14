@@ -1,0 +1,68 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Slug 生成器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./slugify_string.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div class="tool-grid-3">
+            <div class="tool-card">
+                <h2>输入与选项</h2>
+                <label class="tool-label" for="input">原始字符串</label>
+                <textarea id="input" class="tool-textarea" placeholder="例如: Hello World! 这是一段中文标题">Hello World! 这是一段中文标题</textarea>
+
+                <div style="margin-top:1rem;">
+                    <label class="tool-label">分隔符</label>
+                    <select id="separator" class="tool-select">
+                        <option value="-" selected>连字符 (-)</option>
+                        <option value="_">下划线 (_)</option>
+                        <option value=".">点 (.)</option>
+                        <option value=" ">空格</option>
+                    </select>
+                </div>
+
+                <div style="margin-top:0.75rem;">
+                    <label class="tool-check-row"><input type="checkbox" id="lowercase" checked> 转小写</label>
+                    <label class="tool-check-row"><input type="checkbox" id="transliterate" checked> 中文转拼音</label>
+                    <label class="tool-check-row"><input type="checkbox" id="strip-emoji" checked> 移除 Emoji</label>
+                    <label class="tool-check-row"><input type="checkbox" id="collapse"> 合并连续分隔符</label>
+                </div>
+            </div>
+
+            <div class="tool-card">
+                <h2>Slug 结果</h2>
+                <div id="output" class="slug-output">hello-world-zhe-shi-yi-duan-zhong-wen-biao-ti</div>
+                <div class="tool-toolbar" style="margin-top:0.75rem;margin-bottom:0;">
+                    <div class="spacer"></div>
+                    <button id="btn-copy" class="btn btn-outline btn-sm" type="button">复制</button>
+                </div>
+                <p class="tool-hint" id="stats"></p>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>示例</h2>
+            <div class="slug-examples">
+                <button class="example-btn" data-text="Hello World!">Hello World!</button>
+                <button class="example-btn" data-text="10 个 JavaScript 技巧">10 个 JavaScript 技巧</button>
+                <button class="example-btn" data-text="C++ 与 Rust 性能对比">C++ 与 Rust 性能对比</button>
+                <button class="example-btn" data-text="How to use npm 📦">How to use npm 📦</button>
+                <button class="example-btn" data-text="  多余   空格  ">多余   空格</button>
+            </div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./slugify_string.js"></script>
+</body>
+
+</html>

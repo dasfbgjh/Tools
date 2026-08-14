@@ -1,0 +1,19 @@
+/* ===== Temperature Converter ===== */
+
+.temp-input-row {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.temp-input-row .tool-input {
+    flex: 1;
+}
+
+.temp-input-row .tool-select {
+    width: auto;
+    min-width: 10rem;
+}
+
+.tool-result-list .value {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}

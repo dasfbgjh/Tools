@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF水印</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            padding: 2rem 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+            background: var(--bg-muted);
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary);
+            background: var(--bg-muted);
+        }
+
+        .upload-area.dragover {
+            border-color: var(--primary);
+            background: var(--bg-muted);
+        }
+
+        .upload-icon {
+            font-size: 36px;
+            opacity: 0.4;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.25rem;
+        }
+
+        .upload-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-top: 0.75rem;
+        }
+
+        .file-icon {
+            font-size: 28px;
+        }
+
+        .file-meta {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .file-name {
+            font-weight: 600;
+            font-size: 0.8125rem;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .file-size {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 0.2rem;
+        }
+
+        .file-remove {
+            color: var(--danger);
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: var(--surface-2);
+            border-radius: 9999px;
+            overflow: hidden;
+            margin-top: 0.75rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 9999px;
+            transition: width 0.3s;
+            width: 0%;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="msg-banner"></div>
+
+        <div class="tool-grid-2">
+            <div>
+                <div class="tool-card">
+                    <h2>上传PDF</h2>
+                    <div id="upload-area" class="upload-area">
+                        <div class="upload-icon">💧</div>
+                        <div class="upload-title">拖拽PDF文件到此处或点击上传</div>
+                        <div class="upload-subtitle">支持单个PDF文件,最大100MB</div>
+                    </div>
+                    <input type="file" id="file-input" accept=".pdf" style="display:none;">
+
+                    <div id="file-info" class="file-info hidden">
+                        <span class="file-icon">📄</span>
+                        <div class="file-meta">
+                            <div class="file-name" id="file-name">-</div>
+                            <div class="file-size" id="file-size">-</div>
+                        </div>
+                        <span class="file-remove" id="file-remove">移除</span>
+                    </div>
+                </div>
+
+                <div class="tool-card" style="margin-top:1.5rem;">
+                    <h2>水印设置</h2>
+                    <div class="section">
+                        <label class="tool-label">水印文字</label>
+                        <input type="text" id="wm-text" class="tool-input" placeholder="请输入水印文字" value="机密文件">
+                    </div>
+                    <div class="section">
+                        <label class="tool-label">水印位置</label>
+                        <div class="opt-grid" style="grid-template-columns:repeat(3,1fr);">
+                            <button class="opt-btn" data-pos="top-right">右上角</button>
+                            <button class="opt-btn active" data-pos="center">居中</button>
+                            <button class="opt-btn" data-pos="bottom-left">左下角</button>
+                        </div>
+                    </div>
+                    <div id="progress-wrap" class="hidden">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-fill"></div>
+                        </div>
+                        <div style="text-align:center;font-size:0.75rem;color:var(--text-muted);margin-top:0.5rem;"
+                            id="progress-text">处理中...</div>
+                    </div>
+                    <button id="btn-watermark" class="btn btn-primary" style="width:100%;margin-top:0.5rem;"
+                        disabled>添加水印</button>
+                </div>
+            </div>
+
+            <div>
+                <div class="tool-card">
+                    <h2>处理结果</h2>
+                    <div id="result-empty" style="text-align:center;padding:3rem 1rem;color:var(--text-light);">
+                        <div style="font-size:48px;opacity:0.3;margin-bottom:0.5rem;">💧</div>
+                        <p style="font-size:0.8125rem;">上传PDF并设置水印后点击添加</p>
+                    </div>
+                    <div id="result-info" class="hidden">
+                        <div
+                            style="text-align:center;padding:1rem;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);margin-bottom:1rem;">
+                            <div style="font-size:0.75rem;color:var(--text-muted);">文件大小</div>
+                            <div style="font-size:1.25rem;font-weight:700;color:var(--text);margin-top:0.25rem;"
+                                id="result-size">-</div>
+                        </div>
+                        <button id="btn-download" class="btn btn-primary" style="width:100%;">下载带水印的PDF</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var uploadArea = Tools.$('upload-area');
+            var fileInput = Tools.$('file-input');
+            var fileInfo = Tools.$('file-info');
+            var fileNameEl = Tools.$('file-name');
+            var fileSizeEl = Tools.$('file-size');
+            var fileRemove = Tools.$('file-remove');
+            var btnWatermark = Tools.$('btn-watermark');
+            var btnDownload = Tools.$('btn-download');
+            var wmText = Tools.$('wm-text');
+            var progressWrap = Tools.$('progress-wrap');
+            var progressFill = Tools.$('progress-fill');
+            var progressText = Tools.$('progress-text');
+            var resultEmpty = Tools.$('result-empty');
+            var resultInfo = Tools.$('result-info');
+            var resultSizeEl = Tools.$('result-size');
+
+            var currentFile = null;
+            var resultBlob = null;
+            var position = 'center';
+
+            function formatSize(bytes) {
+                if (bytes < 1024) return bytes + ' B';
+                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+            }
+
+            function updateBtn() {
+                btnWatermark.disabled = !currentFile || !wmText.value.trim();
+            }
+
+            function setFile(file) {
+                currentFile = file;
+                fileNameEl.textContent = file.name;
+                fileSizeEl.textContent = formatSize(file.size);
+                fileInfo.classList.remove('hidden');
+                updateBtn();
+                resultInfo.classList.add('hidden');
+                resultEmpty.classList.remove('hidden');
+            }
+
+            function clearFile() {
+                currentFile = null;
+                resultBlob = null;
+                fileInfo.classList.add('hidden');
+                btnWatermark.disabled = true;
+                resultInfo.classList.add('hidden');
+                resultEmpty.classList.remove('hidden');
+                fileInput.value = '';
+            }
+
+            uploadArea.addEventListener('click', function () { fileInput.click(); });
+            fileInput.addEventListener('change', function (e) {
+                if (e.target.files && e.target.files[0]) setFile(e.target.files[0]);
+            });
+            uploadArea.addEventListener('dragover', function (e) {
+                e.preventDefault(); uploadArea.classList.add('dragover');
+            });
+            uploadArea.addEventListener('dragleave', function (e) {
+                e.preventDefault(); uploadArea.classList.remove('dragover');
+            });
+            uploadArea.addEventListener('drop', function (e) {
+                e.preventDefault(); uploadArea.classList.remove('dragover');
+                var files = e.dataTransfer && e.dataTransfer.files;
+                if (files && files[0]) {
+                    if (files[0].type === 'application/pdf' || files[0].name.toLowerCase().endsWith('.pdf')) {
+                        setFile(files[0]);
+                    } else {
+                        Tools.showBanner('msg-banner', 'error', '请上传PDF文件');
+                    }
+                }
+            });
+            fileRemove.addEventListener('click', clearFile);
+            wmText.addEventListener('input', updateBtn);
+
+            Tools.$$('button[data-pos]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    Tools.$$('button[data-pos]').forEach(function (b) { b.classList.remove('active'); });
+                    btn.classList.add('active');
+                    position = btn.getAttribute('data-pos');
+                });
+            });
+
+            btnWatermark.addEventListener('click', function () {
+                if (!currentFile || !wmText.value.trim()) return;
+                if (currentFile.size > 100 * 1024 * 1024) {
+                    Tools.showBanner('msg-banner', 'error', '文件超过100MB限制');
+                    return;
+                }
+
+                btnWatermark.disabled = true;
+                progressWrap.classList.remove('hidden');
+                progressFill.style.width = '30%';
+                progressText.textContent = '添加水印中...';
+
+                var form = new FormData();
+                form.append('file', currentFile);
+                form.append('text', wmText.value.trim());
+                form.append('position', position);
+
+                Api.pdf.watermark(form, {
+                    onProgress: function (e) {
+                        var pct = Math.round((e.loaded / e.total) * 50);
+                        progressFill.style.width = pct + '%';
+                    },
+                    onLoad: function (xhr, blob) {
+                        progressFill.style.width = '100%';
+                        resultBlob = blob;
+                        resultSizeEl.textContent = formatSize(resultBlob.size);
+                        resultEmpty.classList.add('hidden');
+                        resultInfo.classList.remove('hidden');
+                        progressText.textContent = '添加完成';
+                        Tools.showBanner('msg-banner', 'success', '水印添加成功!');
+                        btnWatermark.disabled = false;
+                        setTimeout(function () { progressWrap.classList.add('hidden'); }, 1500);
+                    },
+                    onError: function (xhr, err) {
+                        progressText.textContent = '添加失败';
+                        Tools.showBanner('msg-banner', 'error', (err && err.error) || '添加水印失败');
+                        btnWatermark.disabled = false;
+                        setTimeout(function () { progressWrap.classList.add('hidden'); }, 1500);
+                    }
+                });
+            });
+
+            btnDownload.addEventListener('click', function () {
+                if (!resultBlob) return;
+                Tools.download('watermarked.pdf', resultBlob, 'application/pdf');
+            });
+        });
+    </script>
+</body>
+
+</html>

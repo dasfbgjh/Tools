@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片格式转换</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./image_converter.css">
+</head>
+
+<body>
+    <div class="tool-page">
+        <div class="tool-card">
+            <div id="banner"></div>
+
+            <div class="tool-header-info">
+                <h2>图片格式转换</h2>
+                <p class="tool-desc">使用 stb_image 库转换图片格式，支持 PNG、JPG、BMP、ICO 格式互转</p>
+            </div>
+
+            <div class="tool-grid-2">
+                <div>
+                    <label class="tool-label">图片上传与预览</label>
+                    <div class="upload-preview" id="drop-zone">
+                        <div class="preview-empty" id="preview-empty">
+                            <span class="drop-zone-icon">📁</span>
+                            <span class="preview-empty-text">点击选择或拖拽图片到此处</span>
+                            <span class="preview-hint">支持 PNG / JPG / BMP / ICO · 最大 50MB</span>
+                        </div>
+                        <div class="preview-image-wrap" id="preview-wrap"></div>
+                        <input type="file" id="file-input" accept="image/*">
+                    </div>
+                </div>
+                <div>
+                    <label class="tool-label">图片信息</label>
+                    <ul class="info-list" id="info-list">
+                        <li><span class="label">文件名</span><span class="value" data-key="name">—</span></li>
+                        <li><span class="label">文件大小</span><span class="value" data-key="size">—</span></li>
+                        <li><span class="label">类型</span><span class="value" data-key="type">—</span></li>
+                        <li><span class="label">尺寸</span><span class="value" data-key="dim">—</span></li>
+                    </ul>
+
+                    <label class="tool-label">目标格式</label>
+                    <div class="format-grid" id="format-grid">
+                        <label class="format-option">
+                            <input type="radio" name="format" value="png" checked>
+                            <span class="format-name">PNG</span>
+                        </label>
+                        <label class="format-option">
+                            <input type="radio" name="format" value="jpg">
+                            <span class="format-name">JPG</span>
+                        </label>
+                        <label class="format-option">
+                            <input type="radio" name="format" value="bmp">
+                            <span class="format-name">BMP</span>
+                        </label>
+                        <label class="format-option">
+                            <input type="radio" name="format" value="ico">
+                            <span class="format-name">ICO</span>
+                        </label>
+                    </div>
+
+                    <div class="quality-section" id="quality-section">
+                        <label class="tool-label">JPEG 质量</label>
+                        <div class="quality-slider-wrap">
+                            <input type="range" id="quality-slider" min="1" max="100" value="90">
+                            <span id="quality-value">90%</span>
+                        </div>
+                    </div>
+
+                    <div class="ico-section" id="ico-section">
+                        <label class="tool-label">ICO 尺寸（可多选）</label>
+                        <div class="ico-sizes-grid" id="ico-sizes-grid">
+                            <label class="ico-size-option">
+                                <input type="checkbox" value="256" checked>
+                                <span>256×256</span>
+                            </label>
+                            <label class="ico-size-option">
+                                <input type="checkbox" value="128" checked>
+                                <span>128×128</span>
+                            </label>
+                            <label class="ico-size-option">
+                                <input type="checkbox" value="96" checked>
+                                <span>96×96</span>
+                            </label>
+                            <label class="ico-size-option">
+                                <input type="checkbox" value="72" checked>
+                                <span>72×72</span>
+                            </label>
+                            <label class="ico-size-option">
+                                <input type="checkbox" value="64" checked>
+                                <span>64×64</span>
+                            </label>
+                            <label class="ico-size-option">
+                                <input type="checkbox" value="48" checked>
+                                <span>48×48</span>
+                            </label>
+                            <label class="ico-size-option">
+                                <input type="checkbox" value="32" checked>
+                                <span>32×32</span>
+                            </label>
+                            <label class="ico-size-option">
+                                <input type="checkbox" value="16" checked>
+                                <span>16×16</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="tool-toolbar" style="margin-top:1rem;">
+                        <button class="btn" id="btn-convert" disabled>转换并下载</button>
+                        <span class="spacer"></span>
+                        <button class="btn btn-outline" id="btn-clear">清空</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./image_converter.js"></script>
+</body>
+
+</html>

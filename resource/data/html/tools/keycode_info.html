@@ -1,0 +1,124 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>键码信息</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .keycap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 120px;
+            background: var(--bg-muted);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: var(--text);
+            word-break: break-all;
+            text-align: center;
+            padding: 1rem;
+        }
+        .keycap.empty {
+            color: var(--text-light);
+            font-style: italic;
+            font-weight: 400;
+            font-size: 0.9375rem;
+        }
+        .mod-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+        @media (min-width: 640px) { .mod-grid { grid-template-columns: repeat(4, 1fr); } }
+        .mod-chip {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            background: var(--surface);
+            gap: 0.375rem;
+        }
+        .mod-chip .dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--border);
+        }
+        .mod-chip.active { color: var(--primary); border-color: var(--primary); background: var(--primary-light); }
+        .mod-chip.active .dot { background: var(--primary); }
+        .history-item {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 0.8125rem;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .history-item:hover { border-color: var(--primary); background: var(--primary-light); }
+        .history-item .hk { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 600; min-width: 3rem; }
+        .history-item .hc { color: var(--text-muted); flex: 1; font-family: ui-monospace, Menlo, Consolas, monospace; }
+        .history-item .hn { color: var(--text-light); font-size: 0.75rem; }
+    </style>
+</head>
+<body>
+    <div class="tool-page">
+        <div class="tool-card">
+            <div id="banner"></div>
+
+            <div class="tool-toolbar">
+                <button class="btn btn-sm" id="btn-copy">复制按键信息</button>
+                <span class="spacer"></span>
+                <button class="btn btn-ghost btn-sm" id="btn-clear">清空历史</button>
+            </div>
+
+            <p class="tool-hint">在页面任意位置按下键盘按键即可显示信息（无需点击输入框）</p>
+
+            <div id="keycap" class="keycap empty">按下任意键开始</div>
+        </div>
+
+        <div class="tool-grid-2" style="margin-top:1.5rem;">
+            <div class="tool-card">
+                <h2>按键详情</h2>
+                <ul class="tool-result-list">
+                    <li><span class="label">key</span><span class="value" id="r-key">—</span></li>
+                    <li><span class="label">code</span><span class="value" id="r-code">—</span></li>
+                    <li><span class="label">keyCode</span><span class="value" id="r-keycode">—</span></li>
+                    <li><span class="label">which</span><span class="value" id="r-which">—</span></li>
+                    <li><span class="label">charCode</span><span class="value" id="r-charcode">—</span></li>
+                    <li><span class="label">location</span><span class="value" id="r-location">—</span></li>
+                    <li><span class="label">repeat</span><span class="value" id="r-repeat">—</span></li>
+                </ul>
+            </div>
+
+            <div class="tool-card">
+                <h2>修饰键</h2>
+                <div class="mod-grid">
+                    <div class="mod-chip" id="mod-ctrl"><span class="dot"></span><span>Ctrl</span></div>
+                    <div class="mod-chip" id="mod-alt"><span class="dot"></span><span>Alt</span></div>
+                    <div class="mod-chip" id="mod-shift"><span class="dot"></span><span>Shift</span></div>
+                    <div class="mod-chip" id="mod-meta"><span class="dot"></span><span>Meta</span></div>
+                </div>
+
+                <h2 style="margin-top:1.5rem;">历史记录（最近 5 个）</h2>
+                <div id="history-list" style="display:flex; flex-direction:column; gap:0.5rem;">
+                    <p class="tool-hint">暂无历史记录</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./keycode_info.js"></script>
+</body>
+</html>

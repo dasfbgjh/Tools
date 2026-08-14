@@ -1,0 +1,99 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base64图片互转</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./base64_to_image.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+
+        <div class="tool-card">
+            <div id="banner"></div>
+
+            <div class="mode-tabs">
+                <button class="mode-tab active" id="tab-i2b">图片转 Base64</button>
+                <button class="mode-tab" id="tab-b2i">Base64 转图片</button>
+            </div>
+
+            <!-- 图片转Base64 -->
+            <div id="panel-i2b">
+                <div class="tool-grid-2">
+                    <div>
+                        <label class="tool-label">选择图片</label>
+                        <div class="drop-zone" id="drop-zone">
+                            <div>点击选择或拖拽图片到此处</div>
+                            <input type="file" id="file-input" accept="image/*">
+                        </div>
+                        <label class="tool-label">图片预览</label>
+                        <div class="preview-wrap" id="preview-i2b-wrap">
+                            <span class="preview-empty">图片预览将在这里显示</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="tool-label">图片信息</label>
+                        <ul class="info-list" id="info-i2b">
+                            <li><span class="label">文件名</span><span class="value" data-key="name">—</span></li>
+                            <li><span class="label">文件大小</span><span class="value" data-key="size">—</span></li>
+                            <li><span class="label">类型</span><span class="value" data-key="type">—</span></li>
+                            <li><span class="label">尺寸</span><span class="value" data-key="dim">—</span></li>
+                        </ul>
+                        <label class="tool-label">Base64 输出</label>
+                        <textarea class="tool-textarea" id="output-i2b" readonly
+                            placeholder="Base64 数据将在这里显示..."></textarea>
+                        <div class="tool-toolbar">
+                            <button class="btn btn-ghost btn-sm" id="btn-copy-b64">复制 Base64</button>
+                            <button class="btn btn-ghost btn-sm" id="btn-copy-css">复制为 CSS</button>
+                            <span class="spacer"></span>
+                            <button class="btn btn-outline btn-sm" id="btn-clear-i2b">清空</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Base64转图片 -->
+            <div id="panel-b2i" style="display: none;">
+                <div class="tool-grid-2">
+                    <div>
+                        <label class="tool-label">Base64 输入</label>
+                        <textarea class="tool-textarea" id="input-b2i"
+                            placeholder="粘贴 Base64 字符串（可包含 data: 前缀）..."></textarea>
+                        <div class="tool-toolbar">
+                            <button class="btn btn-sm" id="btn-convert-b2i">转换</button>
+                            <button class="btn btn-ghost btn-sm" id="btn-example-b2i">加载示例</button>
+                            <span class="spacer"></span>
+                            <button class="btn btn-outline btn-sm" id="btn-clear-b2i">清空</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="tool-label">图片预览</label>
+                        <div class="preview-wrap" id="preview-b2i-wrap">
+                            <span class="preview-empty">图片预览将在这里显示</span>
+                        </div>
+                        <label class="tool-label">图片信息</label>
+                        <ul class="info-list" id="info-b2i">
+                            <li><span class="label">类型</span><span class="value" data-key="type">—</span></li>
+                            <li><span class="label">尺寸</span><span class="value" data-key="dim">—</span></li>
+                        </ul>
+                        <div class="tool-toolbar">
+                            <button class="btn btn-sm" id="btn-download-b2i" disabled>下载图片</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./base64_to_image.js"></script>
+</body>
+
+</html>

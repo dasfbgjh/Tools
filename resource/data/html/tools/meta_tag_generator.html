@@ -1,0 +1,396 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>元标签生成器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        /* SERP 预览弹窗 */
+        .serp-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .serp-modal.open {
+            display: flex;
+        }
+
+        .serp-modal-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .serp-modal-card {
+            position: relative;
+            background: var(--bg-card, #fff);
+            color: var(--text, #1f1f1f);
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            width: min(640px, 92vw);
+            max-height: 86vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .serp-modal-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border, #e5e5e5);
+            font-weight: 600;
+        }
+
+        .serp-modal-head button {
+            padding: 0.25rem 0.5rem;
+            line-height: 1;
+        }
+
+        .serp-modal-body {
+            padding: 1.5rem 1.5rem 1.75rem;
+            overflow-y: auto;
+            font-family: arial, sans-serif;
+        }
+
+        .serp-searchbar {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.65rem 1rem;
+            border: 1px solid #dfe1e5;
+            border-radius: 24px;
+            margin-bottom: 1.75rem;
+        }
+
+        .serp-searchbar-icon {
+            color: #4285f4;
+            font-size: 1.1rem;
+        }
+
+        .serp-searchbar-query {
+            color: #202124;
+            font-size: 1rem;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .serp-url {
+            color: #006621;
+            font-size: 14px;
+            line-height: 1.3;
+            word-break: break-all;
+            margin-bottom: 0.2rem;
+        }
+
+        .serp-title {
+            color: #1a0dab;
+            font-size: 20px;
+            line-height: 1.3;
+            font-weight: 400;
+            margin: 0 0 0.3rem;
+            word-break: break-word;
+        }
+
+        .serp-title.truncated {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .serp-snippet {
+            color: #545454;
+            font-size: 14px;
+            line-height: 1.58;
+            word-break: break-word;
+        }
+
+        .serp-snippet.truncated {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        [data-theme="dark"] .serp-title {
+            color: #8ab4f8;
+        }
+
+        [data-theme="dark"] .serp-url {
+            color: #bdc1c6;
+        }
+
+        [data-theme="dark"] .serp-snippet {
+            color: #bdc1c6;
+        }
+
+        [data-theme="dark"] .serp-searchbar {
+            background: #303134;
+            border-color: #5f6368;
+        }
+
+        [data-theme="dark"] .serp-searchbar-query {
+            color: #e8eaed;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+        <div class="tool-card">
+            <div id="banner"></div>
+
+            <div class="tool-toolbar">
+                <button class="btn btn-sm" id="btn-generate">生成</button>
+                <button class="btn btn-outline btn-sm" id="btn-copy">复制</button>
+                <button class="btn btn-outline btn-sm" id="btn-preview">预览效果</button>
+                <span class="spacer"></span>
+                <button class="btn btn-ghost btn-sm" id="btn-reset">重置</button>
+            </div>
+
+            <div class="tool-grid-2">
+                <div>
+                    <h2>基本信息</h2>
+                    <label class="tool-label">页面标题</label>
+                    <input type="text" id="title" class="tool-input" placeholder="页面标题">
+
+                    <label class="tool-label" style="margin-top:1rem;">页面描述</label>
+                    <textarea class="tool-textarea sm" id="description" placeholder="页面描述（建议150-160字符）"></textarea>
+
+                    <label class="tool-label" style="margin-top:1rem;">关键词</label>
+                    <input type="text" id="keywords" class="tool-input" placeholder="用逗号分隔">
+
+                    <label class="tool-label" style="margin-top:1rem;">网站名称</label>
+                    <input type="text" id="site-name" class="tool-input" placeholder="网站名称">
+
+                    <label class="tool-label" style="margin-top:1rem;">作者</label>
+                    <input type="text" id="author" class="tool-input" placeholder="作者名称">
+
+                    <label class="tool-label" style="margin-top:1rem;">语言</label>
+                    <input type="text" id="language" class="tool-input" placeholder="zh-CN" value="zh-CN">
+                </div>
+
+                <div>
+                    <h2>社交媒体</h2>
+                    <label class="tool-label">Facebook App ID</label>
+                    <input type="text" id="fb-app-id" class="tool-input" placeholder="可选">
+
+                    <label class="tool-label" style="margin-top:1rem;">Twitter用户名</label>
+                    <input type="text" id="twitter-handle" class="tool-input" placeholder="@username">
+
+                    <label class="tool-label" style="margin-top:1rem;">Twitter卡片类型</label>
+                    <select id="twitter-card" class="tool-select">
+                        <option value="summary">summary</option>
+                        <option value="summary_large_image">summary_large_image</option>
+                        <option value="app">app</option>
+                        <option value="player">player</option>
+                    </select>
+
+                    <label class="tool-label" style="margin-top:1rem;">OG类型</label>
+                    <select id="og-type" class="tool-select">
+                        <option value="website">website</option>
+                        <option value="article">article</option>
+                        <option value="blog">blog</option>
+                        <option value="product">product</option>
+                        <option value="profile">profile</option>
+                    </select>
+
+                    <label class="tool-label" style="margin-top:1rem;">OG图片</label>
+                    <input type="text" id="og-image" class="tool-input" placeholder="图片URL">
+
+                    <label class="tool-label" style="margin-top:1rem;">OG视频</label>
+                    <input type="text" id="og-video" class="tool-input" placeholder="视频URL">
+
+                    <label class="tool-label" style="margin-top:1rem;">网址</label>
+                    <input type="text" id="url" class="tool-input" placeholder="当前页面URL">
+                </div>
+            </div>
+
+            <div class="tool-card" style="margin-top:1.5rem;">
+                <h2>生成结果</h2>
+                <pre id="result" class="tool-output empty">点击「生成」按钮生成元标签</pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- SERP 预览弹窗 -->
+    <div id="serp-modal" class="serp-modal" role="dialog" aria-modal="true" aria-labelledby="serp-modal-title">
+        <div class="serp-modal-backdrop" data-serp-close></div>
+        <div class="serp-modal-card">
+            <div class="serp-modal-head">
+                <span id="serp-modal-title">搜索引擎结果预览</span>
+                <button type="button" class="btn btn-ghost btn-sm" data-serp-close title="关闭" aria-label="关闭">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" aria-hidden="true">
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="serp-modal-body">
+                <div class="serp-searchbar">
+                    <span class="serp-searchbar-icon" aria-hidden="true">🔍</span>
+                    <span class="serp-searchbar-query" id="serp-query"></span>
+                </div>
+                <div class="serp-url" id="serp-url"></div>
+                <h3 class="serp-title" id="serp-title"></h3>
+                <div class="serp-snippet" id="serp-snippet"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var $ = Tools.$;
+
+            function generate() {
+                var tags = [];
+
+                var title = $('title').value.trim();
+                var desc = $('description').value.trim();
+                var keywords = $('keywords').value.trim();
+                var siteName = $('site-name').value.trim();
+                var author = $('author').value.trim();
+                var lang = $('language').value.trim();
+                var url = $('url').value.trim();
+
+                if (title) tags.push('<title>' + title + '</title>');
+                if (desc) tags.push('<meta name="description" content="' + desc + '">');
+                if (keywords) tags.push('<meta name="keywords" content="' + keywords + '">');
+                if (siteName) tags.push('<meta name="application-name" content="' + siteName + '">');
+                if (author) tags.push('<meta name="author" content="' + author + '">');
+                if (lang) tags.push('<html lang="' + lang + '">');
+
+                tags.push('<meta charset="UTF-8">');
+                tags.push('<meta name="viewport" content="width=device-width, initial-scale=1.0">');
+                tags.push('<meta http-equiv="X-UA-Compatible" content="IE=edge">');
+                tags.push('<meta name="theme-color" content="#000000">');
+                tags.push('<meta name="apple-mobile-web-app-capable" content="yes">');
+                tags.push('<meta name="apple-mobile-web-app-status-bar-style" content="black">');
+
+                if (url) {
+                    tags.push('<meta property="og:url" content="' + url + '">');
+                }
+                if (title) {
+                    tags.push('<meta property="og:title" content="' + title + '">');
+                }
+                if (desc) {
+                    tags.push('<meta property="og:description" content="' + desc + '">');
+                }
+                if (siteName) {
+                    tags.push('<meta property="og:site_name" content="' + siteName + '">');
+                }
+
+                var ogType = $('og-type').value;
+                tags.push('<meta property="og:type" content="' + ogType + '">');
+
+                var ogImage = $('og-image').value.trim();
+                if (ogImage) {
+                    tags.push('<meta property="og:image" content="' + ogImage + '">');
+                    tags.push('<meta property="og:image:secure_url" content="' + ogImage + '">');
+                    tags.push('<meta property="og:image:type" content="image/png">');
+                }
+
+                var ogVideo = $('og-video').value.trim();
+                if (ogVideo) {
+                    tags.push('<meta property="og:video" content="' + ogVideo + '">');
+                }
+
+                var fbAppId = $('fb-app-id').value.trim();
+                if (fbAppId) {
+                    tags.push('<meta property="fb:app_id" content="' + fbAppId + '">');
+                }
+
+                var twitterHandle = $('twitter-handle').value.trim();
+                var twitterCard = $('twitter-card').value;
+
+                tags.push('<meta name="twitter:card" content="' + twitterCard + '">');
+                if (twitterHandle) {
+                    tags.push('<meta name="twitter:site" content="' + twitterHandle + '">');
+                    tags.push('<meta name="twitter:creator" content="' + twitterHandle + '">');
+                }
+                if (title) tags.push('<meta name="twitter:title" content="' + title + '">');
+                if (desc) tags.push('<meta name="twitter:description" content="' + desc + '">');
+                if (ogImage) tags.push('<meta name="twitter:image" content="' + ogImage + '">');
+
+                $('result').textContent = tags.join('\n');
+                $('result').classList.remove('empty');
+            }
+
+            $('btn-generate').addEventListener('click', generate);
+            $('btn-copy').addEventListener('click', function () {
+                var result = $('result').textContent;
+                if (!result || result.includes('点击')) return;
+                Tools.copyText(result, this, '已复制');
+            });
+            $('btn-preview').addEventListener('click', showSerpPreview);
+
+            function showSerpPreview() {
+                var title = $('title').value.trim();
+                var desc = $('description').value.trim();
+                var url = $('url').value.trim();
+
+                // 搜索框内显示的查询词：优先用 title，其次 url，最后取 description 前 60 字
+                var query = title || url || (desc ? desc.slice(0, 60) : '');
+                $('serp-query').textContent = query;
+
+                $('serp-title').textContent = title || '（未设置页面标题）';
+                // 标题超过 60 字符触发截断样式（与 Google 实际表现一致）
+                $('serp-title').classList.toggle('truncated', title.length > 60);
+
+                $('serp-url').textContent = url || 'https://example.com/';
+
+                $('serp-snippet').textContent = desc || '（未设置页面描述，搜索引擎将自动从页面正文提取）';
+                // 描述超过 160 字符触发截断样式
+                $('serp-snippet').classList.toggle('truncated', desc.length > 160);
+
+                $('serp-modal').classList.add('open');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function hideSerpPreview() {
+                $('serp-modal').classList.remove('open');
+                document.body.style.overflow = '';
+            }
+
+            $('serp-modal').addEventListener('click', function (e) {
+                var closer = e.target.closest && e.target.closest('[data-serp-close]');
+                if (closer) hideSerpPreview();
+            });
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && $('serp-modal').classList.contains('open')) hideSerpPreview();
+            });
+            $('btn-reset').addEventListener('click', function () {
+                ['title', 'description', 'keywords', 'site-name', 'author', 'language',
+                    'fb-app-id', 'twitter-handle', 'og-image', 'og-video', 'url'].forEach(function (id) {
+                        $(id).value = '';
+                    });
+                $('language').value = 'zh-CN';
+                $('twitter-card').value = 'summary';
+                $('og-type').value = 'website';
+                $('result').textContent = '点击「生成」按钮生成元标签';
+                $('result').classList.add('empty');
+                Tools.clearBanner('banner');
+            });
+
+            generate();
+        });
+    </script>
+</body>
+
+</html>

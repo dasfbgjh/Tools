@@ -1,0 +1,65 @@
+/* ===== NATO Alphabet ===== */
+
+.nato-result {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    line-height: 2;
+}
+
+.nato-line {
+    margin-bottom: 0.75rem;
+}
+
+.nato-char {
+    display: inline-block;
+    min-width: 1.5rem;
+    text-align: center;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.nato-word {
+    color: var(--text);
+    margin-right: 0.5rem;
+}
+
+.nato-morse {
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+}
+
+.nato-empty {
+    color: var(--text-light);
+    font-style: italic;
+}
+
+.nato-ref {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.5rem;
+}
+
+.nato-ref-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.8125rem;
+}
+
+.nato-ref-item .letter {
+    font-weight: 700;
+    color: var(--primary);
+    min-width: 1rem;
+}
+
+.nato-ref-item .word {
+    color: var(--text);
+    flex: 1;
+}
+
+.nato-ref-item .morse {
+    color: var(--text-muted);
+    font-size: 0.6875rem;
+}

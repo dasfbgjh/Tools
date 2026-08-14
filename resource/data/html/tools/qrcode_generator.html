@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二维码生成</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .range-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .range-row input[type="range"] {
+            flex: 1;
+        }
+
+        .range-value {
+            min-width: 3.5rem;
+            text-align: right;
+            font-size: 0.8125rem;
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .color-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .color-row input[type="color"] {
+            width: 40px;
+            height: 36px;
+            padding: 0;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: transparent;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .color-row input[type="text"] {
+            flex: 1;
+        }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+        }
+
+        .preset-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface);
+            cursor: pointer;
+            font-size: 0.75rem;
+            color: var(--text);
+            transition: border-color 0.15s, background 0.15s;
+        }
+
+        .preset-btn:hover {
+            border-color: var(--primary);
+            background: var(--bg-muted);
+        }
+
+        .preset-swatch {
+            width: 100%;
+            height: 24px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+
+        .qr-preview-box {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1rem;
+            min-height: 280px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .qr-preview-box canvas {
+            max-width: 100%;
+            height: auto;
+            image-rendering: pixelated;
+        }
+
+        .qr-preview-box .placeholder {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .opt-row {
+            margin-bottom: 1rem;
+        }
+
+        .opt-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="msg-banner"></div>
+
+        <div class="tool-grid-2">
+            <div class="tool-card">
+                <h2>基本设置</h2>
+                <div class="opt-row">
+                    <label class="tool-label">文本 / URL</label>
+                    <textarea id="qr-text" class="tool-textarea sm"
+                        placeholder="输入要生成二维码的文本或链接,如 https://example.com">https://example.com</textarea>
+                </div>
+                <div class="opt-row">
+                    <label class="tool-label">尺寸 <span id="size-value" class="range-value">256 px</span></label>
+                    <div class="range-row">
+                        <input type="range" id="qr-size" min="128" max="1024" step="64" value="256">
+                    </div>
+                </div>
+                <div class="opt-row">
+                    <label class="tool-label">边距 (模块数) <span id="margin-value" class="range-value">4</span></label>
+                    <div class="range-row">
+                        <input type="range" id="qr-margin" min="0" max="20" step="1" value="4">
+                    </div>
+                </div>
+                <div class="opt-row">
+                    <label class="tool-label">纠错级别</label>
+                    <select id="qr-ecc" class="tool-select">
+                        <option value="L">L - 低 (7%)</option>
+                        <option value="M" selected>M - 中 (15%)</option>
+                        <option value="Q">Q - 较高 (25%)</option>
+                        <option value="H">H - 高 (30%)</option>
+                    </select>
+                    <div class="tool-hint">纠错级别越高,二维码可被遮挡后仍能识别的比例越大,但容量也越小</div>
+                </div>
+            </div>
+
+            <div class="tool-card">
+                <h2>颜色设置</h2>
+                <div class="opt-row">
+                    <label class="tool-label">前景色</label>
+                    <div class="color-row">
+                        <input type="color" id="fg-color" value="#000000">
+                        <input type="text" id="fg-text" class="tool-input" value="#000000">
+                    </div>
+                </div>
+                <div class="opt-row">
+                    <label class="tool-label">背景色</label>
+                    <div class="color-row">
+                        <input type="color" id="bg-color" value="#FFFFFF">
+                        <input type="text" id="bg-text" class="tool-input" value="#FFFFFF">
+                    </div>
+                </div>
+                <div class="opt-row">
+                    <label class="tool-label">预设配色</label>
+                    <div class="preset-grid" id="preset-grid"></div>
+                </div>
+                <div class="opt-row">
+                    <div class="btn-group">
+                        <button id="btn-generate" class="btn">生成二维码</button>
+                        <button id="btn-copy" class="btn btn-outline">复制文本</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top: 1.5rem;">
+            <h2>预览</h2>
+            <div class="qr-preview-box" id="qr-preview">
+                <div class="placeholder">输入文本后自动生成</div>
+            </div>
+            <div class="tool-toolbar" style="margin-top: 1rem;">
+                <div class="spacer"></div>
+                <button id="btn-download-png" class="btn" disabled>下载 PNG</button>
+                <button id="btn-download-svg" class="btn btn-outline" disabled>下载 SVG</button>
+            </div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var qrText = Tools.$('qr-text');
+            var qrSize = Tools.$('qr-size');
+            var sizeValue = Tools.$('size-value');
+            var qrMargin = Tools.$('qr-margin');
+            var marginValue = Tools.$('margin-value');
+            var qrEcc = Tools.$('qr-ecc');
+            var fgColor = Tools.$('fg-color');
+            var fgText = Tools.$('fg-text');
+            var bgColor = Tools.$('bg-color');
+            var bgText = Tools.$('bg-text');
+            var presetGrid = Tools.$('preset-grid');
+            var btnGenerate = Tools.$('btn-generate');
+            var btnCopy = Tools.$('btn-copy');
+            var btnDownloadPng = Tools.$('btn-download-png');
+            var btnDownloadSvg = Tools.$('btn-download-svg');
+            var qrPreview = Tools.$('qr-preview');
+
+            var presets = [
+                { name: '经典黑白', fg: '#000000', bg: '#FFFFFF' },
+                { name: '蓝白', fg: '#FFFFFF', bg: '#0088CC' },
+                { name: '红白', fg: '#FFFFFF', bg: '#EF4444' },
+                { name: '绿白', fg: '#FFFFFF', bg: '#10B981' },
+                { name: '紫白', fg: '#FFFFFF', bg: '#6366F1' },
+                { name: '深色模式', fg: '#F5F5F5', bg: '#262626' },
+                { name: '橙色', fg: '#F97316', bg: '#FFFFFF' },
+                { name: '暖棕', fg: '#7C2D12', bg: '#FFEDD5' }
+            ];
+
+            var currentMatrix = null;
+            var currentText = '';
+            var debounceTimer = null;
+            var currentCanvas = null;
+
+            // Build preset swatches
+            presets.forEach(function (p) {
+                var btn = Tools.el('button', { class: 'preset-btn', type: 'button', title: p.name });
+                var swatch = Tools.el('div', { class: 'preset-swatch', style: { background: p.bg, boxShadow: 'inset 0 0 0 4px ' + p.fg } });
+                btn.appendChild(swatch);
+                btn.appendChild(Tools.el('span', { text: p.name }));
+                btn.addEventListener('click', function () {
+                    fgColor.value = p.fg;
+                    fgText.value = p.fg;
+                    bgColor.value = p.bg;
+                    bgText.value = p.bg;
+                    renderQR();
+                });
+                presetGrid.appendChild(btn);
+            });
+
+            function showMsg(type, text) { Tools.showBanner('msg-banner', type, text); }
+            function clearMsg() { Tools.clearBanner('msg-banner'); }
+
+            function syncColorText(colorInput, textInput) {
+                textInput.value = colorInput.value;
+            }
+            function syncColorPicker(colorInput, textInput) {
+                var v = textInput.value.trim();
+                if (/^#[0-9A-Fa-f]{6}$/.test(v)) {
+                    colorInput.value = v;
+                    return true;
+                }
+                return false;
+            }
+
+            fgColor.addEventListener('input', function () { syncColorText(fgColor, fgText); renderQR(); });
+            bgColor.addEventListener('input', function () { syncColorText(bgColor, bgText); renderQR(); });
+            fgText.addEventListener('input', function () { if (syncColorPicker(fgColor, fgText)) renderQR(); });
+            bgText.addEventListener('input', function () { if (syncColorPicker(bgColor, bgText)) renderQR(); });
+
+            qrSize.addEventListener('input', function () {
+                sizeValue.textContent = qrSize.value + ' px';
+                renderQR();
+            });
+            qrMargin.addEventListener('input', function () {
+                marginValue.textContent = qrMargin.value;
+                renderQR();
+            });
+            qrEcc.addEventListener('change', renderQR);
+            qrText.addEventListener('input', debouncedRender);
+            btnGenerate.addEventListener('click', renderQR);
+
+            function debouncedRender() {
+                if (debounceTimer) clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(renderQR, 500);
+            }
+
+            function isValidHex(c) { return /^#[0-9A-Fa-f]{6}$/.test(c); }
+
+            function renderQR() {
+                clearMsg();
+                var text = qrText.value;
+                if (!text || !text.trim()) {
+                    currentMatrix = null;
+                    currentText = '';
+                    qrPreview.innerHTML = '';
+                    qrPreview.appendChild(Tools.el('div', { class: 'placeholder', text: '输入文本后自动生成' }));
+                    btnDownloadPng.disabled = true;
+                    btnDownloadSvg.disabled = true;
+                    return;
+                }
+
+                var fg = fgText.value.trim();
+                var bg = bgText.value.trim();
+                if (!isValidHex(fg)) { showMsg('error', '前景色格式无效,请使用 #RRGGBB'); return; }
+                if (!isValidHex(bg)) { showMsg('error', '背景色格式无效,请使用 #RRGGBB'); return; }
+                if (fg.toLowerCase() === bg.toLowerCase()) {
+                    showMsg('warn', '前景色与背景色相同,二维码将无法识别');
+                }
+
+                Api.tools.qrcode(text, 'matrix', qrEcc.value)
+                    .then(function (data) {
+                        if (!data.success) {
+                            throw new Error(data.error || '生成失败');
+                        }
+                        var matrix = data.matrix;
+                        currentMatrix = matrix;
+                        currentText = text;
+
+                        var size = parseInt(qrSize.value, 10) || 256;
+                        var margin = parseInt(qrMargin.value, 10) || 0;
+                        var dim = matrix.length + margin * 2;
+                        var pixelSize = Math.max(1, Math.floor(size / dim));
+                        var realSize = pixelSize * dim;
+
+                        var canvas = document.createElement('canvas');
+                        canvas.width = realSize;
+                        canvas.height = realSize;
+                        var ctx = canvas.getContext('2d');
+                        ctx.imageSmoothingEnabled = false;
+                        ctx.fillStyle = bg;
+                        ctx.fillRect(0, 0, realSize, realSize);
+                        ctx.fillStyle = fg;
+                        for (var y = 0; y < matrix.length; y++) {
+                            for (var x = 0; x < matrix[y].length; x++) {
+                                if (matrix[y][x]) {
+                                    ctx.fillRect((x + margin) * pixelSize, (y + margin) * pixelSize, pixelSize, pixelSize);
+                                }
+                            }
+                        }
+                        qrPreview.innerHTML = '';
+                        qrPreview.appendChild(canvas);
+                        currentCanvas = canvas;
+
+                        btnDownloadPng.disabled = false;
+                        btnDownloadSvg.disabled = false;
+                    })
+                    .catch(function () {
+                        currentMatrix = null;
+                        qrPreview.innerHTML = '';
+                        qrPreview.appendChild(Tools.el('div', { class: 'placeholder', text: '生成失败' }));
+                        btnDownloadPng.disabled = true;
+                        btnDownloadSvg.disabled = true;
+                        showMsg('error', '文本过长,超出二维码容量上限,请缩短后重试');
+                    });
+            }
+
+            btnCopy.addEventListener('click', function () {
+                Tools.copyText(qrText.value, btnCopy, '已复制文本');
+            });
+
+            btnDownloadPng.addEventListener('click', function () {
+                if (!currentCanvas) return;
+                currentCanvas.toBlob(function (blob) {
+                    if (!blob) { showMsg('error', 'PNG 导出失败'); return; }
+                    Tools.download('qrcode.png', blob, 'image/png');
+                }, 'image/png');
+            });
+
+            btnDownloadSvg.addEventListener('click', function () {
+                if (!currentText || !currentMatrix) return;
+                var fg = fgText.value.trim();
+                var bg = bgText.value.trim();
+                var margin = parseInt(qrMargin.value, 10) || 0;
+                var matrix = currentMatrix;
+                var size = matrix.length;
+                var dim = size + margin * 2;
+                var scale = 10;
+                var realDim = dim * scale;
+                var svg = '<?xml version="1.0" encoding="UTF-8"?>';
+                svg += '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="' + realDim + '" height="' + realDim + '" viewBox="0 0 ' + realDim + ' ' + realDim + '" shape-rendering="crispEdges">';
+                svg += '<rect width="' + realDim + '" height="' + realDim + '" fill="' + bg + '"/>';
+                svg += '<path fill="' + fg + '" d="';
+                for (var y = 0; y < size; y++) {
+                    for (var x = 0; x < size; x++) {
+                        if (matrix[y][x]) {
+                            var px = (x + margin) * scale;
+                            var py = (y + margin) * scale;
+                            svg += 'M' + px + ',' + py + 'h' + scale + 'v' + scale + 'h-' + scale + 'z';
+                        }
+                    }
+                }
+                svg += '"/></svg>';
+                var blob = new Blob([svg], { type: 'image/svg+xml' });
+                var url = URL.createObjectURL(blob);
+                var a = Tools.el('a', { href: url, download: 'qrcode.svg' });
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+
+            // Initial render
+            renderQR();
+        });
+    </script>
+</body>
+
+</html>

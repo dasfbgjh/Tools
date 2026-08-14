@@ -1,0 +1,241 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unicode转换</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .mode-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .mode-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.375rem 0.625rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            transition: all 0.15s;
+        }
+
+        .mode-row:hover {
+            border-color: var(--primary);
+            color: var(--text);
+        }
+
+        .mode-row.active {
+            border-color: var(--primary);
+            background: var(--primary-light);
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .mode-row input {
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+
+
+        <div class="tool-card">
+            <div id="banner"></div>
+
+            <div class="tool-toolbar">
+                <button class="btn btn-sm" id="btn-convert">转换</button>
+                <button class="btn btn-ghost btn-sm" id="btn-copy">复制结果</button>
+                <button class="btn btn-ghost btn-sm" id="btn-swap">交换</button>
+                <span class="spacer"></span>
+                <button class="btn btn-outline btn-sm" id="btn-clear">清空</button>
+            </div>
+
+            <div class="tool-grid-2">
+                <div>
+                    <label class="tool-label">转换模式</label>
+                    <div class="mode-list" id="mode-list"></div>
+                </div>
+                <div>
+                    <label class="tool-label" id="input-label">原始文本</label>
+                    <textarea class="tool-textarea" id="input-text" placeholder="输入需要转换的文本..."></textarea>
+                </div>
+            </div>
+
+            <div style="margin-top: 1rem;">
+                <label class="tool-label" id="output-label">转换结果</label>
+                <textarea class="tool-textarea" id="output-text" readonly placeholder="转换结果将显示在这里..."></textarea>
+            </div>
+
+            <div class="tool-hint" style="margin-top:0.75rem;">
+                说明：文本转 Unicode 仅转换非 ASCII 字符（码点 &gt; 127），ASCII 字符保持不变。
+            </div>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var MODES = [
+                { id: 'cn2unicode', label: '中文 → Unicode (\\uXXXX)' },
+                { id: 'unicode2cn', label: 'Unicode → 中文' },
+                { id: 'cn2html', label: '中文 → HTML实体 (&#DDDD;)' },
+                { id: 'html2cn', label: 'HTML实体 → 中文' },
+                { id: 'cn2css', label: '中文 → CSS Unicode (\\XXXXXX)' }
+            ];
+
+            var state = { mode: 'cn2unicode', timer: null };
+
+            var modeList = Tools.$('mode-list');
+            MODES.forEach(function (m) {
+                var label = Tools.el('label', { class: 'mode-row' + (m.id === state.mode ? ' active' : '') });
+                var radio = Tools.el('input', { type: 'radio', name: 'mode', value: m.id });
+                radio.checked = (m.id === state.mode);
+                radio.addEventListener('change', function () {
+                    state.mode = m.id;
+                    Tools.$$('.mode-row', modeList).forEach(function (r) { r.classList.remove('active'); });
+                    label.classList.add('active');
+                    updateLabels();
+                    convert();
+                });
+                label.appendChild(radio);
+                label.appendChild(document.createTextNode(m.label));
+                modeList.appendChild(label);
+            });
+
+            function updateLabels() {
+                var inp = Tools.$('input-label');
+                var out = Tools.$('output-label');
+                var txt = Tools.$('input-text');
+                var res = Tools.$('output-text');
+                switch (state.mode) {
+                    case 'cn2unicode':
+                        inp.textContent = '原始文本'; out.textContent = 'Unicode编码';
+                        txt.placeholder = '输入需要转换为Unicode的文本...';
+                        res.placeholder = 'Unicode编码结果将显示在这里...';
+                        break;
+                    case 'unicode2cn':
+                        inp.textContent = 'Unicode编码'; out.textContent = '转换后文本';
+                        txt.placeholder = '输入 \\uXXXX 格式的Unicode编码...';
+                        res.placeholder = '文本转换结果将显示在这里...';
+                        break;
+                    case 'cn2html':
+                        inp.textContent = '原始文本'; out.textContent = 'HTML实体';
+                        txt.placeholder = '输入需要转换为HTML实体的文本...';
+                        res.placeholder = 'HTML实体结果将显示在这里...';
+                        break;
+                    case 'html2cn':
+                        inp.textContent = 'HTML实体'; out.textContent = '转换后文本';
+                        txt.placeholder = '输入 &#DDDD; 或 &#xHHHH; 格式的HTML实体...';
+                        res.placeholder = '文本转换结果将显示在这里...';
+                        break;
+                    case 'cn2css':
+                        inp.textContent = '原始文本'; out.textContent = 'CSS Unicode';
+                        txt.placeholder = '输入需要转换为CSS Unicode的文本...';
+                        res.placeholder = 'CSS Unicode结果将显示在这里...';
+                        break;
+                }
+            }
+
+            function convert() {
+                var input = Tools.$('input-text').value;
+                var out = Tools.$('output-text');
+                Tools.clearBanner('banner');
+                if (!input) { out.value = ''; return; }
+                try {
+                    var result = '';
+                    switch (state.mode) {
+                        case 'cn2unicode':
+                            result = input.replace(/[^\x00-\xff]/g, function (c) {
+                                return '\\u' + ('0000' + c.charCodeAt(0).toString(16)).slice(-4);
+                            });
+                            break;
+                        case 'unicode2cn':
+                            result = input.replace(/\\u([0-9a-fA-F]{4})/g, function (_, hex) {
+                                return String.fromCharCode(parseInt(hex, 16));
+                            });
+                            break;
+                        case 'cn2html':
+                            result = Array.from(input).map(function (ch) {
+                                return '&#' + ch.codePointAt(0) + ';';
+                            }).join('');
+                            break;
+                        case 'html2cn':
+                            result = input.replace(/&#x([0-9a-fA-F]+);/g, function (_, hex) {
+                                return String.fromCodePoint(parseInt(hex, 16));
+                            }).replace(/&#(\d+);/g, function (_, dec) {
+                                return String.fromCodePoint(parseInt(dec, 10));
+                            });
+                            break;
+                        case 'cn2css':
+                            result = Array.from(input).map(function (ch) {
+                                var cp = ch.codePointAt(0);
+                                return '\\' + ('000000' + cp.toString(16)).slice(-6);
+                            }).join(' ');
+                            break;
+                        default:
+                            throw new Error('不支持的模式');
+                    }
+                    out.value = result;
+                } catch (e) {
+                    out.value = '';
+                    Tools.showBanner('banner', 'error', '转换失败：' + e.message);
+                }
+            }
+
+            function debouncedConvert() {
+                clearTimeout(state.timer);
+                state.timer = setTimeout(convert, 200);
+            }
+
+            Tools.$('input-text').addEventListener('input', debouncedConvert);
+            Tools.$('btn-convert').addEventListener('click', convert);
+            Tools.$('btn-clear').addEventListener('click', function () {
+                Tools.$('input-text').value = '';
+                Tools.$('output-text').value = '';
+                Tools.clearBanner('banner');
+            });
+            Tools.$('btn-copy').addEventListener('click', function () {
+                var out = Tools.$('output-text').value;
+                if (!out) return;
+                Tools.copyText(out, this, '已复制');
+            });
+            Tools.$('btn-swap').addEventListener('click', function () {
+                var inp = Tools.$('input-text');
+                var out = Tools.$('output-text');
+                if (!out.value) return;
+                inp.value = out.value;
+                // flip direction for the reversible modes
+                var flip = {
+                    'cn2unicode': 'unicode2cn', 'unicode2cn': 'cn2unicode',
+                    'cn2html': 'html2cn', 'html2cn': 'cn2html',
+                    'cn2css': 'cn2unicode' // CSS has no reverse decoder here
+                };
+                state.mode = flip[state.mode] || state.mode;
+                Tools.$$('input', modeList).forEach(function (r) {
+                    r.checked = r.value === state.mode;
+                    r.closest('.mode-row').classList.toggle('active', r.value === state.mode);
+                });
+                updateLabels();
+                convert();
+            });
+
+            updateLabels();
+        });
+    </script>
+</body>
+
+</html>

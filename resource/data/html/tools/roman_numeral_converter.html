@@ -1,0 +1,61 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>罗马数字转换</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./roman_numeral_converter.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner-container"></div>
+
+        <div class="tool-grid-2">
+            <div class="tool-card">
+                <h2>阿拉伯数字 → 罗马数字</h2>
+                <label class="tool-label" for="arabic-input">输入数字 (1 - 3999)</label>
+                <input type="number" id="arabic-input" class="tool-input" placeholder="例如 2024" min="1" max="3999" value="2024">
+                <div class="roman-output" id="roman-output">MMXXIV</div>
+                <div class="tool-toolbar" style="margin-top:0.75rem;margin-bottom:0;">
+                    <div class="spacer"></div>
+                    <button id="btn-copy-roman" class="btn btn-outline btn-sm" type="button">复制</button>
+                </div>
+            </div>
+
+            <div class="tool-card">
+                <h2>罗马数字 → 阿拉伯数字</h2>
+                <label class="tool-label" for="roman-input">输入罗马数字</label>
+                <input type="text" id="roman-input" class="tool-input tool-monospace" placeholder="例如 MMXXIV" value="MMXXIV" style="text-transform:uppercase;">
+                <div class="roman-output" id="arabic-output">2024</div>
+                <div class="tool-toolbar" style="margin-top:0.75rem;margin-bottom:0;">
+                    <div class="spacer"></div>
+                    <button id="btn-copy-arabic" class="btn btn-outline btn-sm" type="button">复制</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>罗马数字对照表</h2>
+            <div class="roman-ref">
+                <div class="roman-ref-item"><span class="sym">I</span><span class="num">1</span></div>
+                <div class="roman-ref-item"><span class="sym">V</span><span class="num">5</span></div>
+                <div class="roman-ref-item"><span class="sym">X</span><span class="num">10</span></div>
+                <div class="roman-ref-item"><span class="sym">L</span><span class="num">50</span></div>
+                <div class="roman-ref-item"><span class="sym">C</span><span class="num">100</span></div>
+                <div class="roman-ref-item"><span class="sym">D</span><span class="num">500</span></div>
+                <div class="roman-ref-item"><span class="sym">M</span><span class="num">1000</span></div>
+            </div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./roman_numeral_converter.js"></script>
+</body>
+
+</html>

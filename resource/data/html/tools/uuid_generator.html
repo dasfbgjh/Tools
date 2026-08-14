@@ -1,0 +1,76 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UUID 生成器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./uuid_generator.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner-container"></div>
+
+        <div class="tool-grid-3">
+            <div class="tool-card">
+                <h2>生成选项</h2>
+
+                <label class="tool-label">版本</label>
+                <select id="version" class="tool-select">
+                    <option value="v4" selected>UUID v4 (随机)</option>
+                    <option value="v1">UUID v1 (时间)</option>
+                    <option value="v7">UUID v7 (时间排序)</option>
+                    <option value="nil">NIL UUID</option>
+                    <option value="ulid">ULID</option>
+                </select>
+
+                <div style="margin-top:1rem;">
+                    <label class="tool-label">数量</label>
+                    <div class="slider-row">
+                        <input type="range" id="count" min="1" max="100" value="5">
+                        <span class="slider-val" id="count-val">5</span>
+                    </div>
+                </div>
+
+                <div style="margin-top:1rem;">
+                    <label class="tool-label">格式</label>
+                    <label class="tool-check-row"><input type="checkbox" id="uppercase"> 大写</label>
+                    <label class="tool-check-row"><input type="checkbox" id="no-hyphens"> 去除连字符</label>
+                    <label class="tool-check-row"><input type="checkbox" id="add-braces"> 添加花括号</label>
+                </div>
+
+                <div style="margin-top:1.25rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <button id="btn-generate" class="btn btn-sm" type="button">生成</button>
+                    <button id="btn-copy-all" class="btn btn-outline btn-sm" type="button">复制全部</button>
+                    <button id="btn-clear" class="btn btn-ghost btn-sm" type="button">清空</button>
+                </div>
+            </div>
+
+            <div class="tool-card">
+                <h2>生成结果</h2>
+                <div id="result-list" class="uuid-list"></div>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>说明</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">UUID v4</span><span class="value">完全随机，使用 crypto.getRandomValues</span></li>
+                <li><span class="label">UUID v1</span><span class="value">基于时间戳与节点，适合排序</span></li>
+                <li><span class="label">UUID v7</span><span class="value">毫秒时间戳前缀 + 随机，兼顾排序与唯一性</span></li>
+                <li><span class="label">ULID</span><span class="value">26 位 Crockford Base32，字典序可排序</span></li>
+                <li><span class="label">NIL</span><span class="value">全零 UUID: 00000000-0000-0000-0000-000000000000</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./uuid_generator.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,209 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>时区转换</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner-box"></div>
+
+        <div class="tool-card">
+            <h2>输入</h2>
+            <div class="tool-grid-2">
+                <div>
+                    <label class="tool-label" for="tz-datetime">日期时间(源时区)</label>
+                    <div class="tool-toolbar" style="margin-bottom:0;">
+                        <input type="datetime-local" class="tool-input" id="tz-datetime" step="1">
+                        <button class="btn btn-outline btn-sm" id="tz-now">使用当前时间</button>
+                        <button class="btn btn-sm" id="tz-convert">转换</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="tool-label" for="tz-source">源时区</label>
+                    <select class="tool-select" id="tz-source"></select>
+                </div>
+            </div>
+            <div class="tool-hint">输入的时间按所选源时区解释,下方列表显示该时刻在各时区的对应时间。</div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                <h2 style="margin:0;">各时区时间</h2>
+                <span class="tool-hint" style="margin:0;">基准 UTC 时间戳: <span id="tz-utc-ts"
+                        class="tool-monospace">--</span></span>
+            </div>
+            <ul class="tool-result-list" id="tz-result"></ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var datetimeInput = Tools.$('tz-datetime');
+            var sourceSelect = Tools.$('tz-source');
+            var resultList = Tools.$('tz-result');
+            var utcTsEl = Tools.$('tz-utc-ts');
+
+            var TIMEZONES = [
+                { tz: 'UTC', name: 'UTC 协调世界时' },
+                { tz: 'Asia/Shanghai', name: '中国 北京' },
+                { tz: 'Asia/Tokyo', name: '日本 东京' },
+                { tz: 'Asia/Seoul', name: '韩国 首尔' },
+                { tz: 'Asia/Singapore', name: '新加坡' },
+                { tz: 'Asia/Kolkata', name: '印度 加尔各答' },
+                { tz: 'Asia/Dubai', name: '迪拜' },
+                { tz: 'Europe/London', name: '英国 伦敦' },
+                { tz: 'Europe/Paris', name: '法国 巴黎' },
+                { tz: 'Europe/Berlin', name: '德国 柏林' },
+                { tz: 'Europe/Moscow', name: '俄罗斯 莫斯科' },
+                { tz: 'America/New_York', name: '美国 纽约(东部)' },
+                { tz: 'America/Chicago', name: '美国 芝加哥(中部)' },
+                { tz: 'America/Denver', name: '美国 丹佛(山地)' },
+                { tz: 'America/Los_Angeles', name: '美国 洛杉矶(西部)' },
+                { tz: 'America/Sao_Paulo', name: '巴西 圣保罗' },
+                { tz: 'Australia/Sydney', name: '澳大利亚 悉尼' },
+                { tz: 'Pacific/Auckland', name: '新西兰 奥克兰' }
+            ];
+
+            // 填充源时区下拉
+            TIMEZONES.forEach(function (item) {
+                var opt = Tools.el('option', { value: item.tz, text: item.name + ' (' + item.tz + ')' });
+                sourceSelect.appendChild(opt);
+            });
+            sourceSelect.value = 'Asia/Shanghai';
+
+            function partsToObj(parts) {
+                var obj = {};
+                parts.forEach(function (p) { obj[p.type] = p.value; });
+                return obj;
+            }
+
+            function tzOffsetMs(timezone, date) {
+                try {
+                    var parts = new Intl.DateTimeFormat('en-US', {
+                        timeZone: timezone,
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+                    }).formatToParts(date);
+                    var obj = partsToObj(parts);
+                    var hh = obj.hour === '24' ? 0 : +obj.hour;
+                    var asUtc = Date.UTC(+obj.year, +obj.month - 1, +obj.day, hh, +obj.minute, +obj.second);
+                    return asUtc - date.getTime();
+                } catch (e) {
+                    return 0;
+                }
+            }
+
+            function wallClockToUtcMs(value, timezone) {
+                var m = (value || '').match(/^(\d+)-(\d+)-(\d+)T(\d+):(\d+)(?::(\d+))?$/);
+                if (!m) return null;
+                var y = +m[1], mo = +m[2], d = +m[3], h = +m[4], mi = +m[5], s = m[6] ? +m[6] : 0;
+                var asIfUtc = Date.UTC(y, mo - 1, d, h, mi, s);
+                // 估算偏移,再用结果时刻修正一次(DST 边界更准确)
+                var offset = tzOffsetMs(timezone, new Date(asIfUtc));
+                var utc = asIfUtc - offset;
+                offset = tzOffsetMs(timezone, new Date(utc));
+                return asIfUtc - offset;
+            }
+
+            function formatInTz(utcMs, timezone) {
+                try {
+                    return new Intl.DateTimeFormat('zh-CN', {
+                        timeZone: timezone,
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+                    }).format(new Date(utcMs)).replace(/\//g, '-');
+                } catch (e) {
+                    return '时区无效';
+                }
+            }
+
+            function offsetLabel(timezone, utcMs) {
+                var off = tzOffsetMs(timezone, new Date(utcMs));
+                var sign = off >= 0 ? '+' : '-';
+                var abs = Math.abs(off);
+                var h = Math.floor(abs / 3600000);
+                var m = Math.floor((abs % 3600000) / 60000);
+                return 'UTC' + sign + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+            }
+
+            function nowWallClockInTz(timezone) {
+                var now = new Date();
+                var parts = new Intl.DateTimeFormat('en-US', {
+                    timeZone: timezone,
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+                }).formatToParts(now);
+                var obj = partsToObj(parts);
+                var hh = obj.hour === '24' ? '00' : obj.hour;
+                return obj.year + '-' + obj.month + '-' + obj.day + 'T' + hh + ':' + obj.minute + ':' + obj.second;
+            }
+
+            function render() {
+                var value = datetimeInput.value;
+                var sourceTz = sourceSelect.value;
+                var utcMs;
+                if (value) {
+                    utcMs = wallClockToUtcMs(value, sourceTz);
+                } else {
+                    utcMs = Date.now();
+                }
+
+                if (utcMs == null || isNaN(utcMs)) {
+                    resultList.innerHTML = '';
+                    resultList.appendChild(Tools.el('li', {}, [
+                        Tools.el('span', { class: 'label', text: '提示' }),
+                        Tools.el('span', { class: 'value', text: '请输入有效的日期时间' })
+                    ]));
+                    utcTsEl.textContent = '--';
+                    return;
+                }
+
+                utcTsEl.textContent = Math.floor(utcMs / 1000);
+                resultList.innerHTML = '';
+                TIMEZONES.forEach(function (item) {
+                    var isSource = item.tz === sourceTz;
+                    var li = Tools.el('li', {}, [
+                        Tools.el('span', { class: 'label', text: item.name + ' · ' + offsetLabel(item.tz, utcMs) + (isSource ? ' (源)' : '') }),
+                        Tools.el('span', { class: 'value tool-monospace', text: formatInTz(utcMs, item.tz) })
+                    ]);
+                    if (isSource) li.style.background = 'var(--primary-light)';
+                    resultList.appendChild(li);
+                });
+            }
+
+            datetimeInput.addEventListener('input', render);
+            sourceSelect.addEventListener('change', function () {
+                // 切换源时区时,若输入为空则填入该时区当前时间
+                if (!datetimeInput.value) {
+                    datetimeInput.value = nowWallClockInTz(sourceSelect.value);
+                }
+                render();
+            });
+
+            Tools.$('tz-now').addEventListener('click', function () {
+                datetimeInput.value = nowWallClockInTz(sourceSelect.value);
+                render();
+            });
+            Tools.$('tz-convert').addEventListener('click', function () {
+                render();
+                Tools.showBanner('banner-box', 'success', '已转换');
+            });
+
+            // 初始化:填入源时区当前时间
+            datetimeInput.value = nowWallClockInTz(sourceSelect.value);
+            render();
+        });
+    </script>
+</body>
+
+</html>

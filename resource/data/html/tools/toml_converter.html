@@ -1,0 +1,106 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOML转换器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .toml-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+        @media (min-width: 992px) {
+            .toml-grid {
+                grid-template-columns: 1fr 240px 1fr;
+                align-items: start;
+            }
+        }
+        .toml-dir-card {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .toml-dir-arrow {
+            text-align: center;
+            font-size: 1.5rem;
+            color: var(--primary);
+            line-height: 1;
+        }
+        .toml-dir-desc {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            text-align: center;
+            margin: 0;
+            min-height: 2.4em;
+        }
+        .toml-dir-label {
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            text-align: center;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner-container"></div>
+
+        <div class="tool-toolbar">
+            <button id="btn-convert" class="btn btn-sm" type="button">转换</button>
+            <button id="btn-swap" class="btn btn-outline btn-sm" type="button">交换</button>
+            <button id="btn-copy" class="btn btn-ghost btn-sm" type="button">复制结果</button>
+            <button id="btn-clear" class="btn btn-ghost btn-sm" type="button">清空</button>
+            <span class="spacer"></span>
+            <button id="btn-sample" class="btn btn-ghost btn-sm" type="button">示例</button>
+        </div>
+
+        <div class="toml-grid">
+            <div class="tool-card">
+                <label class="tool-label" id="input-label">输入</label>
+                <textarea id="input" class="tool-textarea lg" placeholder="请输入要转换的内容..."></textarea>
+            </div>
+
+            <div class="tool-card toml-dir-card">
+                <div class="toml-dir-label">转换方向</div>
+                <select id="direction" class="tool-select">
+                    <option value="toml2json">TOML → JSON</option>
+                    <option value="toml2yaml">TOML → YAML</option>
+                    <option value="json2toml">JSON → TOML</option>
+                    <option value="yaml2toml">YAML → TOML</option>
+                </select>
+                <div class="toml-dir-arrow">⇄</div>
+                <p class="toml-dir-desc" id="dir-desc"></p>
+            </div>
+
+            <div class="tool-card">
+                <label class="tool-label" id="output-label">输出</label>
+                <textarea id="output" class="tool-textarea lg" readonly placeholder="转换结果将显示在这里..."></textarea>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>转换说明</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">TOML → JSON</span><span class="value">将 TOML 配置解析为 JSON 对象</span></li>
+                <li><span class="label">TOML → YAML</span><span class="value">将 TOML 配置转换为 YAML 缩进格式</span></li>
+                <li><span class="label">JSON → TOML</span><span class="value">将 JSON 对象序列化为 TOML 配置</span></li>
+                <li><span class="label">YAML → TOML</span><span class="value">将 YAML 转换为 TOML 配置</span></li>
+                <li><span class="label">支持类型</span><span class="value">字符串、整数、浮点数、布尔、日期时间、数组、表、内联表、多行字符串、注释</span></li>
+                <li><span class="label">交换</span><span class="value">把当前输出移到输入框，并自动切换为反向转换</span></li>
+                <li><span class="label">注意</span><span class="value">内置简化解析器，未使用外部库；复杂边界场景可能不完全等价于标准实现</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./toml_converter.js"></script>
+</body>
+
+</html>

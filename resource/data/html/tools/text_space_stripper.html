@@ -1,0 +1,123 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>去空格工具</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div class="tool-grid-2">
+            <div class="tool-card">
+                <h2>输入文本</h2>
+                <textarea id="input-text" class="tool-textarea" placeholder="在此输入或粘贴要处理的文本..."></textarea>
+
+                <h2 style="margin-top:1.25rem;">处理选项</h2>
+                <label class="tool-check-row"><input type="checkbox" id="opt-trim"> 去除首尾空格</label>
+                <label class="tool-check-row"><input type="checkbox" id="opt-all"> 去除所有空格</label>
+                <label class="tool-check-row"><input type="checkbox" id="opt-newlines"> 去除换行</label>
+                <label class="tool-check-row"><input type="checkbox" id="opt-line-trim"> 去除行首尾空格</label>
+                <label class="tool-check-row"><input type="checkbox" id="opt-collapse"> 去除连续空格为单个</label>
+                <label class="tool-check-row"><input type="checkbox" id="opt-tabs"> 去除制表符</label>
+
+                <div class="tool-toolbar" style="margin-top:1rem;margin-bottom:0;">
+                    <button id="btn-process" class="btn btn-sm">处理</button>
+                    <button id="btn-clear" class="btn btn-ghost btn-sm">清空</button>
+                    <div class="spacer"></div>
+                </div>
+            </div>
+
+            <div class="tool-card">
+                <div class="tool-toolbar" style="margin-bottom:0.75rem;">
+                    <h2 style="margin:0;">输出结果</h2>
+                    <div class="spacer"></div>
+                    <button id="btn-copy" class="btn btn-outline btn-sm" disabled>复制结果</button>
+                </div>
+                <textarea id="output-text" class="tool-textarea lg" readonly placeholder="处理后的文本将显示在此处..."></textarea>
+            </div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var input = Tools.$('input-text');
+            var output = Tools.$('output-text');
+            var opts = {
+                trim: Tools.$('opt-trim'),
+                all: Tools.$('opt-all'),
+                newlines: Tools.$('opt-newlines'),
+                lineTrim: Tools.$('opt-line-trim'),
+                collapse: Tools.$('opt-collapse'),
+                tabs: Tools.$('opt-tabs')
+            };
+            var btnProcess = Tools.$('btn-process');
+            var btnCopy = Tools.$('btn-copy');
+            var btnClear = Tools.$('btn-clear');
+
+            function processText() {
+                var text = input.value;
+                if (!text) { output.value = ''; updateCopyBtn(); return; }
+
+                var result = text;
+
+                // 1. 去除行首尾空格 (per line) — needs newlines intact
+                if (opts.lineTrim.checked) {
+                    result = result.split('\n').map(function (line) { return line.trim(); }).join('\n');
+                }
+                // 2. 去除制表符
+                if (opts.tabs.checked) {
+                    result = result.replace(/\t/g, '');
+                }
+                // 3. 去除换行
+                if (opts.newlines.checked) {
+                    result = result.replace(/[\r\n]+/g, '');
+                }
+                // 4. 去除连续空格为单个 (only collapses space chars)
+                if (opts.collapse.checked) {
+                    result = result.replace(/ {2,}/g, ' ');
+                }
+                // 5. 去除所有空格 (all whitespace)
+                if (opts.all.checked) {
+                    result = result.replace(/\s/g, '');
+                }
+                // 6. 去除首尾空格 (trim whole)
+                if (opts.trim.checked) {
+                    result = result.trim();
+                }
+
+                output.value = result;
+                updateCopyBtn();
+            }
+
+            function updateCopyBtn() {
+                btnCopy.disabled = !output.value;
+            }
+
+            function clearAll() {
+                input.value = '';
+                output.value = '';
+                updateCopyBtn();
+                input.focus();
+            }
+
+            btnProcess.addEventListener('click', processText);
+            btnClear.addEventListener('click', clearAll);
+            btnCopy.addEventListener('click', function () {
+                if (!output.value) return;
+                Tools.copyText(output.value, this, '已复制');
+            });
+
+            updateCopyBtn();
+        });
+    </script>
+</body>
+
+</html>

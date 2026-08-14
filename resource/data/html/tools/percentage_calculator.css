@@ -1,0 +1,39 @@
+/* ===== Percentage Calculator ===== */
+
+.pct-input-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.pct-input-row .tool-input {
+    flex: 1;
+    min-width: 5rem;
+}
+
+.pct-sep {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    white-space: nowrap;
+}
+
+.pct-result {
+    margin-top: 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--bg-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary);
+    text-align: center;
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pct-result.positive { color: var(--success); }
+.pct-result.negative { color: var(--danger); }

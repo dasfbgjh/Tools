@@ -1,0 +1,42 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工具箱</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div class="tool-page">
+        <div class="tool-search-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="tool-search" placeholder="搜索工具名称、描述或关键词..." autocomplete="off">
+        </div>
+
+        <div class="tool-categories" id="categories"></div>
+
+        <div class="tool-grid" id="tool-grid"></div>
+
+        <div id="empty-state" class="hidden" style="text-align:center;padding:3rem 1rem;color:var(--text-light);">
+            <div style="font-size:48px;opacity:0.3;margin-bottom:0.5rem;">🔎</div>
+            <p>未找到匹配的工具</p>
+        </div>
+
+        <footer
+            style="margin-top:3rem;padding:1.5rem 0;text-align:center;color:var(--text-light);font-size:0.75rem;border-top:1px solid var(--border);">
+            基于开源项目<a href="https://github.com/star7th/jisuxiang" target="_blank">&nbsp;极速箱&nbsp;</a>和<a
+                href="https://github.com/CorentinTh/it-tools" target="_blank">&nbsp;it-tools&nbsp;</a>原生实现
+        </footer>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="index.js"></script>
+    
+</body>
+
+</html>

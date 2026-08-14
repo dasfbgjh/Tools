@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>文件服务器</title>
+    <link rel="stylesheet" href="./../style.css" />
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./../fileicons.css" />
+    <link rel="stylesheet" href="index.css" />
+</head>
+
+<body>
+    <div class="container" style="padding: 20px 0 60px;">
+        <!-- File browser view: 同时承载虚拟根（所有共享为一级目录）和具体共享目录 -->
+        <div id="browser-view">
+            <div class="breadcrumb" id="breadcrumb"></div>
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <button class="btn btn-sm toggle-hidden-btn" id="toggle-hidden-btn" type="button" title="显示/隐藏 隐藏文件"
+                        aria-label="切换隐藏文件显示" aria-pressed="false">
+                        <svg class="th-icon th-icon-off" viewBox="0 0 24 24" width="16" height="16" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                                d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                            <line x1="1" y1="1" x2="23" y2="23" />
+                        </svg>
+                        <svg class="th-icon th-icon-on" viewBox="0 0 24 24" width="16" height="16" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                            <circle cx="12" cy="12" r="3" />
+                        </svg>
+                        <span class="th-text">隐藏文件</span>
+                    </button>
+                    <div class="upload-bar" id="upload-bar"></div>
+                </div>
+                <div class="search-bar">
+                    <div class="search-input-wrap">
+                        <input type="text" class="input search-input" id="search-input" placeholder="搜索文件..." />
+                        <button class="search-icon-btn" id="search-btn" type="button" title="搜索" aria-label="搜索">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="7" />
+                                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            </svg>
+                        </button>
+                    </div>
+                    <button class="btn btn-sm btn-outline hidden" id="search-clear-btn">清除</button>
+                </div>
+            </div>
+            <table class="file-table" id="file-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-sort="name">名称<span class="sort-icon">▲</span></th>
+                        <th class="sortable" data-sort="type">类型<span class="sort-icon">▲</span></th>
+                        <th class="sortable" data-sort="size">大小<span class="sort-icon">▲</span></th>
+                        <th class="sortable" data-sort="modified">修改时间<span class="sort-icon">▲</span></th>
+                        <th style="width:120px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="file-tbody"></tbody>
+            </table>
+            <div id="dir-empty" class="empty hidden">
+                <div class="icon">📂</div>
+                <h3 id="dir-empty-title">空文件夹</h3>
+                <p id="dir-empty-desc">此文件夹中没有内容</p>
+            </div>
+            <div id="search-empty" class="empty hidden">
+                <div class="icon">🔍</div>
+                <h3>未找到匹配的文件</h3>
+                <p>尝试使用其他关键词搜索</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./../fileicons.js"></script>
+    <script src="./../app.js"></script>
+    <script src="index.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,139 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS渐变生成器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./css_gradient_generator.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="msg-banner"></div>
+
+        <div class="tool-grid-2">
+            <div class="tool-card">
+                <h2>渐变设置</h2>
+
+                <div class="section">
+                    <div class="section-title">渐变类型</div>
+                    <div class="opt-btn-row">
+                        <button class="opt-btn active" data-type="linear" id="type-linear">线性渐变</button>
+                        <button class="opt-btn" data-type="radial" id="type-radial">径向渐变</button>
+                    </div>
+                </div>
+
+                <div class="section" id="linear-section">
+                    <div class="section-title">渐变方向</div>
+                    <div class="directions-grid">
+                        <button class="dir-btn" data-angle="-45" title="左上">
+                            <span class="arrow" style="transform: rotate(180deg);"></span>
+                        </button>
+                        <button class="dir-btn" data-angle="0" title="上">
+                            <span class="arrow" style="transform: rotate(-135deg);"></span>
+                        </button>
+                        <button class="dir-btn" data-angle="45" title="右上">
+                            <span class="arrow" style="transform: rotate(-90deg);"></span>
+                        </button>
+                        <button class="dir-btn" data-angle="-90" title="左">
+                            <span class="arrow" style="transform: rotate(135deg);"></span>
+                        </button>
+                        <div class="dir-center"><span class="dot"></span></div>
+                        <button class="dir-btn active" data-angle="90" title="右">
+                            <span class="arrow" style="transform: rotate(-45deg);"></span>
+                        </button>
+                        <button class="dir-btn" data-angle="-135" title="左下">
+                            <span class="arrow" style="transform: rotate(90deg);"></span>
+                        </button>
+                        <button class="dir-btn" data-angle="180" title="下">
+                            <span class="arrow" style="transform: rotate(45deg);"></span>
+                        </button>
+                        <button class="dir-btn" data-angle="135" title="右下">
+                            <span class="arrow" style="transform: rotate(0deg);"></span>
+                        </button>
+                    </div>
+
+                    <div>
+                        <div class="angle-label-row">
+                            <span class="angle-label">自定义角度</span>
+                            <span class="angle-value" id="angle-value">90°</span>
+                        </div>
+                        <div class="angle-row">
+                            <input type="range" id="angle" min="0" max="359" step="1" value="90">
+                            <button class="btn btn-secondary apply-angle-btn" id="btn-apply-angle">应用</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section hidden" id="radial-section">
+                    <div class="section-title">渐变形状与位置</div>
+                    <div style="margin-bottom: 1rem;">
+                        <div class="section-title"
+                            style="font-size: 0.8125rem; font-weight: 500; margin-bottom: 0.5rem;">形状</div>
+                        <div class="opt-btn-row">
+                            <button class="opt-btn active" data-shape="circle">圆形</button>
+                            <button class="opt-btn" data-shape="ellipse">椭圆</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-title"
+                            style="font-size: 0.8125rem; font-weight: 500; margin-bottom: 0.5rem;">位置</div>
+                        <div class="pos-grid">
+                            <button class="pos-btn" data-pos="top left"><span class="pos-dot"></span></button>
+                            <button class="pos-btn" data-pos="top"><span class="pos-dot"></span></button>
+                            <button class="pos-btn" data-pos="top right"><span class="pos-dot"></span></button>
+                            <button class="pos-btn" data-pos="left"><span class="pos-dot"></span></button>
+                            <button class="pos-btn active" data-pos="center"><span class="pos-dot"></span></button>
+                            <button class="pos-btn" data-pos="right"><span class="pos-dot"></span></button>
+                            <button class="pos-btn" data-pos="bottom left"><span class="pos-dot"></span></button>
+                            <button class="pos-btn" data-pos="bottom"><span class="pos-dot"></span></button>
+                            <button class="pos-btn" data-pos="bottom right"><span class="pos-dot"></span></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title"
+                        style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>渐变颜色</span>
+                        <span style="display: flex; gap: 0.375rem;">
+                            <button id="btn-add-stop" class="btn btn-ghost btn-sm">+ 添加</button>
+                            <button id="btn-random" class="btn btn-ghost btn-sm">🎲 随机</button>
+                        </span>
+                    </div>
+                    <div id="stops-list" style="margin-bottom: 0.75rem;"></div>
+                    <div>
+                        <div class="section-title"
+                            style="font-size: 0.8125rem; font-weight: 500; margin-bottom: 0.5rem;">预设渐变</div>
+                        <div class="preset-row" id="preset-row"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="tool-card">
+                    <h2>实时预览</h2>
+                    <div class="preview-box" id="preview-box"></div>
+                    <div class="preview-hint">点击上方的渐变预览可查看全屏效果，调整左侧的参数可实时预览渐变效果变化。</div>
+                </div>
+                <div class="tool-card" style="margin-top: 1.5rem;">
+                    <h2>CSS 代码</h2>
+                    <div class="code-block-wrap">
+                        <pre class="code-block" id="code-output">/* CSS 代码 */</pre>
+                        <button id="btn-copy" class="btn btn-sm copy-btn">复制</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./css_gradient_generator.js"></script>
+</body>
+
+</html>

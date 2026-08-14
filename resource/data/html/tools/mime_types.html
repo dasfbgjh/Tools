@@ -1,0 +1,50 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIME 类型查询</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./mime_types.css">
+</head>
+<body>
+    <div class="tool-page">
+        <div class="tool-card">
+            <div class="mime-head">
+                <input type="text" id="search" class="tool-input mime-search" placeholder="搜索扩展名或 MIME 类型…" autocomplete="off">
+                <span class="mime-count" id="count">共 <strong>0</strong> 项</span>
+            </div>
+            <div class="mime-cats" id="cats">
+                <button type="button" class="tool-cat-btn active" data-cat="全部">全部</button>
+                <button type="button" class="tool-cat-btn" data-cat="文档">文档</button>
+                <button type="button" class="tool-cat-btn" data-cat="图片">图片</button>
+                <button type="button" class="tool-cat-btn" data-cat="音频">音频</button>
+                <button type="button" class="tool-cat-btn" data-cat="视频">视频</button>
+                <button type="button" class="tool-cat-btn" data-cat="压缩包">压缩包</button>
+                <button type="button" class="tool-cat-btn" data-cat="代码">代码</button>
+                <button type="button" class="tool-cat-btn" data-cat="字体">字体</button>
+                <button type="button" class="tool-cat-btn" data-cat="其他">其他</button>
+            </div>
+            <div class="mime-table-wrap">
+                <table class="mime-table">
+                    <thead>
+                        <tr>
+                            <th class="col-ext">扩展名</th>
+                            <th class="col-mime">MIME 类型</th>
+                            <th class="col-cat">分类</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody"></tbody>
+                </table>
+                <div id="mime-empty" class="mime-empty" style="display:none;">未找到匹配的 MIME 类型</div>
+            </div>
+            <p class="tool-hint">点击任意一行即可复制对应的 MIME 类型。</p>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./mime_types.js"></script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FFmpeg 视频下载 / 录制</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./common.css">
+    <link rel="stylesheet" href="./ffmpeg_download.css">
+</head>
+
+<body>
+    <div class="admin-wrap">
+        <div class="lt-head">
+            <a class="lt-back" href="./index.html" title="返回工具列表">← 返回</a>
+            <div class="lt-head-text" style="flex:1;min-width:0;">
+                <h1 class="admin-title">FFmpeg 视频下载 / 录制</h1>
+                <p class="admin-subtitle">从 m3u8/HTTP/RTMP/RTSP 等源下载或录制视频到本地 · 仅本机可访问</p>
+            </div>
+            <div class="lt-head-actions">
+                <button class="btn btn-primary" id="fd-btn-add" disabled>开始下载</button>
+            </div>
+        </div>
+
+        <div id="fd-banner"></div>
+
+        <!-- ffmpeg 信息 -->
+        <div class="fd-section" style="padding: 0.5rem 0.75rem;">
+            <div class="fd-info" id="fd-info">
+                <span class="pill">FFmpeg: 检测中...</span>
+            </div>
+        </div>
+
+        <div class="fd-main">
+            <!-- 左：参数 -->
+            <div>
+                <div class="fd-section">
+                    <div class="fd-mode-tabs">
+                        <button class="fd-mode-tab active" data-mode="download">下载 (m3u8/HTTP/HTTPS)</button>
+                        <button class="fd-mode-tab" data-mode="record">录制 (RTMP/RTSP/直播)</button>
+                    </div>
+
+                    <div class="fd-field">
+                        <label class="fd-label">源 URL</label>
+                        <input type="text" class="br-input" id="fd-url"
+                            placeholder="https://example.com/path/to/index.m3u8 或 rtmp://server/live/stream">
+                    </div>
+
+                    <h2>输出位置</h2>
+                    <div class="fd-row">
+                        <input type="text" class="br-input" id="fd-output-dir" style="flex:1;" placeholder="输出目录（绝对路径）">
+                        <button class="btn btn-outline btn-sm" id="fd-btn-pick-dir">浏览...</button>
+                    </div>
+                    <div class="fd-row" style="margin-top: 0.5rem;">
+                        <label class="fd-label" style="min-width:5rem;">文件名前缀</label>
+                        <input type="text" class="br-input" id="fd-base-name" style="flex:1;" value="download"
+                            placeholder="生成 download.mp4 / download.crt 等">
+                    </div>
+                </div>
+
+                <div class="fd-section">
+                    <h2 id="fd-mode-h2">下载设置</h2>
+                    <div class="fd-row" style="gap:0.5rem;">
+                        <div class="fd-field" style="flex:1; min-width:0;">
+                            <label class="fd-label">保存格式</label>
+                            <select class="br-input" id="fd-format">
+                                <option value="mp4" selected>mp4</option>
+                                <option value="ts">ts</option>
+                                <option value="mkv">mkv</option>
+                                <option value="mov">mov</option>
+                                <option value="flv">flv</option>
+                            </select>
+                        </div>
+                        <div class="fd-field" style="flex:1; min-width:0;">
+                            <label class="fd-label">网络超时 (ms)</label>
+                            <input type="number" class="br-input" id="fd-timeout" min="1000" step="1000" value="30000">
+                        </div>
+                    </div>
+
+                    <label class="br-toggle">
+                        <input type="checkbox" id="fd-reconnect" checked>
+                        <span>允许断流自动重连 (http/https)</span>
+                    </label>
+                    <label class="br-toggle">
+                        <input type="checkbox" id="fd-hls-ext" checked>
+                        <span>允许 m3u8 加载子扩展 (allowed_extensions ALL)</span>
+                    </label>
+                    <label class="br-toggle">
+                        <input type="checkbox" id="fd-reencode">
+                        <span>重新编码 (流复制 → H.264/AAC)</span>
+                    </label>
+                </div>
+
+                <div class="fd-section">
+                    <h2>录制 / 时长</h2>
+                    <div class="fd-field">
+                        <label class="fd-label">最长录制时长（秒，0 = 直到源结束）</label>
+                        <input type="number" class="br-input" id="fd-duration" min="0" step="1" value="0">
+                    </div>
+                </div>
+
+                <div class="fd-section">
+                    <h2>HTTP 头 (可选)</h2>
+                    <p class="fd-hint">每行一个，如 <code>User-Agent: Mozilla/5.0</code> 或
+                        <code>Referer: https://example.com</code>。用于需要 Referer / Cookie 的源。
+                    </p>
+                    <textarea class="br-input" id="fd-headers" rows="3"
+                        placeholder="User-Agent: Mozilla/5.0&#10;Referer: https://example.com"></textarea>
+                </div>
+            </div>
+
+            <!-- 右：任务 -->
+            <div>
+                <div class="fd-section">
+                    <h2>任务列表
+                        <span class="fd-hint" style="margin-left:0.5rem; font-weight:400;" id="fd-task-summary"></span>
+                    </h2>
+                    <div class="fd-task-list" id="fd-task-list">
+                        <div class="fd-empty">加载中...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 目录浏览器弹窗（复用 ffmpeg 风格） -->
+    <div class="br-fs" id="fd-fs" hidden>
+        <div class="br-fs-head">
+            <input type="text" class="br-input" id="fd-fs-path" placeholder="输入路径跳转 (例如 D:\downloads)" style="flex:1;">
+            <button class="btn btn-sm" id="fd-fs-go">跳转</button>
+            <button class="btn btn-outline btn-sm" id="fd-fs-up" title="上一级">↑</button>
+        </div>
+        <div class="br-fs-bc" id="fd-fs-bc"></div>
+        <div class="br-fs-list-bar">
+            <span class="br-fs-list-hint">点击目录进入；点"选择"使用当前目录作为输出目录</span>
+        </div>
+        <div class="br-fs-list" id="fd-fs-list">加载中...</div>
+        <div class="br-fs-foot">
+            <span class="br-fs-list-hint" id="fd-fs-current">当前：-</span>
+            <span class="br-spacer"></span>
+            <button class="btn btn-outline" id="fd-fs-cancel">取消</button>
+            <button class="btn" id="fd-fs-ok">选择此目录</button>
+        </div>
+    </div>
+
+    <script src="../api.js"></script>
+    <script src="./ffmpeg_download.js"></script>
+</body>
+
+</html>

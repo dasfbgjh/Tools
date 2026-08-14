@@ -1,0 +1,82 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETA计算器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div class="tool-grid-2">
+            <div class="tool-card">
+                <h2>输入参数</h2>
+
+                <label class="tool-label">已完成数量</label>
+                <input type="number" id="done" class="tool-input" step="any" value="30">
+
+                <div style="margin-top:0.75rem;">
+                    <label class="tool-label">总数量</label>
+                    <input type="number" id="total" class="tool-input" step="any" value="100">
+                </div>
+
+                <div style="margin-top:0.75rem;">
+                    <label class="tool-label">时间模式</label>
+                    <select id="time-mode" class="tool-select">
+                        <option value="elapsed" selected>已用秒数</option>
+                        <option value="range">开始 - 结束时间</option>
+                    </select>
+                </div>
+
+                <div id="elapsed-wrap" style="margin-top:0.75rem;">
+                    <label class="tool-label">已用时间（秒）</label>
+                    <input type="number" id="elapsed" class="tool-input" step="any" value="60">
+                </div>
+
+                <div id="range-wrap" style="margin-top:0.75rem; display:none;">
+                    <label class="tool-label">开始时间</label>
+                    <input type="datetime-local" id="start-time" class="tool-input">
+                    <div style="margin-top:0.75rem;">
+                        <label class="tool-label">当前时间</label>
+                        <div style="display:flex; gap:0.5rem;">
+                            <input type="datetime-local" id="end-time" class="tool-input">
+                            <button class="btn btn-outline btn-sm" id="btn-now" type="button">现在</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top:0.75rem;">
+                    <label class="tool-label">速度单位</label>
+                    <select id="unit" class="tool-select">
+                        <option value="个" selected>个</option>
+                        <option value="KB">KB</option>
+                        <option value="MB">MB</option>
+                        <option value="GB">GB</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="tool-card">
+                <h2>计算结果</h2>
+                <ul class="tool-result-list" id="result-list">
+                    <li><span class="label">进度百分比</span><span class="value" id="r-percent">—</span></li>
+                    <li><span class="label">平均速度</span><span class="value" id="r-speed">—</span></li>
+                    <li><span class="label">剩余数量</span><span class="value" id="r-remain">—</span></li>
+                    <li><span class="label">预计剩余时间</span><span class="value" id="r-eta">—</span></li>
+                    <li><span class="label">预计完成时间</span><span class="value" id="r-done-time">—</span></li>
+                </ul>
+                <p class="tool-hint">输入参数变化时自动计算</p>
+            </div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./eta_calculator.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,76 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lorem Ipsum 生成器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./lorem_ipsum_generator.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div class="tool-grid-3">
+            <div class="tool-card">
+                <h2>生成选项</h2>
+
+                <label class="tool-label">段落数</label>
+                <div class="slider-row">
+                    <input type="range" id="paragraphs" min="1" max="20" value="3">
+                    <span class="slider-val" id="paragraphs-val">3</span>
+                </div>
+
+                <div style="margin-top:0.75rem;">
+                    <label class="tool-label">每段句数</label>
+                    <div class="slider-row">
+                        <input type="range" id="sentences" min="1" max="15" value="4">
+                        <span class="slider-val" id="sentences-val">4</span>
+                    </div>
+                </div>
+
+                <div style="margin-top:0.75rem;">
+                    <label class="tool-label">每句词数</label>
+                    <div class="slider-row">
+                        <input type="range" id="words" min="3" max="30" value="10">
+                        <span class="slider-val" id="words-val">10</span>
+                    </div>
+                </div>
+
+                <div style="margin-top:1rem;">
+                    <label class="tool-check-row"><input type="checkbox" id="start-lorem" checked> 以 "Lorem ipsum" 开头</label>
+                    <label class="tool-check-row"><input type="checkbox" id="as-html"> 输出 HTML (&lt;p&gt; 标签)</label>
+                </div>
+
+                <div style="margin-top:1.25rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <button id="btn-generate" class="btn btn-sm" type="button">生成</button>
+                    <button id="btn-copy" class="btn btn-outline btn-sm" type="button">复制结果</button>
+                    <button id="btn-clear" class="btn btn-ghost btn-sm" type="button">清空</button>
+                </div>
+            </div>
+
+            <div class="tool-card">
+                <h2>生成结果</h2>
+                <textarea id="output" class="tool-textarea lg" readonly placeholder="生成的 Lorem Ipsum 文本将显示在这里..."></textarea>
+                <p class="tool-hint" id="stats"></p>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>说明</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">用途</span><span class="value">生成排版占位用的拉丁文假文本</span></li>
+                <li><span class="label">段落</span><span class="value">每段由若干句组成，句间以空格连接</span></li>
+                <li><span class="label">HTML 模式</span><span class="value">每段包裹在 &lt;p&gt; 标签内，便于直接粘贴到网页</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./lorem_ipsum_generator.js"></script>
+</body>
+
+</html>

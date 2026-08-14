@@ -1,0 +1,41 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>计时器秒表</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./chronometer.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div class="tool-card">
+            <div class="chrono-display" id="display">00:00:00.000</div>
+            <div class="chrono-controls">
+                <button class="btn" id="btn-start" type="button">开始</button>
+                <button class="btn btn-outline" id="btn-lap" type="button" disabled>记圈</button>
+                <button class="btn btn-ghost" id="btn-reset" type="button">重置</button>
+            </div>
+            <p class="tool-hint" style="text-align:center;">快捷键：空格 开始/暂停 · L 记圈 · R 重置</p>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <div class="tool-toolbar">
+                <h2 style="margin:0;">记圈列表</h2>
+                <span class="spacer"></span>
+                <button class="btn btn-outline btn-sm" id="btn-clear-laps" type="button">清除</button>
+            </div>
+            <div id="lap-list" class="chrono-lap-list"></div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./chronometer.js"></script>
+</body>
+
+</html>

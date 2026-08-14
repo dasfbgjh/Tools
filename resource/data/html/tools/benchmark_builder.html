@@ -1,0 +1,51 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基准测试构建器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./benchmark_builder.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner"></div>
+
+        <div class="tool-card">
+            <div class="tool-toolbar">
+                <label class="tool-label" style="margin:0; white-space:nowrap;">运行次数</label>
+                <input type="number" id="run-count" class="tool-input bench-count-input" value="1000" min="1" step="1">
+                <span class="spacer"></span>
+                <button class="btn btn-sm" id="btn-run" type="button">运行基准测试</button>
+                <button class="btn btn-outline btn-sm" id="btn-add" type="button">添加任务</button>
+                <button class="btn btn-ghost btn-sm" id="btn-copy" type="button">复制结果</button>
+            </div>
+            <div id="task-list"></div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>结果（按平均时间升序，最快置顶）</h2>
+            <div id="result-area" class="bench-empty">尚未运行基准测试</div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>说明</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">用法</span><span class="value">为每个任务填写名称与 JS 代码片段，点击「运行基准测试」</span></li>
+                <li><span class="label">代码</span><span class="value">每个任务中可使用变量 i（当前迭代序号，从 0 开始）</span></li>
+                <li><span class="label">ops/秒</span><span class="value">每秒执行次数，数值越大代表性能越好</span></li>
+                <li><span class="label">注意</span><span class="value">代码在沙箱 Function 中执行，请勿运行不可信代码</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./benchmark_builder.js"></script>
+</body>
+
+</html>

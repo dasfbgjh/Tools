@@ -1,0 +1,31 @@
+/* ======================================================
+   共享文件图标颜色：与 fileicons.js 配合使用
+   对每种扩展名类型使用 .fi-{type} 类着色
+   被文件服务器、本机工具文件浏览器、admin 共享管理共用
+   ====================================================== */
+
+.fi {
+    display: inline-block;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+.fi-folder  { color: #f59e0b; }   /* 琥珀 */
+.fi-image   { color: #ec4899; }   /* 粉 */
+.fi-video   { color: #8b5cf6; }   /* 紫 */
+.fi-audio   { color: #06b6d4; }   /* 青 */
+.fi-pdf     { color: #ef4444; }   /* 红 */
+.fi-doc     { color: #3b82f6; }   /* 蓝 */
+.fi-sheet   { color: #16a34a; }   /* 绿 */
+.fi-slide   { color: #f97316; }   /* 橙 */
+.fi-archive { color: #a16207; }   /* 棕 */
+.fi-code    { color: #14b8a6; }   /* 蓝绿 */
+.fi-exec    { color: #64748b; }   /* 灰 */
+.fi-text    { color: #94a3b8; }   /* 浅灰 */
+.fi-font    { color: #a78bfa; }   /* 浅紫 */
+.fi-cert    { color: #f59e0b; }   /* 琥珀 */
+.fi-book    { color: #db2777; }   /* 深粉 */
+.fi-file    { color: #94a3b8; }   /* 浅灰 */
+
+/* 目录图标在 hover/active 时略加深 */
+.file-table tr:hover .fi-folder { color: #d97706; }

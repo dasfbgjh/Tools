@@ -1,0 +1,84 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAC 地址生成器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./mac_address_generator.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div class="tool-grid-3">
+            <div class="tool-card">
+                <h2>生成选项</h2>
+
+                <label class="tool-label">数量</label>
+                <div class="slider-row">
+                    <input type="range" id="count" min="1" max="50" value="5">
+                    <span class="slider-val" id="count-val">5</span>
+                </div>
+
+                <div style="margin-top:0.75rem;">
+                    <label class="tool-label">分隔符</label>
+                    <select id="separator" class="tool-select">
+                        <option value=":" selected>冒号 (:)</option>
+                        <option value="-">连字符 (-)</option>
+                        <option value="">无分隔</option>
+                    </select>
+                </div>
+
+                <div style="margin-top:0.75rem;">
+                    <label class="tool-label">大小写</label>
+                    <select id="case" class="tool-select">
+                        <option value="upper" selected>大写</option>
+                        <option value="lower">小写</option>
+                    </select>
+                </div>
+
+                <div style="margin-top:0.75rem;">
+                    <label class="tool-label">厂商前缀 (OUI)</label>
+                    <select id="vendor" class="tool-select">
+                        <option value="random" selected>随机 (本地管理)</option>
+                        <option value="local">本地管理 (02:xx:xx)</option>
+                        <option value="intel">Intel (00:1B:21)</option>
+                        <option value="cisco">Cisco (00:1B:54)</option>
+                        <option value="dell">Dell (00:14:22)</option>
+                        <option value="apple">Apple (00:1F:F3)</option>
+                        <option value="microsoft">Microsoft (00:50:F2)</option>
+                        <option value="google">Google (00:1A:11)</option>
+                    </select>
+                </div>
+
+                <div style="margin-top:1.25rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <button id="btn-generate" class="btn btn-sm" type="button">生成</button>
+                    <button id="btn-copy-all" class="btn btn-outline btn-sm" type="button">复制全部</button>
+                </div>
+            </div>
+
+            <div class="tool-card">
+                <h2>生成结果</h2>
+                <div id="result-list" class="mac-list"></div>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>说明</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">本地管理</span><span class="value">第二位为 2/6/A/E，表示本地分配，可自由使用</span></li>
+                <li><span class="label">OUI</span><span class="value">前 3 字节为厂商识别码，后 3 字节为设备序号</span></li>
+                <li><span class="label">用途</span><span class="value">测试、虚拟机、容器网络配置等</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./mac_address_generator.js"></script>
+</body>
+
+</html>

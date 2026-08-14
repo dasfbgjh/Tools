@@ -1,0 +1,251 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IP地址查询</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+
+        <div id="ip-banner"></div>
+
+        <div class="tool-grid-3">
+            <!-- 左侧:查询输入 -->
+            <div class="tool-card">
+                <h2>IP查询</h2>
+
+                <label class="tool-label" for="ip-input">IP地址</label>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="text" id="ip-input" class="tool-input" placeholder="输入IP地址,留空查询本机IP" autocomplete="off"
+                        style="flex: 1;">
+                    <button type="button" id="btn-search" class="btn btn-sm">查询</button>
+                </div>
+
+                <div class="tool-toolbar" style="margin-top: 0.75rem;">
+                    <button type="button" id="btn-my-ip" class="btn btn-outline btn-sm">查询本机IP</button>
+                </div>
+
+                <div class="tool-hint">支持IPv4地址查询,留空查询当前客户端IP</div>
+
+                <div style="margin-top: 1.5rem;">
+                    <h3 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text);">使用说明
+                    </h3>
+                    <ul
+                        style="list-style: disc; padding-left: 1.25rem; font-size: 0.75rem; color: var(--text-muted); line-height: 1.8;">
+                        <li>输入IP地址后点击"查询"按钮</li>
+                        <li>点击"查询本机IP"获取您当前的IP信息</li>
+                        <li>查询结果包含地理位置、运营商等信息</li>
+                        <li>私有IP地址将显示为本地网络</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 右侧:查询结果 -->
+            <div class="tool-card">
+                <h2>查询结果</h2>
+
+                <div id="ip-empty" style="text-align: center; padding: 3rem 1rem; color: var(--text-light);">
+                    <div style="font-size: 48px; opacity: 0.3; margin-bottom: 0.5rem;">📡</div>
+                    <p style="font-size: 0.8125rem;">输入IP地址并点击查询按钮获取详细信息</p>
+                </div>
+
+                <div id="ip-result" class="hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var ipInput = Tools.$('ip-input');
+            var btnSearch = Tools.$('btn-search');
+            var btnMyIp = Tools.$('btn-my-ip');
+            var ipEmpty = Tools.$('ip-empty');
+            var ipResult = Tools.$('ip-result');
+            var ipBanner = Tools.$('ip-banner');
+
+            var UNKNOWN = '未知';
+
+            // IP格式校验 (IPv4)
+            function isValidIp(ip) {
+                if (!ip) return true; // 空表示查询本机
+                return /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(ip);
+            }
+
+            // 获取IP类型 (A/B/C/D/E)
+            function getIpType(ip) {
+                if (!ip || ip === UNKNOWN) return UNKNOWN;
+                var first = parseInt(ip.split('.')[0], 10);
+                if (isNaN(first)) return UNKNOWN;
+                if (first >= 1 && first <= 126) return 'A';
+                if (first >= 128 && first <= 191) return 'B';
+                if (first >= 192 && first <= 223) return 'C';
+                if (first >= 224 && first <= 239) return 'D';
+                if (first >= 240 && first <= 255) return 'E';
+                return UNKNOWN;
+            }
+
+            // 获取IP类别 (公网/私有/回环等)
+            function getIpClass(ip) {
+                if (!ip || ip === UNKNOWN) return UNKNOWN;
+                var parts = ip.split('.');
+                var a = parseInt(parts[0], 10);
+                var b = parseInt(parts[1], 10);
+                if (a === 10) return '私有IP';
+                if (a === 172 && b >= 16 && b <= 31) return '私有IP';
+                if (a === 192 && b === 168) return '私有IP';
+                if (a === 127) return '回环地址';
+                if (a === 169 && b === 254) return '链路本地地址';
+                return '公网IP';
+            }
+
+            // IP转二进制
+            function ipToBinary(ip) {
+                if (!ip || ip === UNKNOWN) return UNKNOWN;
+                return ip.split('.').map(function (n) {
+                    return parseInt(n, 10).toString(2).padStart(8, '0');
+                }).join('.');
+            }
+
+            // IP转十六进制
+            function ipToHex(ip) {
+                if (!ip || ip === UNKNOWN) return UNKNOWN;
+                return ip.split('.').map(function (n) {
+                    return parseInt(n, 10).toString(16).padStart(2, '0');
+                }).join('.');
+            }
+
+            // 构建结果列表项
+            function buildResultItem(label, value) {
+                var li = Tools.el('li', {}, [
+                    Tools.el('span', { class: 'label', text: label }),
+                    Tools.el('span', { class: 'value', text: value == null || value === '' ? UNKNOWN : String(value) })
+                ]);
+                return li;
+            }
+
+            // 渲染查询结果
+            function renderResult(payload) {
+                var data = payload.data || {};
+                var source = payload.source || UNKNOWN;
+                var cached = !!payload.cached;
+                var requestType = payload.requestType || '';
+
+                var ip = data.ip || data.query || UNKNOWN;
+                var country = data.country || UNKNOWN;
+                var region = data.regionName || data.region || UNKNOWN;
+                var city = data.city || UNKNOWN;
+                var isp = data.isp || UNKNOWN;
+                var lat = data.lat;
+                var lon = data.lon;
+                var timezone = data.timezone || UNKNOWN;
+                var coords = (lat != null && lon != null) ? (lat + ', ' + lon) : UNKNOWN;
+
+                ipEmpty.classList.add('hidden');
+                ipResult.classList.remove('hidden');
+                ipResult.innerHTML = '';
+
+                // 顶部:IP地址 + 复制按钮 + 标签
+                var headerBox = Tools.el('div', {
+                    style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', paddingBottom: '0.75rem', marginBottom: '0.75rem', borderBottom: '1px solid var(--border)' }
+                }, [
+                    Tools.el('div', { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' } }, [
+                        Tools.el('span', { text: 'IP地址:', style: { color: 'var(--text-muted)', fontSize: '0.875rem' } }),
+                        Tools.el('span', { text: ip, class: 'tool-monospace', style: { fontWeight: '600', color: 'var(--text)', fontSize: '0.9375rem' } })
+                    ]),
+                    Tools.el('div', { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' } }, [
+                        cached ? Tools.el('span', { class: 'tool-tag', text: '缓存' }) : null,
+                        requestType === 'self' ? Tools.el('span', { class: 'tool-tag', text: '本机IP' }) : null,
+                        Tools.el('button', {
+                            class: 'btn btn-ghost btn-sm',
+                            title: '复制IP地址',
+                            onclick: function () { Tools.copyText(ip, this, '已复制'); }
+                        }, ['复制'])
+                    ])
+                ]);
+                ipResult.appendChild(headerBox);
+
+                // 主要信息列表
+                var mainList = Tools.el('ul', { class: 'tool-result-list' }, [
+                    buildResultItem('国家/地区', country),
+                    buildResultItem('地区', region),
+                    buildResultItem('城市', city),
+                    buildResultItem('运营商(ISP)', isp),
+                    buildResultItem('经纬度', coords),
+                    buildResultItem('时区', timezone),
+                    buildResultItem('数据来源', source)
+                ]);
+                ipResult.appendChild(mainList);
+
+                // 技术详情
+                var techBox = Tools.el('div', { style: { marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-muted)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' } }, [
+                    Tools.el('h3', { text: '技术详情', style: { fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text)', margin: '0 0 0.5rem' } }),
+                    Tools.el('ul', { class: 'tool-result-list' }, [
+                        buildResultItem('IP类型', getIpType(ip)),
+                        buildResultItem('IP类别', getIpClass(ip)),
+                        buildResultItem('二进制', ipToBinary(ip)),
+                        buildResultItem('十六进制', ipToHex(ip))
+                    ])
+                ]);
+                ipResult.appendChild(techBox);
+            }
+
+            // 执行查询
+            function queryIp(ip) {
+                ip = (ip || '').trim();
+                if (!isValidIp(ip)) {
+                    Tools.showBanner('ip-banner', 'error', '无效的IP地址,请输入正确的IPv4地址');
+                    return;
+                }
+
+                btnSearch.disabled = true;
+                btnMyIp.disabled = true;
+                btnSearch.textContent = '查询中...';
+                Tools.clearBanner('ip-banner');
+
+                Api.tools.ipLookup(ip).then(function (res) {
+                    if (res && res._status >= 200 && res._status < 300 && res.data) {
+                        renderResult(res);
+                    } else {
+                        var msg = (res && res.error) || '查询失败,请稍后重试';
+                        Tools.showBanner('ip-banner', 'error', msg);
+                        ipEmpty.classList.remove('hidden');
+                        ipResult.classList.add('hidden');
+                    }
+                }).catch(function (err) {
+                    Tools.showBanner('ip-banner', 'error', '查询失败:' + (err && err.message ? err.message : '网络错误'));
+                    ipEmpty.classList.remove('hidden');
+                    ipResult.classList.add('hidden');
+                }).then(function () {
+                    btnSearch.disabled = false;
+                    btnMyIp.disabled = false;
+                    btnSearch.textContent = '查询';
+                });
+            }
+
+            btnSearch.addEventListener('click', function () {
+                queryIp(ipInput.value);
+            });
+
+            btnMyIp.addEventListener('click', function () {
+                ipInput.value = '';
+                queryIp('');
+            });
+
+            ipInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') queryIp(ipInput.value);
+            });
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,205 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>摄像头录制</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .video-wrap {
+            position: relative;
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            min-height: 280px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .video-wrap video,
+        .video-wrap video.playback {
+            width: 100%;
+            height: auto;
+            display: block;
+            max-height: 480px;
+            background: #000;
+        }
+
+        .video-placeholder {
+            color: #9ca3af;
+            font-size: 0.9375rem;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .rec-indicator {
+            position: absolute;
+            top: 0.875rem;
+            left: 0.875rem;
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            padding: 0.25rem 0.625rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .rec-indicator.active {
+            display: inline-flex;
+        }
+
+        .rec-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ef4444;
+            animation: rec-blink 1s infinite;
+        }
+
+        @keyframes rec-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.25; }
+        }
+
+        .rec-timer {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            flex-wrap: wrap;
+            padding: 0.625rem 0;
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #9ca3af;
+            flex-shrink: 0;
+        }
+
+        .status-dot.live { background: #10b981; }
+        .status-dot.recording { background: #ef4444; }
+        .status-dot.error { background: #ef4444; }
+
+        .opt-row {
+            margin-bottom: 1rem;
+        }
+
+        .opt-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-rec {
+            background: #ef4444;
+            color: #fff;
+            border-color: #ef4444;
+        }
+
+        .btn-rec:hover:not(:disabled) {
+            background: #dc2626;
+            border-color: #dc2626;
+        }
+
+        .playback-wrap {
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .playback-wrap video {
+            width: 100%;
+            height: auto;
+            display: block;
+            max-height: 480px;
+            background: #000;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+        <div class="tool-card">
+            <div id="banner"></div>
+            <h2>摄像头预览</h2>
+            <div class="status-bar">
+                <span class="status-dot" id="status-dot"></span>
+                <span id="status-text">未启动</span>
+                <div class="spacer"></div>
+                <span id="duration-text" class="rec-timer" style="display:none;">00:00</span>
+            </div>
+            <div class="video-wrap" id="video-wrap">
+                <video id="live-video" autoplay playsinline muted></video>
+                <div class="rec-indicator" id="rec-indicator">
+                    <span class="rec-dot"></span>
+                    <span>录制中</span>
+                </div>
+                <div class="video-placeholder" id="video-placeholder">点击下方"启动摄像头"开始预览</div>
+            </div>
+
+            <div class="tool-toolbar" style="margin-top: 1rem; margin-bottom: 0;">
+                <button id="btn-start" class="btn">启动摄像头</button>
+                <button id="btn-stop-cam" class="btn btn-ghost" disabled>关闭摄像头</button>
+                <div class="spacer"></div>
+                <button id="btn-switch" class="btn btn-outline" disabled>切换摄像头</button>
+            </div>
+
+            <div class="opt-row" style="margin-top: 1rem;">
+                <label class="tool-label">摄像头设备</label>
+                <select id="camera-select" class="tool-select" disabled>
+                    <option value="">启动摄像头后显示可用设备</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top: 1.5rem;">
+            <h2>录制控制</h2>
+            <div class="btn-group">
+                <button id="btn-record" class="btn btn-rec" disabled>开始录制</button>
+                <button id="btn-stop-record" class="btn" disabled>停止录制</button>
+            </div>
+            <div class="tool-hint">录制格式为 WebM,录制完成后可在下方回放并下载。</div>
+        </div>
+
+        <div class="tool-card" style="margin-top: 1.5rem;">
+            <h2>录制回放</h2>
+            <div class="playback-wrap" id="playback-wrap">
+                <div class="video-placeholder" id="playback-placeholder">录制完成后将在此处播放</div>
+            </div>
+            <div class="tool-toolbar" style="margin-top: 1rem; margin-bottom: 0;">
+                <span id="recording-info" style="font-size: 0.8125rem; color: var(--text-muted);"></span>
+                <div class="spacer"></div>
+                <button id="btn-download" class="btn btn-outline" disabled>下载视频 (WebM)</button>
+            </div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./camera_recorder.js"></script>
+</body>
+
+</html>

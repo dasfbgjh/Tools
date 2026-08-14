@@ -1,0 +1,68 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电话号码解析器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        #result-list .value {
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner-container"></div>
+
+        <div class="tool-card">
+            <h2>输入电话号码</h2>
+            <input type="text" id="phone-input" class="tool-input tool-monospace"
+                placeholder="例如 +8613812345678 或 13812345678" value="+8613812345678" autocomplete="off">
+            <p class="tool-hint">支持国际格式（+86、+1、+44、+81 等）与本地号码，实时解析</p>
+            <div class="tool-toolbar" style="margin-top:0.75rem;margin-bottom:0;">
+                <button id="btn-copy-intl" class="btn btn-outline btn-sm" type="button">复制国际格式</button>
+                <button id="btn-copy-local" class="btn btn-outline btn-sm" type="button">复制本地格式</button>
+                <div class="spacer"></div>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>解析结果</h2>
+            <ul class="tool-result-list" id="result-list">
+                <li><span class="label">国家代码</span><span class="value" data-key="countryCode">—</span></li>
+                <li><span class="label">国家名称</span><span class="value" data-key="countryName">—</span></li>
+                <li><span class="label">国家区号</span><span class="value" data-key="dialCode">—</span></li>
+                <li><span class="label">号码类型</span><span class="value" data-key="type">—</span></li>
+                <li><span class="label">国际格式</span><span class="value" data-key="intlFormat">—</span></li>
+                <li><span class="label">本地格式</span><span class="value" data-key="localFormat">—</span></li>
+                <li><span class="label">原始输入</span><span class="value" data-key="raw">—</span></li>
+            </ul>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>支持国家与区号</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">中国 CN</span><span class="value">+86，手机 11 位 (1 开头)，座机带区号</span></li>
+                <li><span class="label">美国/加拿大 US/CA</span><span class="value">+1，10 位号码，格式 (XXX) XXX-XXXX</span></li>
+                <li><span class="label">英国 GB</span><span class="value">+44，手机 07XXXXXXXXX，座机 0XXXXXXXXX</span></li>
+                <li><span class="label">日本 JP</span><span class="value">+81，手机 090/080/070 开头</span></li>
+                <li><span class="label">韩国 KR</span><span class="value">+82，手机 010-019 开头</span></li>
+                <li><span class="label">澳大利亚 AU</span><span class="value">+61，手机 04 开头</span></li>
+                <li><span class="label">德国 DE</span><span class="value">+49，手机 015/016/017 开头</span></li>
+                <li><span class="label">法国 FR</span><span class="value">+33，手机 06/07 开头</span></li>
+                <li><span class="label">印度 IN</span><span class="value">+91，手机 6-9 开头 10 位</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./phone_parser.js"></script>
+</body>
+
+</html>

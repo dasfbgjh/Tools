@@ -1,0 +1,100 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docker Run 转 Docker Compose</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .yaml-key { color: #6366f1; }
+        .yaml-string { color: #16a34a; }
+        .yaml-number { color: #d97706; }
+        .yaml-bool { color: #dc2626; }
+        .yaml-null { color: #6b7280; font-style: italic; }
+        .yaml-comment { color: #94a3b8; font-style: italic; }
+        .yaml-dash { color: #8b5cf6; font-weight: 600; }
+        :root[data-theme="dark"] .yaml-key { color: #a5b4fc; }
+        :root[data-theme="dark"] .yaml-string { color: #86efac; }
+        :root[data-theme="dark"] .yaml-number { color: #fbbf24; }
+        :root[data-theme="dark"] .yaml-bool { color: #fca5a5; }
+        :root[data-theme="dark"] .yaml-null { color: #94a3b8; }
+        :root[data-theme="dark"] .yaml-comment { color: #64748b; }
+        :root[data-theme="dark"] .yaml-dash { color: #c4b5fd; }
+
+        .parse-summary {
+            display: grid;
+            grid-template-columns: 110px 1fr;
+            gap: 0.375rem 1rem;
+            font-size: 0.8125rem;
+        }
+        .parse-summary .pk { color: var(--text-muted); }
+        .parse-summary .pv { color: var(--text); font-weight: 500; word-break: break-all; }
+        .parse-summary .pv.none { color: var(--text-light); font-style: italic; font-weight: 400; }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner"></div>
+
+        <div class="tool-toolbar">
+            <button id="btn-convert" class="btn btn-sm" type="button">转换</button>
+            <button id="btn-sample" class="btn btn-outline btn-sm" type="button">示例</button>
+            <button id="btn-clear" class="btn btn-ghost btn-sm" type="button">清空</button>
+            <span class="spacer"></span>
+            <button id="btn-copy" class="btn btn-ghost btn-sm" type="button">复制结果</button>
+        </div>
+
+        <div class="tool-grid-2">
+            <div class="tool-card">
+                <label class="tool-label" for="input">docker run 命令</label>
+                <textarea id="input" class="tool-textarea lg" placeholder="请输入 docker run 命令，例如：&#10;docker run -d --name mynginx -p 8080:80 -v ./html:/usr/share/nginx/html nginx:latest"></textarea>
+                <p class="tool-hint">支持多行命令（行尾续行符 \ 会自动拼接）；保留原样参数顺序。</p>
+            </div>
+            <div class="tool-card">
+                <label class="tool-label">docker-compose.yml</label>
+                <pre id="output" class="tool-output empty" style="min-height:320px;max-height:560px;"></pre>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>解析说明</h2>
+            <div id="summary" class="parse-summary">
+                <div class="pk">镜像</div><div class="pv none">尚未解析</div>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>支持的参数</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">镜像 / 命令</span><span class="value">最后一个非参数位置为镜像，其后内容为容器命令 (command)</span></li>
+                <li><span class="label">--name</span><span class="value">容器名称 container_name</span></li>
+                <li><span class="label">-p / --publish</span><span class="value">端口映射，如 -p 8080:80</span></li>
+                <li><span class="label">-e / --env</span><span class="value">环境变量，如 -e KEY=value</span></li>
+                <li><span class="label">-v / --volume</span><span class="value">卷挂载，如 -v /host:/container</span></li>
+                <li><span class="label">-d / --detach</span><span class="value">后台运行（compose 默认后台，仅记录标记）</span></li>
+                <li><span class="label">--restart</span><span class="value">重启策略，如 always / unless-stopped / on-failure</span></li>
+                <li><span class="label">--network / --net</span><span class="value">网络，会同时在顶层声明 networks</span></li>
+                <li><span class="label">-w / --workdir</span><span class="value">工作目录 working_dir</span></li>
+                <li><span class="label">-u / --user</span><span class="value">运行用户 user</span></li>
+                <li><span class="label">--entrypoint</span><span class="value">入口点 entrypoint</span></li>
+                <li><span class="label">--privileged</span><span class="value">特权模式 privileged: true</span></li>
+                <li><span class="label">--cap-add</span><span class="value">添加 Linux 能力 cap_add</span></li>
+                <li><span class="label">--dns</span><span class="value">DNS 服务器 dns</span></li>
+                <li><span class="label">--hostname</span><span class="value">容器主机名 hostname</span></li>
+                <li><span class="label">-l / --label</span><span class="value">容器标签 labels</span></li>
+                <li><span class="label">忽略项</span><span class="value">-i / -t / -it（交互与 TTY，compose 不需要）</span></li>
+                <li><span class="label">--rm</span><span class="value">运行后删除容器，compose 无直接对应，仅记录说明</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./docker_run_to_compose.js"></script>
+</body>
+
+</html>

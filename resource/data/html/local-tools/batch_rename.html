@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>批量重命名</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="../fileicons.css">
+    <link rel="stylesheet" href="./common.css">
+    <link rel="stylesheet" href="./batch_rename.css">
+</head>
+
+<body>
+    <div class="admin-wrap">
+        <div class="lt-head">
+            <a class="lt-back" href="./index.html" title="返回工具列表">← 返回</a>
+            <div class="lt-head-text">
+                <h1 class="admin-title">批量重命名</h1>
+                <p class="admin-subtitle">仅本机可访问 · 通过浏览器重命名本机文件/文件夹</p>
+            </div>
+            <div class="lt-head-actions"></div>
+        </div>
+
+        <div id="banner"></div>
+
+        <div class="br-tabs">
+            <button class="br-tab active" data-tab="regular">常规</button>
+            <button class="br-tab" data-tab="replace">替换</button>
+            <button class="br-tab" data-tab="delete">删除</button>
+            <button class="br-tab" data-tab="insert">插入</button>
+            <button class="br-tab" data-tab="case">转大小写</button>
+        </div>
+
+        <div class="br-panes">
+            <!-- 常规 -->
+            <div class="br-pane active" data-tab="regular">
+                <div class="br-row">
+                    <label class="br-label">应用于</label>
+                    <div class="br-radio-group">
+                        <label><input type="radio" name="rg-target" value="filename" checked> 文件名</label>
+                        <label><input type="radio" name="rg-target" value="ext"> 扩展名</label>
+                        <label><input type="radio" name="rg-target" value="all"> 全部</label>
+                    </div>
+                    <label class="br-label">起始量</label>
+                    <input type="number" class="br-input sm" id="rg-start" value="0">
+                    <label class="br-label">增量</label>
+                    <input type="number" class="br-input sm" id="rg-step" value="1">
+                </div>
+                <div class="br-row">
+                    <label class="br-label">前缀</label>
+                    <input type="text" class="br-input" id="rg-prefix" placeholder="(无)">
+                    <label class="br-label">主名</label>
+                    <input type="text" class="br-input" id="rg-main" placeholder="(使用数字)">
+                    <label class="br-label">位数</label>
+                    <input type="number" class="br-input sm" id="rg-digits" value="1" min="1" max="10">
+                    <label class="br-label">后缀</label>
+                    <input type="text" class="br-input" id="rg-suffix" placeholder="(无)">
+                </div>
+                <div class="br-row">
+                    <span class="br-hint">"应用于"控制改文件名/扩展名/全部；"主名"留空时用编号替代。</span>
+                </div>
+            </div>
+
+            <!-- 替换 -->
+            <div class="br-pane" data-tab="replace">
+                <div class="br-row">
+                    <label class="br-label">查找</label>
+                    <input type="text" class="br-input" id="rp-find" placeholder="要替换的文本">
+                    <label class="br-label">替换为</label>
+                    <input type="text" class="br-input" id="rp-replace" placeholder="留空则删除">
+                </div>
+                <div class="br-row">
+                    <label class="br-label">应用于</label>
+                    <div class="br-radio-group">
+                        <label><input type="radio" name="rp-target" value="filename" checked> 文件名</label>
+                        <label><input type="radio" name="rp-target" value="ext"> 扩展名</label>
+                        <label><input type="radio" name="rp-target" value="all"> 全部</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 删除 -->
+            <div class="br-pane" data-tab="delete">
+                <div class="br-row">
+                    <label class="br-label">删除字符数</label>
+                    <input type="number" class="br-input sm" id="dl-del" value="0">
+                    <span class="br-hint">正数删除前 N 个字符，负数删除后 N 个字符（如 -3 = 删除末尾3个字符）</span>
+                </div>
+                <div class="br-row">
+                    <label class="br-label">应用于</label>
+                    <div class="br-radio-group">
+                        <label><input type="radio" name="dl-target" value="filename" checked> 文件名</label>
+                        <label><input type="radio" name="dl-target" value="ext"> 扩展名</label>
+                        <label><input type="radio" name="dl-target" value="all"> 全部</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 插入 -->
+            <div class="br-pane" data-tab="insert">
+                <div class="br-row">
+                    <label class="br-label">插入文本</label>
+                    <input type="text" class="br-input" id="in-text" placeholder="要插入的字符">
+                    <label class="br-label">位置</label>
+                    <input type="number" class="br-input sm" id="in-pos" value="0">
+                    <span class="br-hint">正数从前往后数，负数从后往前数（-1 = 末尾，-2 = 最后一个字符前）</span>
+                </div>
+                <div class="br-row">
+                    <label class="br-label">应用于</label>
+                    <div class="br-radio-group">
+                        <label><input type="radio" name="in-target" value="filename" checked> 文件名</label>
+                        <label><input type="radio" name="in-target" value="ext"> 扩展名</label>
+                        <label><input type="radio" name="in-target" value="all"> 全部</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 转大小写 -->
+            <div class="br-pane" data-tab="case">
+                <div class="br-row">
+                    <label class="br-label">转换</label>
+                    <div class="br-radio-group">
+                        <label><input type="radio" name="cs-mode" value="upper"> 全大写</label>
+                        <label><input type="radio" name="cs-mode" value="lower"> 全小写</label>
+                        <label><input type="radio" name="cs-mode" value="cap"> 首字母大写</label>
+                        <label><input type="radio" name="cs-mode" value="uncap" checked> 首字母小写</label>
+                    </div>
+                </div>
+                <div class="br-row">
+                    <label class="br-label">应用于</label>
+                    <div class="br-radio-group">
+                        <label><input type="radio" name="cs-target" value="filename" checked> 文件名</label>
+                        <label><input type="radio" name="cs-target" value="ext"> 扩展名</label>
+                        <label><input type="radio" name="cs-target" value="all"> 全部</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="br-table-wrap">
+            <div class="br-toolbar br-toolbar-mid">
+                <div class="br-toolbar-left">
+                    <button class="btn" id="btn-add">+ 添加文件/文件夹</button>
+                    <button class="btn btn-outline" id="btn-clear">清空列表</button>
+                </div>
+                <div class="br-toolbar-right">
+                    <label class="br-toggle">
+                        <input type="checkbox" id="chk-autopreview" checked>
+                        <span>自动预览</span>
+                    </label>
+                    <label class="br-toggle">
+                        <input type="checkbox" id="chk-overwrite">
+                        <span>允许覆盖</span>
+                    </label>
+                    <button class="btn btn-outline" id="btn-undo" disabled title="撤销上一次已完成的批量重命名">↶ 撤销 <span
+                            id="undo-count">(0)</span></button>
+                    <button class="btn btn-primary" id="btn-apply">应用重命名</button>
+                </div>
+            </div>
+            <div class="br-sort-bar">
+                <span class="br-sort-title">排序</span>
+                <button class="br-sort-btn" data-sort="name" title="按名称排序">名称 <span
+                        class="br-sort-arrow">↕</span></button>
+                <button class="br-sort-btn" data-sort="date" title="按修改日期排序">修改日期 <span
+                        class="br-sort-arrow">↕</span></button>
+                <span class="br-spacer"></span>
+                <span id="br-stats" class="br-sort-stats">0 个文件</span>
+            </div>
+            <table class="br-table">
+                <thead>
+                    <tr>
+                        <th style="width:36px;"></th>
+                        <th>旧文件名</th>
+                        <th>预览新文件名</th>
+                        <th>文件路径</th>
+                        <th>命名状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="br-tbody">
+                    <tr class="br-empty-row">
+                        <td colspan="6">
+                            <div class="br-empty">尚未添加文件 · 点击"添加文件/文件夹"开始</div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 文件浏览器弹窗 -->
+    <div class="br-fs" id="br-fs" hidden>
+        <div class="br-fs-head">
+            <input type="text" class="br-input" id="br-fs-path" placeholder="输入路径跳转 (例如 D:\Downloads)">
+            <button class="btn btn-sm" id="br-fs-go">跳转</button>
+        </div>
+        <div class="br-fs-bc" id="br-fs-bc"></div>
+        <div class="br-fs-list-bar">
+            <label class="br-fs-selectall" title="全选/取消全选">
+                <input type="checkbox" id="br-fs-sel-all"> 全选
+            </label>
+            <span class="br-spacer"></span>
+            <span class="br-fs-list-hint">点击文件夹进入，勾选后点"完成"加入</span>
+        </div>
+        <div class="br-fs-list" id="br-fs-list">加载中...</div>
+        <div class="br-fs-foot">
+            <span id="br-fs-count">已选 0 项</span>
+            <span class="br-spacer"></span>
+            <button class="btn btn-outline" id="br-fs-cancel">取消</button>
+            <button class="btn" id="br-fs-done">完成</button>
+        </div>
+    </div>
+
+    <script src="../api.js"></script>
+    <script src="../fileicons.js"></script>
+    <script src="./batch_rename.js"></script>
+</body>
+
+</html>

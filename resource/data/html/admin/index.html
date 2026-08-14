@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>管理员</title>
+    <link rel="stylesheet" href="./../style.css" />
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./../fileicons.css" />
+    <link rel="stylesheet" href="index.css" />
+</head>
+
+<body>
+    <div class="container" style="padding: 20px 0 60px;">
+        <div id="access-denied" class="access-denied hidden">
+            <div class="icon">🔒</div>
+            <h3>禁止访问</h3>
+            <p>管理员仅限本机 (127.0.0.1) 访问</p>
+        </div>
+
+        <div id="admin-content" class="hidden">
+            <!-- Tab bar -->
+            <div class="admin-tabs">
+                <button class="tab-btn" data-tab="settings">设置</button>
+                <button class="tab-btn active" data-tab="users">用户</button>
+                <button class="tab-btn" data-tab="shares">文件共享</button>
+                <button class="tab-btn" data-tab="transfers">传输状态</button>
+            </div>
+
+            <!-- Users tab -->
+            <div class="tab-pane active" id="tab-users">
+                <div class="section">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                        <h3 style="margin:0;display:flex;align-items:center;gap:6px;"><svg width="20" height="20"
+                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                <circle cx="9" cy="7" r="4" />
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                            </svg>用户列表</h3>
+                        <button class="btn btn-sm" id="add-user-btn">+ 添加用户</button>
+                    </div>
+                    <div id="users-container"></div>
+                    <div id="users-empty" class="empty hidden">暂无用户</div>
+                </div>
+            </div>
+
+            <!-- Shares tab -->
+            <div class="tab-pane" id="tab-shares">
+                <div class="section">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                        <h3 style="margin:0;display:flex;align-items:center;gap:6px;"><svg width="20" height="20"
+                                viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5"
+                                stroke-linejoin="round" style="color:#f59e0b;">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                            </svg>文件共享</h3>
+                        <button class="btn btn-sm" id="add-share-btn">+ 添加共享</button>
+                    </div>
+                    <div id="shares-container"></div>
+                    <div id="shares-empty" class="empty hidden">暂无共享，点击"添加共享"创建</div>
+                </div>
+            </div>
+
+            <!-- Settings tab -->
+            <div class="tab-pane" id="tab-settings">
+                <div class="section">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                        <h3 style="margin:0;">⚙️ 应用设置</h3>
+                        <button class="btn btn-sm" id="save-config-btn">保存配置</button>
+                    </div>
+                    <p class="text-muted" style="font-size:13px;margin-bottom:16px;">修改配置后需<span
+                            style="color:var(--primary);font-weight:600;">重启程序</span>生效。未修改的字段保持原值不变。</p>
+                    <div id="config-form"></div>
+                </div>
+            </div>
+
+            <!-- Transfers tab -->
+            <div class="tab-pane" id="tab-transfers">
+                <div class="section">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                        <h3 style="margin:0;display:flex;align-items:center;gap:6px;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="22" y1="12" x2="2" y2="12" />
+                                <path
+                                    d="M5.45 5.11L2 12l3.45 6.89A2 2 0 0 0 7.24 20h9.53a2 2 0 0 0 1.79-1.11L22 12l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+                                <circle cx="12" cy="12" r="3" />
+                            </svg>
+                            实时传输
+                        </h3>
+                        <div style="display:flex;align-items:center;gap:12px;font-size:12px;color:var(--text-muted);">
+                            <span id="transfers-status-dot" class="status-dot status-dot--idle"></span>
+                            <span id="transfers-summary">无活动任务</span>
+                        </div>
+                    </div>
+                    <div class="speed-chart-wrap">
+                        <div class="speed-chart-header">
+                            <span class="speed-chart-title">总速度（最近 2 分钟）</span>
+                            <span id="speed-current" class="speed-chart-current">0 B/s</span>
+                        </div>
+                        <canvas id="speed-chart" width="800" height="160"></canvas>
+                        <div class="speed-chart-legend">
+                            <span class="legend-item legend-item--up">↑ 上传</span>
+                            <span id="speed-up" class="legend-value">0 B/s</span>
+                            <span class="legend-item legend-item--down">↓ 下载</span>
+                            <span id="speed-down" class="legend-value">0 B/s</span>
+                        </div>
+                    </div>
+                    <div class="transfers-table-wrap">
+                        <table class="transfers-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-type">类型</th>
+                                    <th class="col-name">文件名</th>
+                                    <th class="col-ip">来源 IP</th>
+                                    <th class="col-progress">进度</th>
+                                    <th class="col-speed">速度</th>
+                                    <th class="col-remaining">剩余</th>
+                                    <th class="col-status">状态</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transfers-tbody"></tbody>
+                        </table>
+                        <div id="transfers-empty" class="empty">当前没有任何文件传输任务</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./../fileicons.js"></script>
+    <script src="./../app.js"></script>
+    <script src="common.js"></script>
+    <script src="users.js"></script>
+    <script src="shares.js"></script>
+    <script src="settings.js"></script>
+    <script src="transfers.js"></script>
+    <script src="index.js"></script>
+</body>
+
+</html>

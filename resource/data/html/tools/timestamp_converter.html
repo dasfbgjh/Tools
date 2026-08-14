@@ -1,0 +1,223 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>时间戳转换</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+
+        <div class="tool-toolbar">
+            <button class="btn btn-outline btn-sm" id="swap-btn" title="交换位置">⇅ 交换位置</button>
+            <div class="spacer"></div>
+            <span class="tool-hint" style="margin:0;">支持 10 位(秒)与 13 位(毫秒)时间戳</span>
+        </div>
+        <div id="banner-box"></div>
+
+        <div class="tool-grid-2" id="converter-container">
+            <!-- 时间戳 -->
+            <div class="tool-card" id="ts-card">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                    <h2 style="margin:0;">时间戳</h2>
+                    <div class="tool-hint" style="margin:0;">当前时间: <span id="current-ts" class="tool-monospace"></span>
+                    </div>
+                </div>
+
+                <div class="tool-toolbar" style="margin-top:1rem;">
+                    <input type="text" class="tool-input" id="ts-input" placeholder="输入 Unix 时间戳" inputmode="numeric">
+                    <button class="btn btn-outline btn-sm" id="ts-refresh" title="使用当前时间">🔄 当前</button>
+                </div>
+
+                <div>
+                    <span class="tool-hint">常用时间戳:</span>
+                    <div class="tool-tags" id="common-ts"></div>
+                </div>
+
+                <div style="margin-top:0.75rem;">
+                    <span class="tool-label">格式化结果</span>
+                    <div class="tool-output empty" id="ts-output">--</div>
+                </div>
+
+                <div style="margin-top:0.5rem;">
+                    <button class="btn btn-ghost btn-sm" id="ts-copy">📋 复制时间戳</button>
+                </div>
+            </div>
+
+            <!-- 日期时间 -->
+            <div class="tool-card" id="dt-card">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                    <h2 style="margin:0;">日期时间</h2>
+                </div>
+
+                <div class="tool-toolbar" style="margin-top:1rem;">
+                    <input type="datetime-local" class="tool-input" id="dt-input" step="1">
+                    <button class="btn btn-outline btn-sm" id="dt-refresh" title="使用当前时间">🔄 当前</button>
+                </div>
+
+                <div style="margin-top:0.75rem;">
+                    <span class="tool-label">格式化结果</span>
+                    <div class="tool-output empty" id="dt-output">--</div>
+                </div>
+
+                <div style="margin-top:0.5rem;">
+                    <button class="btn btn-ghost btn-sm" id="dt-copy">📋 复制日期时间</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var tsInput = Tools.$('ts-input');
+            var dtInput = Tools.$('dt-input');
+            var tsOutput = Tools.$('ts-output');
+            var dtOutput = Tools.$('dt-output');
+            var currentTs = Tools.$('current-ts');
+            var commonBox = Tools.$('common-ts');
+            var converterContainer = Tools.$('converter-container');
+
+            function pad(n) { return String(n).padStart(2, '0'); }
+
+            function formatDate(date) {
+                return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) +
+                    ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds());
+            }
+
+            function formatForInput(date) {
+                return formatDate(date).replace(' ', 'T');
+            }
+
+            function timestampToDateTime(raw) {
+                var value = (raw || '').trim();
+                if (!value) {
+                    tsOutput.textContent = '--';
+                    tsOutput.classList.add('empty');
+                    return;
+                }
+                var n = parseInt(value, 10);
+                if (isNaN(n)) {
+                    tsOutput.textContent = '无效时间戳';
+                    tsOutput.classList.add('empty');
+                    return;
+                }
+                var seconds = n;
+                if (value.length >= 13) seconds = Math.floor(n / 1000);
+                var date = new Date(seconds * 1000);
+                if (isNaN(date.getTime())) {
+                    tsOutput.textContent = '无效时间戳';
+                    tsOutput.classList.add('empty');
+                    return;
+                }
+                tsOutput.classList.remove('empty');
+                tsOutput.textContent = formatDate(date);
+                dtInput.value = formatForInput(date);
+                dtOutput.classList.remove('empty');
+                dtOutput.textContent = formatDate(date);
+            }
+
+            function dateTimeToTimestamp(raw) {
+                var value = (raw || '').trim();
+                if (!value) {
+                    dtOutput.textContent = '--';
+                    dtOutput.classList.add('empty');
+                    return;
+                }
+                var date = new Date(value);
+                if (isNaN(date.getTime())) {
+                    dtOutput.textContent = '无效日期';
+                    dtOutput.classList.add('empty');
+                    return;
+                }
+                dtOutput.classList.remove('empty');
+                dtOutput.textContent = formatDate(date);
+                var ts = Math.floor(date.getTime() / 1000);
+                tsInput.value = ts;
+                tsOutput.classList.remove('empty');
+                tsOutput.textContent = ts;
+            }
+
+            function updateCommonTimestamps() {
+                var now = new Date();
+                var nowTs = Math.floor(now.getTime() / 1000);
+                var items = [
+                    { label: '当前时间', value: nowTs },
+                    { label: '今天零点', value: Math.floor(new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() / 1000) },
+                    { label: '本周一', value: Math.floor(new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() + 1).getTime() / 1000) },
+                    { label: '本月一号', value: Math.floor(new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000) },
+                    { label: '本年一号', value: Math.floor(new Date(now.getFullYear(), 0, 1).getTime() / 1000) }
+                ];
+                commonBox.innerHTML = '';
+                items.forEach(function (item) {
+                    var btn = Tools.el('button', { class: 'tool-tag', type: 'button', text: item.label });
+                    btn.style.cursor = 'pointer';
+                    btn.style.border = '1px solid transparent';
+                    btn.title = item.value;
+                    btn.addEventListener('click', function () {
+                        tsInput.value = item.value;
+                        timestampToDateTime(String(item.value));
+                    });
+                    commonBox.appendChild(btn);
+                });
+            }
+
+            function tick() {
+                var now = new Date();
+                currentTs.textContent = Math.floor(now.getTime() / 1000);
+                updateCommonTimestamps();
+            }
+
+            tsInput.addEventListener('input', function () { timestampToDateTime(tsInput.value); });
+            dtInput.addEventListener('input', function () { dateTimeToTimestamp(dtInput.value); });
+
+            Tools.$('ts-refresh').addEventListener('click', function () {
+                var now = Math.floor(new Date().getTime() / 1000);
+                tsInput.value = now;
+                timestampToDateTime(String(now));
+            });
+            Tools.$('dt-refresh').addEventListener('click', function () {
+                var now = new Date();
+                dtInput.value = formatForInput(now);
+                dateTimeToTimestamp(dtInput.value);
+            });
+            Tools.$('ts-copy').addEventListener('click', function () {
+                if (!tsInput.value) {
+                    Tools.showBanner('banner-box', 'warn', '没有可复制的时间戳');
+                    return;
+                }
+                Tools.copyText(tsInput.value, this, '已复制');
+            });
+            Tools.$('dt-copy').addEventListener('click', function () {
+                var text = dtOutput.textContent;
+                if (!text || text === '--') {
+                    Tools.showBanner('banner-box', 'warn', '没有可复制的日期时间');
+                    return;
+                }
+                Tools.copyText(text, this, '已复制');
+            });
+
+            Tools.$('swap-btn').addEventListener('click', function () {
+                var first = converterContainer.firstElementChild;
+                if (first) converterContainer.appendChild(first);
+            });
+
+            tick();
+            setInterval(tick, 1000);
+
+            // 初始化为当前时间
+            var initNow = new Date();
+            tsInput.value = Math.floor(initNow.getTime() / 1000);
+            timestampToDateTime(tsInput.value);
+        });
+    </script>
+</body>
+
+</html>

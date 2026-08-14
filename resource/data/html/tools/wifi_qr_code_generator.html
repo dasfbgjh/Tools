@@ -1,0 +1,170 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiFi二维码生成</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .range-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .range-row input[type="range"] {
+            flex: 1;
+        }
+
+        .range-value {
+            min-width: 3.5rem;
+            text-align: right;
+            font-size: 0.8125rem;
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .opt-row {
+            margin-bottom: 1rem;
+        }
+
+        .opt-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .qr-preview-box {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1rem;
+            min-height: 280px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .qr-preview-box canvas {
+            max-width: 100%;
+            height: auto;
+            image-rendering: pixelated;
+        }
+
+        .qr-preview-box .placeholder {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .wifi-config-box {
+            background: var(--bg-muted);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.625rem 0.75rem;
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+            font-size: 0.8125rem;
+            word-break: break-all;
+            color: var(--text);
+            min-height: 40px;
+        }
+
+        .wifi-config-box.empty {
+            color: var(--text-light);
+            font-style: italic;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+        <div class="tool-card">
+            <div id="banner"></div>
+            <div class="tool-grid-2">
+                <div>
+                    <h2>WiFi 配置</h2>
+                    <div class="opt-row">
+                        <label class="tool-label">网络名称 (SSID)</label>
+                        <input type="text" id="ssid" class="tool-input" placeholder="如 MyWiFi">
+                    </div>
+                    <div class="opt-row">
+                        <label class="tool-label">密码</label>
+                        <input type="text" id="password" class="tool-input" placeholder="WiFi 密码">
+                    </div>
+                    <div class="opt-row">
+                        <label class="tool-label">加密类型</label>
+                        <select id="encryption" class="tool-select">
+                            <option value="WPA" selected>WPA / WPA2</option>
+                            <option value="WEP">WEP</option>
+                            <option value="nopass">无密码</option>
+                        </select>
+                    </div>
+                    <div class="opt-row">
+                        <label class="tool-check-row">
+                            <input type="checkbox" id="hidden">
+                            <span>隐藏网络</span>
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <h2>二维码选项</h2>
+                    <div class="opt-row">
+                        <label class="tool-label">尺寸 <span id="size-value" class="range-value">256 px</span></label>
+                        <div class="range-row">
+                            <input type="range" id="qr-size" min="128" max="1024" step="64" value="256">
+                        </div>
+                    </div>
+                    <div class="opt-row">
+                        <label class="tool-label">边距 (模块数) <span id="margin-value" class="range-value">4</span></label>
+                        <div class="range-row">
+                            <input type="range" id="qr-margin" min="0" max="20" step="1" value="4">
+                        </div>
+                    </div>
+                    <div class="opt-row">
+                        <label class="tool-label">前景色</label>
+                        <input type="color" id="fg-color" class="tool-input" value="#000000" style="height: 38px; padding: 4px;">
+                    </div>
+                    <div class="opt-row">
+                        <label class="tool-label">背景色</label>
+                        <input type="color" id="bg-color" class="tool-input" value="#FFFFFF" style="height: 38px; padding: 4px;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="tool-toolbar" style="margin-top: 1rem; margin-bottom: 0;">
+                <div class="spacer"></div>
+                <button id="btn-generate" class="btn">生成二维码</button>
+                <button id="btn-copy" class="btn btn-outline">复制配置字符串</button>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top: 1.5rem;">
+            <h2>二维码预览</h2>
+            <div class="qr-preview-box" id="qr-preview">
+                <div class="placeholder">填写 WiFi 信息后自动生成</div>
+            </div>
+            <div class="tool-toolbar" style="margin-top: 1rem;">
+                <div class="spacer"></div>
+                <button id="btn-download-png" class="btn" disabled>下载 PNG</button>
+                <button id="btn-download-svg" class="btn btn-outline" disabled>下载 SVG</button>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top: 1.5rem;">
+            <h2>WiFi 配置字符串</h2>
+            <div id="wifi-config" class="wifi-config-box empty">填写上方信息后将自动生成</div>
+            <div class="tool-hint">格式说明：WIFI:T:认证类型;S:网络名;P:密码;H:是否隐藏;;</div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./wifi_qr_code_generator.js"></script>
+</body>
+
+</html>

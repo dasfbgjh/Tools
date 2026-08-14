@@ -1,0 +1,75 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASCII文本绘图</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .ascii-output {
+            background: var(--bg-muted);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1rem;
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+            font-size: 0.9rem;
+            line-height: 1.1;
+            white-space: pre;
+            overflow: auto;
+            max-height: 520px;
+            color: var(--text);
+            letter-spacing: 0;
+        }
+        .ascii-output.empty { color: var(--text-light); font-style: italic; }
+        .ascii-controls { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+        .ascii-controls .ctrl { display: flex; flex-direction: column; gap: 0.375rem; }
+        .ascii-controls .ctrl select { width: auto; min-width: 90px; }
+        .ascii-controls .ctrl input[type="range"] { width: 140px; }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div class="tool-card">
+            <label class="tool-label" for="input">输入文本（仅支持 A-Z、0-9 和空格）</label>
+            <textarea id="input" class="tool-textarea sm" placeholder="例如：HELLO 2024"></textarea>
+            <div class="tool-toolbar" style="margin-top:0.75rem;margin-bottom:0;">
+                <div class="ascii-controls">
+                    <div class="ctrl">
+                        <label class="tool-label" for="pen">输出字符</label>
+                        <select id="pen" class="tool-select">
+                            <option value="#">#</option>
+                            <option value="*">*</option>
+                            <option value="@">@</option>
+                            <option value="$">$</option>
+                            <option value="█">█</option>
+                        </select>
+                    </div>
+                    <div class="ctrl">
+                        <label class="tool-label" for="scale">像素大小：<span id="scale-val">1</span></label>
+                        <input type="range" id="scale" min="1" max="4" value="1">
+                    </div>
+                </div>
+                <div class="spacer"></div>
+                <button id="btn-copy" class="btn btn-outline btn-sm" type="button">复制结果</button>
+                <button id="btn-clear" class="btn btn-ghost btn-sm" type="button">清空</button>
+            </div>
+            <div id="banner" style="margin-top:0.75rem;"></div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>绘图结果</h2>
+            <pre id="output" class="ascii-output empty">在上方输入文本即可生成 ASCII 艺术字</pre>
+            <p class="tool-hint" id="stats"></p>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./ascii_text_drawer.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,279 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日期计算器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner-box"></div>
+
+        <div class="tool-toolbar">
+            <button class="btn btn-sm" id="calc-btn">计算</button>
+            <button class="btn btn-outline btn-sm" id="reset-btn">重置</button>
+        </div>
+
+        <div class="tool-grid-2">
+            <!-- 差值计算 -->
+            <div class="tool-card">
+                <h2>差值计算</h2>
+
+                <div style="margin-bottom:0.75rem;">
+                    <label class="tool-label" for="diff-start">开始日期</label>
+                    <div class="tool-toolbar" style="margin-bottom:0;">
+                        <input type="datetime-local" class="tool-input" id="diff-start">
+                        <button class="btn btn-outline btn-sm" id="diff-start-now">当前</button>
+                    </div>
+                </div>
+
+                <div style="text-align:center;margin-bottom:0.75rem;">
+                    <button class="btn btn-ghost btn-sm" id="diff-swap" title="交换开始与结束日期">⇅ 交换</button>
+                </div>
+
+                <div style="margin-bottom:0.75rem;">
+                    <label class="tool-label" for="diff-end">结束日期</label>
+                    <div class="tool-toolbar" style="margin-bottom:0;">
+                        <input type="datetime-local" class="tool-input" id="diff-end">
+                        <button class="btn btn-outline btn-sm" id="diff-end-now">当前</button>
+                    </div>
+                </div>
+
+                <div>
+                    <span class="tool-label">差值结果</span>
+                    <ul class="tool-result-list" id="diff-result">
+                        <li><span class="label">天数</span><span class="value" data-key="days">--</span></li>
+                        <li><span class="label">小时</span><span class="value" data-key="hours">--</span></li>
+                        <li><span class="label">分钟</span><span class="value" data-key="minutes">--</span></li>
+                        <li><span class="label">秒</span><span class="value" data-key="seconds">--</span></li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 日期加减 -->
+            <div class="tool-card">
+                <h2>日期加减</h2>
+
+                <div style="margin-bottom:0.75rem;">
+                    <label class="tool-label" for="add-base">基准日期</label>
+                    <div class="tool-toolbar" style="margin-bottom:0;">
+                        <input type="datetime-local" class="tool-input" id="add-base">
+                        <button class="btn btn-outline btn-sm" id="add-base-now">当前</button>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:0.75rem;">
+                    <span class="tool-label">操作</span>
+                    <div class="tool-toolbar" style="margin-bottom:0;">
+                        <button class="btn btn-outline btn-sm" id="op-add" data-op="add">＋ 加</button>
+                        <button class="btn btn-outline btn-sm" id="op-subtract" data-op="subtract">－ 减</button>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:0.75rem;">
+                    <label class="tool-label" for="add-amount">数量</label>
+                    <input type="number" class="tool-input" id="add-amount" min="0" value="1">
+                </div>
+
+                <div style="margin-bottom:0.75rem;">
+                    <label class="tool-label" for="add-unit">单位</label>
+                    <select class="tool-select" id="add-unit">
+                        <option value="years">年</option>
+                        <option value="months">月</option>
+                        <option value="weeks">周</option>
+                        <option value="days" selected>天</option>
+                        <option value="hours">小时</option>
+                        <option value="minutes">分钟</option>
+                    </select>
+                </div>
+
+                <div>
+                    <span class="tool-label">计算结果</span>
+                    <div class="tool-output empty" id="add-result">--</div>
+                </div>
+
+                <div style="margin-top:0.5rem;">
+                    <button class="btn btn-ghost btn-sm" id="add-copy">📋 复制结果</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var diffStart = Tools.$('diff-start');
+            var diffEnd = Tools.$('diff-end');
+            var diffResult = Tools.$('diff-result');
+            var addBase = Tools.$('add-base');
+            var addAmount = Tools.$('add-amount');
+            var addUnit = Tools.$('add-unit');
+            var addResult = Tools.$('add-result');
+            var opAdd = Tools.$('op-add');
+            var opSubtract = Tools.$('op-subtract');
+
+            var operation = 'add';
+
+            function pad(n) { return String(n).padStart(2, '0'); }
+
+            function formatDate(date) {
+                return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) +
+                    ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+            }
+
+            function formatForInput(date) {
+                return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) +
+                    'T' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+            }
+
+            function calculateDiff() {
+                var s = diffStart.value;
+                var e = diffEnd.value;
+                if (!s || !e) {
+                    clearDiff();
+                    return;
+                }
+                var sd = new Date(s);
+                var ed = new Date(e);
+                if (isNaN(sd.getTime()) || isNaN(ed.getTime())) {
+                    clearDiff();
+                    return;
+                }
+                var diffMs = ed.getTime() - sd.getTime();
+                var diffSeconds = Math.floor(diffMs / 1000);
+                var diffMinutes = Math.floor(diffSeconds / 60);
+                var diffHours = Math.floor(diffMinutes / 60);
+                var diffDays = Math.floor(diffHours / 24);
+                setResult('days', diffDays);
+                setResult('hours', diffHours);
+                setResult('minutes', diffMinutes);
+                setResult('seconds', diffSeconds);
+            }
+
+            function setResult(key, val) {
+                var node = diffResult.querySelector('[data-key="' + key + '"]');
+                if (node) node.textContent = val;
+            }
+
+            function clearDiff() {
+                ['days', 'hours', 'minutes', 'seconds'].forEach(function (k) { setResult(k, '--'); });
+            }
+
+            function calculateAdd() {
+                var base = addBase.value;
+                var amount = parseInt(addAmount.value, 10);
+                var unit = addUnit.value;
+                if (!base || isNaN(amount)) {
+                    addResult.textContent = '--';
+                    addResult.classList.add('empty');
+                    return;
+                }
+                var date = new Date(base);
+                if (isNaN(date.getTime())) {
+                    addResult.textContent = '无效日期';
+                    addResult.classList.add('empty');
+                    return;
+                }
+                var sign = operation === 'add' ? 1 : -1;
+                var n = sign * amount;
+                var result = new Date(date);
+                switch (unit) {
+                    case 'years': result.setFullYear(result.getFullYear() + n); break;
+                    case 'months': result.setMonth(result.getMonth() + n); break;
+                    case 'weeks': result.setDate(result.getDate() + n * 7); break;
+                    case 'days': result.setDate(result.getDate() + n); break;
+                    case 'hours': result.setHours(result.getHours() + n); break;
+                    case 'minutes': result.setMinutes(result.getMinutes() + n); break;
+                }
+                if (isNaN(result.getTime())) {
+                    addResult.textContent = '计算结果无效';
+                    addResult.classList.add('empty');
+                    return;
+                }
+                addResult.classList.remove('empty');
+                addResult.textContent = formatDate(result);
+            }
+
+            function updateOpButtons() {
+                opAdd.classList.toggle('btn-outline', operation !== 'add');
+                opAdd.style.background = operation === 'add' ? 'var(--primary)' : '';
+                opAdd.style.color = operation === 'add' ? '#fff' : '';
+                opSubtract.classList.toggle('btn-outline', operation !== 'subtract');
+                opSubtract.style.background = operation === 'subtract' ? 'var(--primary)' : '';
+                opSubtract.style.color = operation === 'subtract' ? '#fff' : '';
+            }
+
+            function reset() {
+                var now = new Date();
+                var weekAgo = new Date(now);
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                diffStart.value = formatForInput(weekAgo);
+                diffEnd.value = formatForInput(now);
+                addBase.value = formatForInput(now);
+                addAmount.value = 1;
+                addUnit.value = 'days';
+                operation = 'add';
+                updateOpButtons();
+                calculateDiff();
+                calculateAdd();
+            }
+
+            // 输入事件 - 实时计算
+            diffStart.addEventListener('input', calculateDiff);
+            diffEnd.addEventListener('input', calculateDiff);
+            addBase.addEventListener('input', calculateAdd);
+            addAmount.addEventListener('input', calculateAdd);
+            addUnit.addEventListener('change', calculateAdd);
+
+            Tools.$('diff-start-now').addEventListener('click', function () {
+                diffStart.value = formatForInput(new Date());
+                calculateDiff();
+            });
+            Tools.$('diff-end-now').addEventListener('click', function () {
+                diffEnd.value = formatForInput(new Date());
+                calculateDiff();
+            });
+            Tools.$('diff-swap').addEventListener('click', function () {
+                var tmp = diffStart.value;
+                diffStart.value = diffEnd.value;
+                diffEnd.value = tmp;
+                calculateDiff();
+            });
+            Tools.$('add-base-now').addEventListener('click', function () {
+                addBase.value = formatForInput(new Date());
+                calculateAdd();
+            });
+            opAdd.addEventListener('click', function () { operation = 'add'; updateOpButtons(); calculateAdd(); });
+            opSubtract.addEventListener('click', function () { operation = 'subtract'; updateOpButtons(); calculateAdd(); });
+
+            Tools.$('calc-btn').addEventListener('click', function () {
+                calculateDiff();
+                calculateAdd();
+                Tools.showBanner('banner-box', 'success', '已重新计算');
+            });
+            Tools.$('reset-btn').addEventListener('click', function () {
+                reset();
+                Tools.showBanner('banner-box', 'success', '已重置为默认值');
+            });
+            Tools.$('add-copy').addEventListener('click', function () {
+                var text = addResult.textContent;
+                if (!text || text === '--') {
+                    Tools.showBanner('banner-box', 'warn', '没有可复制的结果');
+                    return;
+                }
+                Tools.copyText(text, this, '已复制');
+            });
+
+            reset();
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,91 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON 对比</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./json_diff.css">
+</head>
+<body>
+    <div class="tool-page">
+
+        <div id="banner-container"></div>
+
+        <div class="tool-grid-2">
+            <div class="tool-card">
+                <label class="tool-label" for="json-a">JSON A</label>
+                <textarea id="json-a" class="tool-textarea lg" placeholder="请输入或粘贴 JSON 数据..." spellcheck="false">{
+  "name": "Alice",
+  "age": 30,
+  "email": "alice@example.com",
+  "city": "Beijing",
+  "hobbies": ["reading", "swimming"],
+  "address": {
+    "street": "Chaoyang Road",
+    "zip": "100000"
+  },
+  "active": true,
+  "scores": [90, 85, 88]
+}</textarea>
+                <p class="tool-hint">原始 JSON，将作为对比基准</p>
+            </div>
+            <div class="tool-card">
+                <label class="tool-label" for="json-b">JSON B</label>
+                <textarea id="json-b" class="tool-textarea lg" placeholder="请输入或粘贴 JSON 数据..." spellcheck="false">{
+  "name": "Alice",
+  "age": 31,
+  "email": "alice@newemail.com",
+  "phone": "13800000000",
+  "hobbies": ["reading", "hiking", "coding"],
+  "address": {
+    "street": "Haidian Road",
+    "zip": "100000",
+    "city": "Beijing"
+  },
+  "active": true,
+  "scores": [90, 85]
+}</textarea>
+                <p class="tool-hint">目标 JSON，与 A 进行深度对比</p>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <div class="tool-toolbar" style="margin-bottom:0;">
+                <button id="btn-diff" class="btn btn-sm" type="button">对比</button>
+                <button id="btn-swap" class="btn btn-outline btn-sm" type="button">交换</button>
+                <button id="btn-format" class="btn btn-outline btn-sm" type="button">格式化</button>
+                <button id="btn-clear" class="btn btn-ghost btn-sm" type="button">清空</button>
+                <span class="spacer"></span>
+                <label class="tool-check-row" style="margin:0;">
+                    <input type="checkbox" id="show-same">
+                    显示相同项
+                </label>
+            </div>
+
+            <div class="diff-stats" id="diff-stats" style="margin-top:1rem;"></div>
+            <div class="diff-list" id="diff-list" style="margin-top:0.75rem;"></div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>使用说明</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">对比</span><span class="value">递归深度对比两个 JSON，支持嵌套对象与数组</span></li>
+                <li><span class="label">新增</span><span class="value">仅存在于 JSON B 中的键或数组元素（绿色）</span></li>
+                <li><span class="label">删除</span><span class="value">仅存在于 JSON A 中的键或数组元素（红色）</span></li>
+                <li><span class="label">修改</span><span class="value">两边都存在但值不同，显示 旧值 → 新值（黄色）</span></li>
+                <li><span class="label">类型不匹配</span><span class="value">字符串与数字等类型差异视为修改，并显示类型信息</span></li>
+                <li><span class="label">路径</span><span class="value">显示完整路径，如 users[0].name</span></li>
+                <li><span class="label">显示相同项</span><span class="value">勾选后同时展示值相同的字段</span></li>
+                <li><span class="label">交换</span><span class="value">将 JSON A 与 B 内容互换并重新对比</span></li>
+                <li><span class="label">格式化</span><span class="value">对两个输入框分别进行 2 空格美化</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./json_diff.js"></script>
+</body>
+</html>

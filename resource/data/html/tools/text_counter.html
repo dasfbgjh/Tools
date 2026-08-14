@@ -1,0 +1,105 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>字数统计</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div class="tool-grid-3">
+            <div class="tool-card">
+                <h2>输入文本</h2>
+                <textarea id="input-text" class="tool-textarea lg" placeholder="在此输入或粘贴要统计的文本..."></textarea>
+                <div class="tool-toolbar" style="margin-top:1rem;margin-bottom:0;">
+                    <div class="spacer"></div>
+                    <button id="btn-copy" class="btn btn-outline btn-sm">复制原文</button>
+                    <button id="btn-clear" class="btn btn-ghost btn-sm">清空</button>
+                </div>
+            </div>
+            <div class="tool-card">
+                <h2>统计结果</h2>
+                <ul class="tool-result-list" id="result-list">
+                    <li><span class="label">总字符数</span><span class="value" data-key="characters">0</span></li>
+                    <li><span class="label">不含空格字符数</span><span class="value" data-key="charactersNoSpaces">0</span>
+                    </li>
+                    <li><span class="label">UTF-8 字节数</span><span class="value" data-key="bytes">0</span></li>
+                    <li><span class="label">中文字符数</span><span class="value" data-key="chineseCharacters">0</span></li>
+                    <li><span class="label">总词数</span><span class="value" data-key="words">0</span></li>
+                    <li><span class="label">中文词数</span><span class="value" data-key="chineseWords">0</span></li>
+                    <li><span class="label">英文单词数</span><span class="value" data-key="englishWords">0</span></li>
+                    <li><span class="label">句子数</span><span class="value" data-key="sentences">0</span></li>
+                    <li><span class="label">段落数</span><span class="value" data-key="paragraphs">0</span></li>
+                    <li><span class="label">行数</span><span class="value" data-key="lines">0</span></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var input = Tools.$('input-text');
+            var valueEls = {};
+            Tools.$$('#result-list .value').forEach(function (el) {
+                valueEls[el.getAttribute('data-key')] = el;
+            });
+
+            var encoder = (typeof TextEncoder !== 'undefined') ? new TextEncoder() : null;
+
+            function setAllZero() {
+                for (var k in valueEls) valueEls[k].textContent = '0';
+            }
+
+            function countText(value) {
+                if (!value) { setAllZero(); return; }
+
+                var characters = value.length;
+                var charactersNoSpaces = value.replace(/\s/g, '').length;
+                var bytes = encoder ? encoder.encode(value).length : characters;
+                var chineseCharacters = (value.match(/[\u4e00-\u9fa5]/g) || []).length;
+                var englishWords = (value.match(/[a-zA-Z]+/g) || []).length;
+                var chineseText = (value.match(/[\u4e00-\u9fa5]+/g) || []).join('');
+                var chineseWords = Math.ceil(chineseText.length / 2);
+                var words = englishWords + chineseWords;
+                var sentences = (value.match(/[.!?。！？]+/g) || []).length || (value.length > 0 ? 1 : 0);
+                var paragraphs = value.split(/\n\s*\n/).filter(Boolean).length || (value.length > 0 ? 1 : 0);
+                var lines = value.split('\n').length;
+
+                valueEls.characters.textContent = characters;
+                valueEls.charactersNoSpaces.textContent = charactersNoSpaces;
+                valueEls.bytes.textContent = bytes;
+                valueEls.chineseCharacters.textContent = chineseCharacters;
+                valueEls.words.textContent = words;
+                valueEls.chineseWords.textContent = chineseWords;
+                valueEls.englishWords.textContent = englishWords;
+                valueEls.sentences.textContent = sentences;
+                valueEls.paragraphs.textContent = paragraphs;
+                valueEls.lines.textContent = lines;
+            }
+
+            input.addEventListener('input', function () { countText(input.value); });
+
+            Tools.$('btn-clear').addEventListener('click', function () {
+                input.value = '';
+                countText('');
+                input.focus();
+            });
+
+            Tools.$('btn-copy').addEventListener('click', function () {
+                Tools.copyText(input.value, this, '已复制');
+            });
+
+            countText('');
+        });
+    </script>
+</body>
+
+</html>

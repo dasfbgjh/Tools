@@ -1,0 +1,103 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>注册</title>
+    <link rel="stylesheet" href="./../style.css" />
+    <script src="./../theme.js"></script>
+</head>
+
+<body>
+    <div class="auth-page">
+        <div class="card auth-card">
+            <div class="card-header text-center">
+                <div class="card-title text-xl">注册</div>
+                <p class="text-muted text-sm mt-2">创建您的 Tools 账号</p>
+            </div>
+            <div class="card-content">
+                <form id="register-form" class="space-y-4">
+                    <div id="error-box" class="error-box hidden"></div>
+                    <div>
+                        <label>邮箱</label>
+                        <input id="email" type="email" class="input" placeholder="xxx@example.com" required />
+                    </div>
+                    <div>
+                        <label>昵称（可选）</label>
+                        <input id="nickname" type="text" class="input" placeholder="请输入昵称" />
+                    </div>
+                    <div>
+                        <label>密码</label>
+                        <input id="password" type="password" class="input" placeholder="••••••••" required />
+                    </div>
+                    <div>
+                        <label>确认密码</label>
+                        <input id="confirm" type="password" class="input" placeholder="••••••••" required />
+                    </div>
+                    <button type="submit" class="btn w-full" id="submit-btn">注册</button>
+                </form>
+                <div class="text-center text-sm mt-4">
+                    <span class="text-muted">已有账号？</span>
+                    <a href="./login.html">登录</a>
+                    <span class="text-muted"> | </span>
+                    <a href="./../index.html">返回首页</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./../app.js"></script>
+    <script>
+        (function () {
+            if (App.isAuthenticated()) {
+                window.location.href = './../';
+                return;
+            }
+
+            var form = document.getElementById('register-form');
+            var emailEl = document.getElementById('email');
+            var nickEl = document.getElementById('nickname');
+            var passEl = document.getElementById('password');
+            var confEl = document.getElementById('confirm');
+            var btn = document.getElementById('submit-btn');
+            var errBox = document.getElementById('error-box');
+
+            function showError(msg) { errBox.textContent = msg; errBox.classList.remove('hidden'); }
+            function clearError() { errBox.classList.add('hidden'); }
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                clearError();
+
+                if (passEl.value !== confEl.value) { showError('两次密码输入不一致'); return; }
+                if (passEl.value.length < 6) { showError('密码长度至少为6位'); return; }
+
+                btn.disabled = true;
+                btn.textContent = '注册中...';
+
+                Api.auth.register(emailEl.value, passEl.value, nickEl.value)
+                    .then(function (data) {
+                        if (data.success) {
+                            App.setUser(data.user);
+                            return Api.teams.list().then(function (td) {
+                            if (td.success && td.teams && td.teams.length) {
+                                App.setTeams(td.teams);
+                                var def = td.teams.find(function (t) { return t.isDefault; }) || td.teams[0];
+                                App.setCurrentTeam(def);
+                            }
+                            window.location.href = '/';
+                        });
+                    } else {
+                        showError(data.error || '注册失败');
+                    }
+                })
+                    .catch(function () { showError('注册失败，请稍后重试'); })
+                    .then(function () { btn.disabled = false; btn.textContent = '注册'; });
+            });
+        })();
+    </script>
+</body>
+
+</html>

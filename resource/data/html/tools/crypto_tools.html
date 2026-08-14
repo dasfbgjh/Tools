@@ -1,0 +1,121 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>加密解密工具</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .mode-tabs {
+            display: flex;
+            gap: 0.25rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .mode-tab {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            border: none;
+            border-bottom: 2px solid transparent;
+            font-size: 0.875rem;
+            font-weight: 500;
+            background: none;
+            transition: color 0.15s, border-color 0.15s;
+        }
+
+        .mode-tab:hover {
+            color: var(--text);
+        }
+
+        .mode-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .byte-count {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-top: 0.25rem;
+            text-align: right;
+        }
+
+        .algo-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: flex-end;
+            margin-bottom: 0.75rem;
+        }
+
+        .algo-row .field {
+            flex: 1;
+            min-width: 180px;
+        }
+
+        .algo-row .field select {
+            max-width: 240px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+
+
+        <div class="tool-card">
+            <div id="banner"></div>
+
+            <div class="mode-tabs">
+                <button class="mode-tab active" id="tab-hash">单向哈希</button>
+                <button class="mode-tab" id="tab-hmac">HMAC</button>
+            </div>
+
+            <div class="algo-row">
+                <div class="field">
+                    <label class="tool-label">算法</label>
+                    <select class="tool-select" id="algo">
+                        <option value="MD5">MD5</option>
+                        <option value="SHA-1">SHA-1</option>
+                        <option value="SHA-256" selected>SHA-256</option>
+                        <option value="SHA-384">SHA-384</option>
+                        <option value="SHA-512">SHA-512</option>
+                    </select>
+                </div>
+                <div class="field" id="key-field" style="display: none;">
+                    <label class="tool-label">密钥</label>
+                    <input type="text" class="tool-input" id="hmac-key" placeholder="输入 HMAC 密钥...">
+                </div>
+            </div>
+
+            <div class="tool-toolbar">
+                <button class="btn btn-sm" id="btn-compute">计算</button>
+                <button class="btn btn-ghost btn-sm" id="btn-copy">复制结果</button>
+                <span class="spacer"></span>
+                <button class="btn btn-outline btn-sm" id="btn-clear">清空</button>
+            </div>
+
+            <div class="tool-grid-2">
+                <div>
+                    <label class="tool-label">输入文本</label>
+                    <textarea class="tool-textarea" id="input-text" placeholder="输入要计算哈希的文本..."></textarea>
+                    <div class="byte-count" id="byte-count">0 字节</div>
+                </div>
+                <div>
+                    <label class="tool-label">哈希结果 (Hex)</label>
+                    <textarea class="tool-textarea" id="output-text" readonly placeholder="计算结果将在这里显示..."></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./crypto_tools.js"></script>
+</body>
+
+</html>

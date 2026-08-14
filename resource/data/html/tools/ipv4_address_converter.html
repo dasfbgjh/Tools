@@ -1,0 +1,75 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPv4 地址转换器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./ipv4_address_converter.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner-container"></div>
+
+        <div class="tool-card">
+            <h2>输入</h2>
+            <input type="text" id="ip-input" class="tool-input tool-monospace" placeholder="192.168.1.1 或 3232235777" value="192.168.1.1" autocomplete="off">
+            <p class="tool-hint">支持 IPv4 地址或十进制整数，自动识别并双向转换</p>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>转换结果</h2>
+            <div id="result-list" class="conv-list">
+                <div class="conv-row">
+                    <span class="label">IPv4 地址</span>
+                    <span class="value" data-key="ip">—</span>
+                    <button class="btn btn-ghost btn-sm btn-copy" type="button" data-copy="ip">复制</button>
+                </div>
+                <div class="conv-row">
+                    <span class="label">十进制整数</span>
+                    <span class="value" data-key="decimal">—</span>
+                    <button class="btn btn-ghost btn-sm btn-copy" type="button" data-copy="decimal">复制</button>
+                </div>
+                <div class="conv-row">
+                    <span class="label">十六进制</span>
+                    <span class="value" data-key="hex">—</span>
+                    <button class="btn btn-ghost btn-sm btn-copy" type="button" data-copy="hex">复制</button>
+                </div>
+                <div class="conv-row">
+                    <span class="label">二进制</span>
+                    <span class="value" data-key="binary">—</span>
+                    <button class="btn btn-ghost btn-sm btn-copy" type="button" data-copy="binary">复制</button>
+                </div>
+                <div class="conv-row">
+                    <span class="label">八进制</span>
+                    <span class="value" data-key="octal">—</span>
+                    <button class="btn btn-ghost btn-sm btn-copy" type="button" data-copy="octal">复制</button>
+                </div>
+                <div class="conv-row">
+                    <span class="label">反向 DNS</span>
+                    <span class="value" data-key="reverse">—</span>
+                    <button class="btn btn-ghost btn-sm btn-copy" type="button" data-copy="reverse">复制</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>说明</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">十进制</span><span class="value">将 4 字节按大端序拼接为 32 位无符号整数</span></li>
+                <li><span class="label">反向 DNS</span><span class="value">用于 IP 反向解析，格式为 反转IP.in-addr.arpa</span></li>
+                <li><span class="label">双向</span><span class="value">输入 IP 显示十进制，输入十进制显示 IP</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./ipv4_address_converter.js"></script>
+</body>
+
+</html>

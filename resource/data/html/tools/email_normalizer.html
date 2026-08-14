@@ -1,0 +1,251 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>邮箱标准化</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .email-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.8125rem;
+        }
+        .email-row:last-child { border-bottom: none; }
+        .email-row .orig {
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+            color: var(--text-muted);
+            word-break: break-all;
+        }
+        .email-row .norm {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .email-row .norm-text {
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+            color: var(--primary);
+            font-weight: 600;
+            word-break: break-all;
+            flex: 1;
+        }
+        .email-row .norm-text.invalid { color: #ef4444; font-weight: 400; }
+        .email-row .copy-btn {
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 0.125rem 0.5rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            white-space: nowrap;
+        }
+        .email-row .copy-btn:hover { color: var(--primary); border-color: var(--primary); }
+        .email-row .copy-btn:disabled { opacity: 0.5; cursor: default; }
+        .toggle-row { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.5rem; }
+    </style>
+</head>
+<body>
+    <div class="tool-page">
+        <div class="tool-card">
+            <div id="banner"></div>
+
+            <div class="tool-toolbar">
+                <button class="btn btn-sm" id="btn-normalize">标准化</button>
+                <button class="btn btn-outline btn-sm" id="btn-copy-all">复制全部</button>
+                <span class="spacer"></span>
+                <button class="btn btn-ghost btn-sm" id="btn-clear">清空</button>
+            </div>
+
+            <label class="tool-label">批量输入（每行一个邮箱地址）</label>
+            <textarea id="input" class="tool-textarea sm" placeholder="user+tag@gmail.com&#10;John.Doe@Example.COM&#10;  test.user@googlemail.com  "></textarea>
+
+            <div class="toggle-row">
+                <label class="tool-check-row"><input type="checkbox" id="opt-lowercase" checked> 转小写</label>
+                <label class="tool-check-row"><input type="checkbox" id="opt-trim" checked> 去除首尾空格</label>
+                <label class="tool-check-row"><input type="checkbox" id="opt-dots" checked> 去除点号(Gmail)</label>
+                <label class="tool-check-row"><input type="checkbox" id="opt-plus" checked> 去除加号标签</label>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>标准化结果</h2>
+            <div id="result"></div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>当前邮箱详情</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">用户名</span><span class="value" id="r-user">—</span></li>
+                <li><span class="label">域名</span><span class="value" id="r-domain">—</span></li>
+                <li><span class="label">顶级域</span><span class="value" id="r-tld">—</span></li>
+                <li><span class="label">标准化后</span><span class="value" id="r-final">—</span></li>
+            </ul>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>说明</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">转小写</span><span class="value">邮箱域名部分必须小写，本地部分一并小写</span></li>
+                <li><span class="label">去除点号</span><span class="value">Gmail 等服务忽略用户名中的点号，a.b@gmail.com 等同于 ab@gmail.com</span></li>
+                <li><span class="label">去除加号标签</span><span class="value">user+tag@gmail.com 等同于 user@gmail.com</span></li>
+                <li><span class="label">googlemail</span><span class="value">googlemail.com 视为 gmail.com 处理</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var $ = Tools.$;
+            var inputEl = $('input');
+            var resultEl = $('result');
+
+            // services that ignore dots in local part
+            var DOT_IGNORE_DOMAINS = ['gmail.com', 'googlemail.com'];
+
+            function normalizeOne(raw, opts) {
+                var email = raw;
+                if (opts.trim) email = email.trim();
+                if (opts.lowercase) email = email.toLowerCase();
+
+                var at = email.lastIndexOf('@');
+                if (at < 1 || at === email.length - 1) {
+                    return { valid: false, original: raw, normalized: '无效邮箱' };
+                }
+                var local = email.substring(0, at);
+                var domain = email.substring(at + 1);
+
+                // googlemail -> gmail
+                if (domain === 'googlemail.com') domain = 'gmail.com';
+
+                var isDotIgnore = DOT_IGNORE_DOMAINS.indexOf(domain) !== -1;
+
+                if (opts.plus) {
+                    var plus = local.indexOf('+');
+                    if (plus >= 0) local = local.substring(0, plus);
+                }
+                if (opts.dots && isDotIgnore) {
+                    local = local.replace(/\./g, '');
+                }
+
+                var normalized = local + '@' + domain;
+                // basic validation
+                var valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized);
+                return { valid: valid, original: raw, normalized: normalized, local: local, domain: domain };
+            }
+
+            function getTld(domain) {
+                var parts = domain.split('.');
+                if (parts.length < 2) return domain;
+                return parts.slice(-2).join('.');
+            }
+
+            function render() {
+                Tools.clearBanner('banner');
+                var text = inputEl.value;
+                if (!text.trim()) {
+                    resultEl.innerHTML = '<p class="tool-output empty">输入邮箱后将显示标准化结果</p>';
+                    clearDetail();
+                    return;
+                }
+                var opts = {
+                    lowercase: $('opt-lowercase').checked,
+                    trim: $('opt-trim').checked,
+                    dots: $('opt-dots').checked,
+                    plus: $('opt-plus').checked
+                };
+                var lines = text.split(/\r?\n/);
+                var results = [];
+                resultEl.innerHTML = '';
+
+                var header = Tools.el('div', { class: 'email-row' }, [
+                    Tools.el('span', { class: 'orig', style: 'font-weight:600;color:var(--text);', text: '原始邮箱' }),
+                    Tools.el('span', { class: 'norm', style: 'font-weight:600;color:var(--text);', text: '标准化结果' })
+                ]);
+                resultEl.appendChild(header);
+
+                lines.forEach(function (line) {
+                    if (!line.trim()) return;
+                    var r = normalizeOne(line, opts);
+                    results.push(r);
+                    var normText = Tools.el('span', { class: 'norm-text' + (r.valid ? '' : ' invalid'), text: r.normalized });
+                    var row = Tools.el('div', { class: 'email-row' }, [
+                        Tools.el('span', { class: 'orig', text: line.trim() }),
+                        Tools.el('span', { class: 'norm' }, [
+                            normText,
+                            Tools.el('button', {
+                                class: 'copy-btn', type: 'button', text: '复制', onclick: function (e) {
+                                    if (!r.valid) { Tools.showBanner('banner', 'warn', '无效邮箱，无法复制'); return; }
+                                    Tools.copyText(r.normalized, e.target, '已复制');
+                                }
+                            })
+                        ])
+                    ]);
+                    resultEl.appendChild(row);
+                });
+
+                // show detail for the first valid result
+                var first = results.filter(function (r) { return r.valid; })[0];
+                if (first) {
+                    $('r-user').textContent = first.local;
+                    $('r-domain').textContent = first.domain;
+                    $('r-tld').textContent = getTld(first.domain);
+                    $('r-final').textContent = first.normalized;
+                } else {
+                    clearDetail();
+                }
+            }
+
+            function clearDetail() {
+                ['r-user', 'r-domain', 'r-tld', 'r-final'].forEach(function (id) { $(id).textContent = '—'; });
+            }
+
+            function copyAll() {
+                var text = inputEl.value;
+                if (!text.trim()) {
+                    Tools.showBanner('banner', 'warn', '请先输入邮箱');
+                    return;
+                }
+                var opts = {
+                    lowercase: $('opt-lowercase').checked,
+                    trim: $('opt-trim').checked,
+                    dots: $('opt-dots').checked,
+                    plus: $('opt-plus').checked
+                };
+                var out = [];
+                text.split(/\r?\n/).forEach(function (line) {
+                    if (!line.trim()) return;
+                    var r = normalizeOne(line, opts);
+                    if (r.valid) out.push(r.normalized);
+                });
+                if (out.length === 0) {
+                    Tools.showBanner('banner', 'warn', '没有有效的标准化结果');
+                    return;
+                }
+                Tools.copyText(out.join('\n'), $('btn-copy-all'), '已复制');
+            }
+
+            $('btn-normalize').addEventListener('click', render);
+            $('btn-copy-all').addEventListener('click', copyAll);
+            $('btn-clear').addEventListener('click', function () {
+                inputEl.value = '';
+                render();
+            });
+            inputEl.addEventListener('input', render);
+            ['opt-lowercase', 'opt-trim', 'opt-dots', 'opt-plus'].forEach(function (id) {
+                $(id).addEventListener('change', render);
+            });
+
+            render();
+        });
+    </script>
+</body>
+</html>

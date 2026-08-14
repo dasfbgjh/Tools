@@ -1,0 +1,60 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>字符串混淆器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .obf-methods {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+            gap: 0.5rem;
+        }
+        .obf-stats {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-top: 0.75rem;
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+        }
+        .obf-stats .value { color: var(--text); font-weight: 600; }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div class="tool-card">
+            <label class="tool-label" for="input">输入明文</label>
+            <textarea id="input" class="tool-textarea sm" placeholder="输入要混淆的字符串..."></textarea>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>混淆方式</h2>
+            <div id="methods" class="obf-methods"></div>
+            <div class="tool-toolbar" style="margin-top:1rem;margin-bottom:0;">
+                <button id="btn-copy" class="btn btn-outline btn-sm" type="button">复制结果</button>
+                <button id="btn-clear" class="btn btn-ghost btn-sm" type="button">清空</button>
+                <div class="spacer"></div>
+                <span class="tool-hint" id="hint" style="margin:0;">可多选组合，按顺序应用</span>
+            </div>
+            <div id="banner" style="margin-top:0.75rem;"></div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>混淆结果</h2>
+            <div id="output" class="tool-output empty">—</div>
+            <div class="obf-stats" id="stats"></div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./string_obfuscator.js"></script>
+</body>
+
+</html>

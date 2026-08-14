@@ -1,0 +1,415 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JWT解析</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .jwt-parts {
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+            margin: 0.5rem 0 0.75rem;
+        }
+
+        .jwt-part-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        .jwt-part-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.125rem 0.5rem;
+            border-radius: 4px;
+            color: #fff;
+            font-weight: 500;
+            font-size: 0.6875rem;
+            flex-shrink: 0;
+            min-width: 3.5rem;
+            justify-content: center;
+        }
+
+        .jwt-part-badge.header {
+            background: #3b82f6;
+        }
+
+        .jwt-part-badge.payload {
+            background: #a855f7;
+        }
+
+        .jwt-part-badge.signature {
+            background: #22c55e;
+        }
+
+        .jwt-part-value {
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+            color: var(--text-muted);
+            word-break: break-all;
+            flex: 1;
+            line-height: 1.5;
+        }
+
+        .jwt-section {
+            margin-top: 1rem;
+        }
+
+        .jwt-section-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.375rem;
+        }
+
+        .jwt-section-title {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .jwt-status-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.375rem 0;
+            font-size: 0.8125rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .jwt-status-row:last-child {
+            border-bottom: none;
+        }
+
+        .jwt-status-row .label {
+            color: var(--text-muted);
+        }
+
+        .jwt-badge {
+            display: inline-block;
+            padding: 0.125rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.6875rem;
+            font-weight: 500;
+        }
+
+        .jwt-badge.valid {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .jwt-badge.expired {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .jwt-badge.neutral {
+            background: var(--bg-muted);
+            color: var(--text-muted);
+        }
+
+        .jwt-json-box {
+            background: var(--bg-muted);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.75rem;
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+            font-size: 0.8125rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 320px;
+            overflow: auto;
+            line-height: 1.55;
+        }
+
+        .jwt-intro {
+            color: var(--text-muted);
+            font-size: 0.8125rem;
+            line-height: 1.6;
+        }
+
+        .jwt-intro h3 {
+            color: var(--text);
+            font-size: 0.9375rem;
+            font-weight: 600;
+            margin: 0.75rem 0 0.375rem;
+        }
+
+        .jwt-intro ul {
+            padding-left: 1.25rem;
+            margin: 0.375rem 0;
+        }
+
+        .jwt-intro li {
+            margin: 0.125rem 0;
+        }
+
+        .jwt-intro .hl {
+            color: var(--primary);
+            font-weight: 500;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+
+
+        <div class="tool-card">
+            <div id="banner"></div>
+
+            <label class="tool-label">JWT 令牌</label>
+            <textarea class="tool-textarea sm" id="jwt-input" placeholder="粘贴JWT令牌到这里..."
+                style="min-height:80px;"></textarea>
+
+            <div class="tool-toolbar" style="margin-top:0.5rem;">
+                <button class="btn btn-sm" id="btn-example">加载示例</button>
+                <button class="btn btn-ghost btn-sm" id="btn-copy-token">复制令牌</button>
+                <span class="spacer"></span>
+                <button class="btn btn-outline btn-sm" id="btn-clear">清空</button>
+            </div>
+
+            <div id="jwt-parts-box"></div>
+
+            <div id="jwt-status-box"></div>
+
+            <div id="jwt-result"></div>
+
+            <div id="jwt-empty" class="jwt-intro">
+                <h3>什么是 JWT？</h3>
+                <p>JWT（JSON Web Token）是一种开放标准，用于在网络应用间以紧凑且自包含的方式传递声明（Claims）。</p>
+                <p>JWT 由三部分组成，各部分用点（<span class="hl">.</span>）分隔：</p>
+                <ul>
+                    <li><span class="hl">Header</span>（头部）- 包含令牌类型和签名算法</li>
+                    <li><span class="hl">Payload</span>（载荷）- 包含声明，如用户信息、权限等</li>
+                    <li><span class="hl">Signature</span>（签名）- 用于验证消息的签名</li>
+                </ul>
+                <p>使用此工具可以快速解码 JWT 令牌、验证格式并检查过期状态（不验证签名有效性）。</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var timer = null;
+
+            function base64UrlDecode(str) {
+                var base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+                while (base64.length % 4) base64 += '=';
+                var bin = atob(base64);
+                // UTF-8 aware decode
+                return decodeURIComponent(Array.prototype.map.call(bin, function (c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+            }
+
+            function base64UrlEncode(str) {
+                var bytes = new TextEncoder().encode(str);
+                var bin = '';
+                bytes.forEach(function (b) { bin += String.fromCharCode(b); });
+                return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+            }
+
+            function formatTimestamp(ts) {
+                if (!ts || typeof ts !== 'number') return '';
+                try {
+                    return new Date(ts * 1000).toLocaleString('zh-CN', { hour12: false });
+                } catch (e) { return String(ts); }
+            }
+
+            function getTimeRemaining(expDate) {
+                var diff = expDate.getTime() - Date.now();
+                if (diff <= 0) return '已过期';
+                var days = Math.floor(diff / 86400000);
+                var hours = Math.floor((diff % 86400000) / 3600000);
+                var minutes = Math.floor((diff % 3600000) / 60000);
+                var seconds = Math.floor((diff % 60000) / 1000);
+                var s = '';
+                if (days > 0) s += days + '天 ';
+                if (hours > 0 || days > 0) s += hours + '小时 ';
+                if (minutes > 0 || hours > 0 || days > 0) s += minutes + '分钟 ';
+                s += seconds + '秒';
+                return s;
+            }
+
+            function renderParts(parts) {
+                var box = Tools.$('jwt-parts-box');
+                box.innerHTML = '';
+                if (!parts) return;
+                var labels = [
+                    { name: 'Header', cls: 'header', value: parts[0] },
+                    { name: 'Payload', cls: 'payload', value: parts[1] },
+                    { name: 'Signature', cls: 'signature', value: parts[2] }
+                ];
+                var wrap = Tools.el('div', { class: 'jwt-parts' });
+                labels.forEach(function (p) {
+                    wrap.appendChild(Tools.el('div', { class: 'jwt-part-row' }, [
+                        Tools.el('span', { class: 'jwt-part-badge ' + p.cls, text: p.name }),
+                        Tools.el('span', { class: 'jwt-part-value', text: p.value })
+                    ]));
+                });
+                box.appendChild(wrap);
+            }
+
+            function renderStatus(decoded) {
+                var box = Tools.$('jwt-status-box');
+                box.innerHTML = '';
+                if (!decoded) return;
+
+                var formatValid = decoded.isValid;
+                var expStatus = decoded.expirationStatus; // 'valid' | 'expired' | 'not-set'
+                var statusLabel, statusCls;
+                if (expStatus === 'valid') { statusLabel = '有效，剩余 ' + decoded.expiresIn; statusCls = 'valid'; }
+                else if (expStatus === 'expired') { statusLabel = '已过期'; statusCls = 'expired'; }
+                else { statusLabel = '未设置过期时间'; statusCls = 'neutral'; }
+
+                var card = Tools.el('div', { class: 'tool-card', style: { marginTop: '0.75rem', padding: '0.75rem 1rem' } });
+                card.appendChild(statusRow('JWT 状态', formatValid ? '格式有效' : '格式无效', formatValid ? 'valid' : 'expired'));
+                card.appendChild(statusRow('过期状态', statusLabel, statusCls));
+                if (decoded.payload.iat) {
+                    card.appendChild(statusRow('签发时间 (iat)', formatTimestamp(decoded.payload.iat), 'neutral'));
+                }
+                if (decoded.payload.exp) {
+                    card.appendChild(statusRow('过期时间 (exp)', formatTimestamp(decoded.payload.exp), expStatus === 'expired' ? 'expired' : 'valid'));
+                }
+                box.appendChild(card);
+            }
+
+            function statusRow(label, value, cls) {
+                return Tools.el('div', { class: 'jwt-status-row' }, [
+                    Tools.el('span', { class: 'label', text: label }),
+                    Tools.el('span', { class: 'jwt-badge ' + cls, text: value })
+                ]);
+            }
+
+            function renderSection(title, content, isJson) {
+                var head = Tools.el('div', { class: 'jwt-section-head' }, [
+                    Tools.el('span', { class: 'jwt-section-title', text: title })
+                ]);
+                var copyBtn = Tools.el('button', { class: 'btn btn-ghost btn-sm', text: '复制' });
+                head.appendChild(copyBtn);
+                var body;
+                if (isJson) {
+                    body = Tools.el('div', { class: 'jwt-json-box' });
+                    body.innerHTML = Tools.highlightJson(content);
+                } else {
+                    body = Tools.el('div', { class: 'jwt-json-box tool-monospace', text: content });
+                }
+                copyBtn.addEventListener('click', function () {
+                    Tools.copyText(content, copyBtn, '已复制');
+                });
+                return Tools.el('div', { class: 'jwt-section' }, [head, body]);
+            }
+
+            function renderResult(decoded) {
+                var box = Tools.$('jwt-result');
+                var empty = Tools.$('jwt-empty');
+                box.innerHTML = '';
+                if (!decoded) { empty.style.display = 'block'; return; }
+                empty.style.display = 'none';
+
+                box.appendChild(renderSection('Header（头部）', JSON.stringify(decoded.header, null, 2), true));
+                box.appendChild(renderSection('Payload（载荷）', JSON.stringify(decoded.payload, null, 2), true));
+                box.appendChild(renderSection('Signature（签名）', decoded.signature, false));
+            }
+
+            function decodeJwt(token) {
+                if (!token.trim()) return null;
+                var parts = token.trim().split('.');
+                if (parts.length !== 3) {
+                    throw new Error('无效的 JWT 格式，应为三段式结构（header.payload.signature）');
+                }
+                var header, payload;
+                try {
+                    header = JSON.parse(base64UrlDecode(parts[0]));
+                    payload = JSON.parse(base64UrlDecode(parts[1]));
+                } catch (e) {
+                    throw new Error('JWT 解析失败，可能包含无效的 JSON 数据或 Base64 编码');
+                }
+                var signature = parts[2];
+                var isValid = !!parts[0] && !!parts[1] && !!parts[2];
+
+                var expirationStatus = 'not-set';
+                var expiresIn = '';
+                if (payload && typeof payload.exp === 'number') {
+                    var expDate = new Date(payload.exp * 1000);
+                    if (expDate.getTime() > Date.now()) {
+                        expirationStatus = 'valid';
+                        expiresIn = getTimeRemaining(expDate);
+                    } else {
+                        expirationStatus = 'expired';
+                    }
+                }
+                return { header: header, payload: payload, signature: signature, isValid: isValid, expirationStatus: expirationStatus, expiresIn: expiresIn };
+            }
+
+            function parse() {
+                var token = Tools.$('jwt-input').value;
+                Tools.clearBanner('banner');
+                if (!token.trim()) {
+                    renderParts(null);
+                    renderStatus(null);
+                    renderResult(null);
+                    return;
+                }
+                try {
+                    var decoded = decodeJwt(token);
+                    var parts = token.trim().split('.');
+                    if (parts.length === 3) {
+                        renderParts(parts);
+                    } else {
+                        renderParts(null);
+                    }
+                    renderStatus(decoded);
+                    renderResult(decoded);
+                } catch (e) {
+                    renderParts(null);
+                    renderStatus(null);
+                    renderResult(null);
+                    Tools.showBanner('banner', 'error', e.message);
+                }
+            }
+
+            function debouncedParse() {
+                clearTimeout(timer);
+                timer = setTimeout(parse, 300);
+            }
+
+            function loadExample() {
+                var now = Math.floor(Date.now() / 1000);
+                var header = { alg: 'HS256', typ: 'JWT' };
+                var payload = { sub: '1234567890', name: '极速箱用户', iat: now, exp: now + 3600 };
+                var sig = 'XqYSaj1HB9h0X5mJJwD9x_Z_U_Fel9YQcpP9ehZ0-0w';
+                var token = base64UrlEncode(JSON.stringify(header)) + '.' +
+                    base64UrlEncode(JSON.stringify(payload)) + '.' + sig;
+                Tools.$('jwt-input').value = token;
+                parse();
+            }
+
+            Tools.$('jwt-input').addEventListener('input', debouncedParse);
+            Tools.$('btn-example').addEventListener('click', loadExample);
+            Tools.$('btn-clear').addEventListener('click', function () {
+                Tools.$('jwt-input').value = '';
+                Tools.clearBanner('banner');
+                parse();
+            });
+            Tools.$('btn-copy-token').addEventListener('click', function () {
+                var token = Tools.$('jwt-input').value;
+                if (!token) return;
+                Tools.copyText(token, this, '已复制');
+            });
+
+            parse();
+        });
+    </script>
+</body>
+
+</html>

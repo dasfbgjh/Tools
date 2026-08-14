@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>服务进程管理</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./common.css">
+    <link rel="stylesheet" href="./processes.css">
+</head>
+
+<body>
+    <div class="admin-wrap">
+        <div class="lt-head">
+            <a class="lt-back" href="./index.html" title="返回工具列表">← 返回</a>
+            <div class="lt-head-text" style="flex:1;min-width:0;">
+                <h1 class="admin-title">服务进程管理</h1>
+                <p class="admin-subtitle">配置并启动/停止本机进程，实时查看输出 · 仅本机可访问</p>
+            </div>
+            <div class="lt-head-actions">
+                <button class="btn btn-primary" id="btn-new">+ 新建进程</button>
+            </div>
+        </div>
+
+        <div id="banner"></div>
+
+        <div class="proc-list" id="proc-list"></div>
+    </div>
+
+    <!-- 编辑/新建弹窗 -->
+    <div class="br-fs" id="p-modal" hidden>
+        <div class="br-fs-head" style="margin-bottom:0.5rem;">
+            <strong id="p-modal-title">新建进程</strong>
+        </div>
+        <div class="hs-form">
+            <div class="br-row">
+                <label class="br-label">名称</label>
+                <input type="text" class="br-input" id="f-name" placeholder="例如: 静态服务器" style="flex:1;">
+            </div>
+            <div class="br-row">
+                <label class="br-label">命令</label>
+                <input type="text" class="br-input" id="f-command" placeholder="例如: python 或 C:\path\to\app.exe"
+                    style="flex:1;font-family:ui-monospace,monospace;">
+            </div>
+            <div class="br-row">
+                <label class="br-label">参数</label>
+                <input type="text" class="br-input" id="f-args" placeholder="空格分隔的参数: -m http.server 8080"
+                    style="flex:1;">
+            </div>
+            <div class="br-row">
+                <label class="br-label">工作目录</label>
+                <input type="text" class="br-input" id="f-cwd" placeholder="留空使用进程默认" style="flex:1;">
+            </div>
+            <div class="br-row">
+                <label class="br-label">备注</label>
+                <textarea class="br-input" id="f-remarks" rows="3" placeholder="可选：描述此进程的用途，URL 链接会被自动识别"
+                    style="flex:1;min-height:4.5rem;resize:vertical;font-family:inherit;"></textarea>
+            </div>
+            <div class="br-row">
+                <label class="br-toggle">
+                    <input type="checkbox" id="f-inherit" checked>
+                    <span>继承系统环境变量</span>
+                </label>
+                <span class="br-spacer"></span>
+                <label class="br-toggle">
+                    <input type="checkbox" id="f-auto">
+                    <span>应用启动时自动启动</span>
+                </label>
+            </div>
+            <div class="br-group">
+                <div class="br-group-title">环境变量（PATH 行为：继承时追加到系统 PATH；不继承时替换）</div>
+                <div id="f-env"></div>
+                <button class="btn btn-sm" id="f-env-add">+ 添加环境变量</button>
+            </div>
+        </div>
+        <div class="br-fs-foot">
+            <span id="p-modal-err" class="banner-err" style="display:none;"></span>
+            <span class="br-spacer"></span>
+            <button class="btn btn-outline" data-modal-close>取消</button>
+            <button class="btn btn-primary" id="f-save">保存</button>
+        </div>
+    </div>
+
+    <!-- 日志查看器 -->
+    <div class="br-fs" id="log-modal" hidden>
+        <div class="br-fs-head" style="margin-bottom:0.5rem;">
+            <strong id="log-title">日志</strong>
+            <span class="br-spacer" style="flex:1;"></span>
+            <label class="br-toggle">
+                <input type="checkbox" id="log-auto" checked>
+                <span>自动滚动</span>
+            </label>
+            <button class="btn btn-sm btn-outline" id="log-clear">清空</button>
+            <button class="btn btn-ghost" data-modal-close title="关闭" aria-label="关闭" style="display:inline-flex; align-items:center; justify-content:center; padding: 0.25rem 0.4375rem;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                    <line x1="6" y1="18" x2="18" y2="6"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="proc-log" id="log-body"></div>
+        <div class="br-fs-foot">
+            <span id="log-stats">0 行</span>
+            <span class="br-spacer"></span>
+            <span id="log-status" class="br-status pending">未运行</span>
+        </div>
+    </div>
+
+    <script src="../api.js"></script>
+    <script src="./processes.js"></script>
+</body>
+
+</html>

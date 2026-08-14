@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON编辑器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner-container"></div>
+
+        <div class="tool-toolbar">
+            <button id="btn-import" class="btn btn-outline btn-sm" type="button">导入JSON</button>
+            <button id="btn-export" class="btn btn-outline btn-sm" type="button">导出JSON</button>
+            <button id="btn-copy" class="btn btn-outline btn-sm" type="button">复制JSON</button>
+            <button id="btn-add-root" class="btn btn-outline btn-sm" type="button">添加根节点</button>
+            <span class="spacer"></span>
+            <span class="tool-hint">当前路径：<span id="current-path" class="tool-monospace"
+                    style="color:var(--primary);">$</span></span>
+        </div>
+
+        <div class="tool-grid-2">
+            <div class="tool-card">
+                <h2>树形编辑器</h2>
+                <div id="tree" class="tool-output"
+                    style="min-height:420px;max-height:640px;white-space:normal;overflow:auto;"></div>
+                <p class="tool-hint">点击节点行可选中；修改类型/值会实时同步右侧输出</p>
+            </div>
+            <div class="tool-card">
+                <h2>JSON 输出</h2>
+                <pre id="output" class="json-view tool-output" style="min-height:420px;max-height:640px;"></pre>
+            </div>
+        </div>
+
+        <div id="import-modal"
+            style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:100;align-items:center;justify-content:center;">
+            <div
+                style="background:var(--surface);border-radius:var(--radius);padding:1.25rem;width:90%;max-width:640px;box-shadow:var(--shadow-md);">
+                <h3 id="modal-title" style="margin:0 0 0.75rem;font-size:1rem;">导入 JSON</h3>
+                <textarea id="modal-text" class="tool-textarea lg" placeholder="在此粘贴 JSON 文本..."></textarea>
+                <div style="display:flex;justify-content:flex-end;gap:0.5rem;margin-top:0.75rem;">
+                    <button id="modal-cancel" class="btn btn-ghost btn-sm" type="button">取消</button>
+                    <button id="modal-confirm" class="btn btn-sm" type="button">确认</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var $ = Tools.$;
+            var treeEl = $('tree');
+            var outputEl = $('output');
+            var pathEl = $('current-path');
+            var importModal = $('import-modal');
+            var modalTitle = $('modal-title');
+            var modalText = $('modal-text');
+            var modalMode = 'import';
+
+            var root = { example: '在此编辑您的JSON数据', count: 42, list: [1, 2, 3] };
+
+            function isObject(v) { return v !== null && typeof v === 'object'; }
+
+            function syncOutput() {
+                try {
+                    var s = JSON.stringify(root, null, 2);
+                    outputEl.innerHTML = Tools.highlightJson(s);
+                } catch (e) {
+                    outputEl.textContent = 'JSON 序列化失败：' + e.message;
+                }
+            }
+
+            function getByPath(pathArr) {
+                var cur = root;
+                for (var i = 0; i < pathArr.length; i++) {
+                    if (cur === null || cur === undefined) return undefined;
+                    cur = cur[pathArr[i]];
+                }
+                return cur;
+            }
+
+            function setByPath(pathArr, value) {
+                if (pathArr.length === 0) { root = value; return; }
+                var parent = getByPath(pathArr.slice(0, -1));
+                var last = pathArr[pathArr.length - 1];
+                parent[last] = value;
+            }
+
+            function deleteByPath(pathArr) {
+                if (pathArr.length === 0) return;
+                var parent = getByPath(pathArr.slice(0, -1));
+                var last = pathArr[pathArr.length - 1];
+                if (Array.isArray(parent)) parent.splice(last, 1);
+                else delete parent[last];
+            }
+
+            function pathToStr(pathArr) {
+                if (pathArr.length === 0) return '$';
+                var s = '$';
+                for (var i = 0; i < pathArr.length; i++) {
+                    var seg = pathArr[i];
+                    if (typeof seg === 'number') s += '[' + seg + ']';
+                    else s += '.' + seg;
+                }
+                return s;
+            }
+
+            function valueType(v) {
+                if (v === null) return 'null';
+                if (Array.isArray(v)) return 'array';
+                return typeof v;
+            }
+
+            function selectNode(pathArr) {
+                pathEl.textContent = pathToStr(pathArr);
+                Tools.$$('.json-node-row', treeEl).forEach(function (n) { n.classList.remove('selected'); });
+                var pathStr = pathToStr(pathArr);
+                var target = treeEl.querySelector('.json-node[data-path="' + pathStr.replace(/"/g, '\\"') + '"]');
+                if (target) {
+                    var row = target.querySelector(':scope > .json-node-row');
+                    if (row) row.classList.add('selected');
+                }
+            }
+
+            function renderNode(pathArr, key, value, isRoot) {
+                var container = Tools.el('div', { class: 'json-node', style: { marginLeft: '1rem', marginTop: '0.125rem' } });
+                var row = Tools.el('div', { class: 'json-node-row', style: { display: 'flex', alignItems: 'center', gap: '0.375rem', paddingTop: '0.125rem', paddingBottom: '0.125rem', flexWrap: 'wrap', cursor: 'pointer' } });
+                var pathStr = pathToStr(pathArr);
+                container.dataset.path = pathStr;
+
+                if (!isRoot) {
+                    if (typeof key === 'string') {
+                        var keyInput = Tools.el('input', {
+                            class: 'tool-input',
+                            value: key,
+                            style: { width: '120px', fontFamily: 'inherit' },
+                            onchange: function () {
+                                var newKey = keyInput.value;
+                                if (newKey === key) return;
+                                var parent = getByPath(pathArr.slice(0, -1));
+                                if (Array.isArray(parent)) return;
+                                if (newKey === '') { keyInput.value = key; return; }
+                                if (newKey in parent) { alert('键已存在：' + newKey); keyInput.value = key; return; }
+                                parent[newKey] = value;
+                                delete parent[key];
+                                rebuild();
+                                selectNode(pathArr.slice(0, -1).concat([newKey]));
+                            }
+                        });
+                        row.appendChild(keyInput);
+                        row.appendChild(document.createTextNode(': '));
+                    } else {
+                        row.appendChild(Tools.el('span', { class: 'tool-tag', text: String(key) }));
+                    }
+                } else {
+                    row.appendChild(Tools.el('span', { class: 'tool-tag', text: 'root' }));
+                }
+
+                var type = valueType(value);
+                var typeSel = Tools.el('select', { class: 'tool-select', style: { width: 'auto' } });
+                ['string', 'number', 'boolean', 'null', 'object', 'array'].forEach(function (t) {
+                    var opt = Tools.el('option', { value: t, text: t });
+                    if (t === type) opt.selected = true;
+                    typeSel.appendChild(opt);
+                });
+                typeSel.addEventListener('change', function () {
+                    var newType = typeSel.value;
+                    var newVal;
+                    if (newType === 'string') newVal = '';
+                    else if (newType === 'number') newVal = 0;
+                    else if (newType === 'boolean') newVal = false;
+                    else if (newType === 'null') newVal = null;
+                    else if (newType === 'object') newVal = {};
+                    else if (newType === 'array') newVal = [];
+                    if (isRoot) { root = newVal; }
+                    else setByPath(pathArr, newVal);
+                    rebuild();
+                    selectNode(pathArr);
+                });
+                row.appendChild(typeSel);
+
+                if (type === 'string') {
+                    var inp = Tools.el('input', { class: 'tool-input', value: value, style: { width: '200px' } });
+                    inp.addEventListener('input', function () {
+                        if (isRoot) root = inp.value;
+                        else setByPath(pathArr, inp.value);
+                        syncOutput();
+                    });
+                    row.appendChild(inp);
+                } else if (type === 'number') {
+                    var numInp = Tools.el('input', { class: 'tool-input', type: 'number', value: value, style: { width: '120px' } });
+                    numInp.addEventListener('input', function () {
+                        var n = parseFloat(numInp.value);
+                        if (isNaN(n)) n = 0;
+                        if (isRoot) root = n;
+                        else setByPath(pathArr, n);
+                        syncOutput();
+                    });
+                    row.appendChild(numInp);
+                } else if (type === 'boolean') {
+                    var boolLabel = Tools.el('label', { class: 'tool-check-row', style: { margin: 0 } }, [
+                        Tools.el('input', {
+                            type: 'checkbox',
+                            checked: value,
+                            onchange: function (e) {
+                                if (isRoot) root = e.target.checked;
+                                else setByPath(pathArr, e.target.checked);
+                                boolLabel.lastChild.textContent = e.target.checked ? 'true' : 'false';
+                                syncOutput();
+                            }
+                        }),
+                        document.createTextNode(value ? 'true' : 'false')
+                    ]);
+                    row.appendChild(boolLabel);
+                } else if (type === 'null') {
+                    row.appendChild(Tools.el('span', { class: 'tool-hint', text: 'null' }));
+                } else if (type === 'object') {
+                    var keys = Object.keys(value);
+                    row.appendChild(Tools.el('span', { class: 'tool-hint', text: '{} (' + keys.length + ')' }));
+                    var addKeyBtn = Tools.el('button', { class: 'btn btn-ghost btn-sm', type: 'button', text: '+ 键' });
+                    addKeyBtn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        var i = 1;
+                        var newKey = 'field' + i;
+                        while (newKey in value) { i++; newKey = 'field' + i; }
+                        value[newKey] = '';
+                        rebuild();
+                        selectNode(pathArr.concat([newKey]));
+                    });
+                    row.appendChild(addKeyBtn);
+                } else if (type === 'array') {
+                    row.appendChild(Tools.el('span', { class: 'tool-hint', text: '[] (' + value.length + ')' }));
+                    var addIdxBtn = Tools.el('button', { class: 'btn btn-ghost btn-sm', type: 'button', text: '+ 项' });
+                    addIdxBtn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        value.push('');
+                        rebuild();
+                        selectNode(pathArr.concat([value.length - 1]));
+                    });
+                    row.appendChild(addIdxBtn);
+                }
+
+                if (!isRoot) {
+                    var delBtn = Tools.el('button', { class: 'btn btn-ghost btn-sm', type: 'button', text: '删除', title: '删除此节点' });
+                    delBtn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        deleteByPath(pathArr);
+                        rebuild();
+                    });
+                    row.appendChild(delBtn);
+                }
+
+                row.addEventListener('click', function (e) {
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'BUTTON' || e.target.tagName === 'LABEL') return;
+                    selectNode(pathArr);
+                });
+
+                container.appendChild(row);
+
+                if (type === 'object') {
+                    Object.keys(value).forEach(function (k) {
+                        container.appendChild(renderNode(pathArr.concat([k]), k, value[k], false));
+                    });
+                } else if (type === 'array') {
+                    for (var i = 0; i < value.length; i++) {
+                        container.appendChild(renderNode(pathArr.concat([i]), i, value[i], false));
+                    }
+                }
+                return container;
+            }
+
+            function rebuild() {
+                treeEl.innerHTML = '';
+                treeEl.appendChild(renderNode([], null, root, true));
+                syncOutput();
+            }
+
+            function openModal(mode) {
+                modalMode = mode;
+                modalTitle.textContent = mode === 'import' ? '导入 JSON' : '导出 JSON';
+                modalText.value = JSON.stringify(root, null, 2);
+                if (mode === 'export') modalText.readOnly = true; else modalText.readOnly = false;
+                importModal.style.display = 'flex';
+                modalText.focus();
+            }
+
+            function closeModal() {
+                importModal.style.display = 'none';
+            }
+
+            $('btn-import').addEventListener('click', function () { openModal('import'); });
+            $('btn-export').addEventListener('click', function () { openModal('export'); });
+            $('modal-cancel').addEventListener('click', closeModal);
+            $('modal-confirm').addEventListener('click', function () {
+                if (modalMode === 'import') {
+                    try {
+                        var parsed = JSON.parse(modalText.value);
+                        root = parsed;
+                        rebuild();
+                        closeModal();
+                        Tools.showBanner('banner-container', 'success', '✓ 导入成功');
+                    } catch (e) {
+                        Tools.showBanner('banner-container', 'error', '✗ JSON 解析失败：' + e.message);
+                    }
+                } else {
+                    closeModal();
+                }
+            });
+            $('btn-copy').addEventListener('click', function () {
+                Tools.copyText(JSON.stringify(root, null, 2), $('btn-copy'), '已复制');
+            });
+            $('btn-add-root').addEventListener('click', function () {
+                if (!isObject(root) || Array.isArray(root)) {
+                    root = {};
+                }
+                var i = 1;
+                var newKey = 'field' + i;
+                while (newKey in root) { i++; newKey = 'field' + i; }
+                root[newKey] = '';
+                rebuild();
+                selectNode([newKey]);
+            });
+
+            importModal.addEventListener('click', function (e) {
+                if (e.target === importModal) closeModal();
+            });
+
+            rebuild();
+        });
+    </script>
+</body>
+
+</html>

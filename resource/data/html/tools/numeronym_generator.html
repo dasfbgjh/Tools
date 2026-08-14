@@ -1,0 +1,51 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数字缩写生成器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./numeronym_generator.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div class="tool-card">
+            <h2>输入文本</h2>
+            <textarea id="input" class="tool-textarea" placeholder="输入单词或句子...">internationalization accessibility localization Kubernetes</textarea>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>数字缩写结果</h2>
+            <div id="result" class="numeronym-result"></div>
+            <div class="tool-toolbar" style="margin-top:0.75rem;margin-bottom:0;">
+                <span class="tool-hint" id="stats" style="margin:0;"></span>
+                <div class="spacer"></div>
+                <button id="btn-copy" class="btn btn-outline btn-sm" type="button">复制缩写</button>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>常见数字缩写</h2>
+            <div class="numeronym-ref">
+                <div class="numeronym-ref-item"><span class="word">internationalization</span><span class="arrow">→</span><span class="abbr">i18n</span></div>
+                <div class="numeronym-ref-item"><span class="word">localization</span><span class="arrow">→</span><span class="abbr">l10n</span></div>
+                <div class="numeronym-ref-item"><span class="word">accessibility</span><span class="arrow">→</span><span class="abbr">a11y</span></div>
+                <div class="numeronym-ref-item"><span class="word">canonicalization</span><span class="arrow">→</span><span class="abbr">c14n</span></div>
+                <div class="numeronym-ref-item"><span class="word">personalization</span><span class="arrow">→</span><span class="abbr">p13n</span></div>
+                <div class="numeronym-ref-item"><span class="word">globalization</span><span class="arrow">→</span><span class="abbr">g11n</span></div>
+                <div class="numeronym-ref-item"><span class="word">Kubernetes</span><span class="arrow">→</span><span class="abbr">k8s</span></div>
+            </div>
+            <p class="tool-hint" style="margin-top:0.75rem;">规则：长度大于 3 的单词，首字母 + 中间字符数 + 尾字母</p>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./numeronym_generator.js"></script>
+</body>
+
+</html>

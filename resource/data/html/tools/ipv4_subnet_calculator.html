@@ -1,0 +1,69 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPv4 子网计算器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./ipv4_subnet_calculator.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner-container"></div>
+
+        <div class="tool-card">
+            <h2>输入 CIDR</h2>
+            <div class="cidr-input-row">
+                <input type="text" id="cidr-input" class="tool-input tool-monospace" placeholder="例如 192.168.1.1/24" value="192.168.1.1/24">
+                <button id="btn-compute" class="btn btn-sm" type="button">计算</button>
+            </div>
+            <p class="tool-hint">支持 192.168.1.0/24、10.0.0.5/16 等格式，前缀长度 0-32</p>
+        </div>
+
+        <div class="tool-grid-2" style="margin-top:1.5rem;">
+            <div class="tool-card">
+                <h2>子网信息</h2>
+                <ul class="tool-result-list" id="result-list">
+                    <li><span class="label">网络地址</span><span class="value" data-key="network">—</span></li>
+                    <li><span class="label">广播地址</span><span class="value" data-key="broadcast">—</span></li>
+                    <li><span class="label">子网掩码</span><span class="value" data-key="mask">—</span></li>
+                    <li><span class="label">通配符掩码</span><span class="value" data-key="wildcard">—</span></li>
+                    <li><span class="label">CIDR 表示</span><span class="value" data-key="cidr">—</span></li>
+                    <li><span class="label">IP 类型</span><span class="value" data-key="class">—</span></li>
+                </ul>
+            </div>
+
+            <div class="tool-card">
+                <h2>主机范围</h2>
+                <ul class="tool-result-list">
+                    <li><span class="label">首个主机</span><span class="value" data-key="firstHost">—</span></li>
+                    <li><span class="label">最后主机</span><span class="value" data-key="lastHost">—</span></li>
+                    <li><span class="label">可用主机数</span><span class="value" data-key="hostCount">—</span></li>
+                    <li><span class="label">总 IP 数</span><span class="value" data-key="totalIp">—</span></li>
+                    <li><span class="label">掩码位数</span><span class="value" data-key="prefix">—</span></li>
+                    <li><span class="label">二进制掩码</span><span class="value" data-key="binaryMask" style="font-size:0.75rem;">—</span></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>常用 CIDR 参考</h2>
+            <div class="cidr-ref-table">
+                <div class="cidr-ref-header">
+                    <span>CIDR</span><span>掩码</span><span>可用主机</span>
+                </div>
+                <div class="cidr-ref-body" id="cidr-ref"></div>
+            </div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./ipv4_subnet_calculator.js"></script>
+</body>
+
+</html>

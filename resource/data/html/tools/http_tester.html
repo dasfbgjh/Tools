@@ -1,0 +1,620 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTTP接口测试</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        /* HTTP tester-specific styles */
+        .http-row {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .http-row .method-select {
+            width: 130px;
+            flex-shrink: 0;
+        }
+
+        .http-row .url-input {
+            flex: 1;
+        }
+
+        .header-row {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .header-row .h-key {
+            flex: 1;
+        }
+
+        .header-row .h-val {
+            flex: 1.5;
+        }
+
+        .header-row .btn-remove {
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
+            padding: 0;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.625rem;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.8125rem;
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+        }
+
+        .status-2xx {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-3xx {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-4xx {
+            background: #ffedd5;
+            color: #9a3412;
+        }
+
+        .status-5xx {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-err {
+            background: var(--bg-muted);
+            color: #6b7280;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .stat-box {
+            background: var(--bg-muted);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.5rem 0.625rem;
+        }
+
+        .stat-box .stat-label {
+            font-size: 0.6875rem;
+            color: var(--text-light);
+            margin-bottom: 0.125rem;
+        }
+
+        .stat-box .stat-value {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text);
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+        }
+
+        .resp-tabs {
+            display: flex;
+            gap: 0.25rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 0.75rem;
+        }
+
+        .resp-tab {
+            padding: 0.375rem 0.75rem;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            border-bottom: 2px solid transparent;
+        }
+
+        .resp-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            font-weight: 600;
+        }
+
+        .history-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.625rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 0.375rem;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        .history-item:hover {
+            border-color: var(--primary);
+            background: var(--bg-muted);
+        }
+
+        .history-item .h-method {
+            font-weight: 600;
+            color: var(--primary);
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+            flex-shrink: 0;
+        }
+
+        .history-item .h-url {
+            color: var(--text-muted);
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .history-item .h-time {
+            color: var(--text-light);
+            flex-shrink: 0;
+            font-size: 0.6875rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+
+
+        <div id="http-banner"></div>
+
+        <div class="tool-grid-2">
+            <!-- 左侧:请求配置 -->
+            <div>
+                <div class="tool-card" style="margin-bottom: 1.5rem;">
+                    <div class="tool-toolbar" style="margin-bottom: 0.75rem;">
+                        <h2 style="margin: 0;">HTTP请求</h2>
+                        <span class="spacer"></span>
+                        <button type="button" id="btn-clear" class="btn btn-ghost btn-sm">清空</button>
+                    </div>
+
+                    <label class="tool-label" for="url-input">请求URL</label>
+                    <div class="http-row">
+                        <select id="method-select" class="tool-select method-select">
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="DELETE">DELETE</option>
+                            <option value="PATCH">PATCH</option>
+                            <option value="HEAD">HEAD</option>
+                            <option value="OPTIONS">OPTIONS</option>
+                        </select>
+                        <input type="text" id="url-input" class="tool-input url-input"
+                            placeholder="http://example.com/api" value="http://jsonplaceholder.typicode.com/posts/1"
+                            autocomplete="off">
+                    </div>
+
+                    <div class="tool-toolbar" style="margin-top: 0.5rem;">
+                        <button type="button" id="btn-send" class="btn btn-sm">发送请求</button>
+                        <span class="spacer"></span>
+                        <span id="send-status" class="tool-hint" style="margin: 0;"></span>
+                    </div>
+
+                    <hr style="border: none; border-top: 1px solid var(--border); margin: 1rem 0;">
+
+                    <!-- 请求头 -->
+                    <div class="tool-toolbar" style="margin-bottom: 0.5rem;">
+                        <h3 style="font-size: 0.875rem; font-weight: 600; margin: 0; color: var(--text);">请求头</h3>
+                        <span class="spacer"></span>
+                        <button type="button" id="btn-add-header" class="btn btn-outline btn-sm">添加请求头</button>
+                    </div>
+                    <div id="headers-list"></div>
+
+                    <!-- 请求体 -->
+                    <div id="body-section" class="hidden" style="margin-top: 1rem;">
+                        <div class="tool-toolbar" style="margin-bottom: 0.5rem;">
+                            <h3 style="font-size: 0.875rem; font-weight: 600; margin: 0; color: var(--text);">请求体</h3>
+                            <span class="spacer"></span>
+                            <select id="content-type-select" class="tool-select" style="width: auto;">
+                                <option value="application/json">application/json</option>
+                                <option value="text/plain">text/plain</option>
+                                <option value="application/x-www-form-urlencoded">application/x-www-form-urlencoded
+                                </option>
+                            </select>
+                        </div>
+                        <textarea id="body-input" class="tool-textarea sm"
+                            placeholder='输入请求体内容,例如:{"key":"value"}'></textarea>
+                    </div>
+                </div>
+
+                <!-- 历史记录 -->
+                <div class="tool-card">
+                    <div class="tool-toolbar" style="margin-bottom: 0.5rem;">
+                        <h3 style="font-size: 0.875rem; font-weight: 600; margin: 0; color: var(--text);">历史记录</h3>
+                        <span class="spacer"></span>
+                        <button type="button" id="btn-clear-history" class="btn btn-ghost btn-sm">清空历史</button>
+                    </div>
+                    <div id="history-list">
+                        <div class="tool-hint" style="text-align: center; padding: 1rem 0;">暂无历史记录</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧:响应结果 -->
+            <div class="tool-card">
+                <h2>响应结果</h2>
+
+                <div id="resp-empty" style="text-align: center; padding: 3rem 1rem; color: var(--text-light);">
+                    <div style="font-size: 48px; opacity: 0.3; margin-bottom: 0.5rem;">🌐</div>
+                    <p style="font-size: 0.8125rem;">发送请求后在此查看响应结果</p>
+                </div>
+
+                <div id="resp-result" class="hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var HISTORY_KEY = 'http_tester_history';
+            var MAX_HISTORY = 5;
+            var METHODS_WITH_BODY = ['POST', 'PUT', 'PATCH'];
+
+            var urlInput = Tools.$('url-input');
+            var methodSelect = Tools.$('method-select');
+            var btnSend = Tools.$('btn-send');
+            var btnClear = Tools.$('btn-clear');
+            var btnAddHeader = Tools.$('btn-add-header');
+            var headersList = Tools.$('headers-list');
+            var bodySection = Tools.$('body-section');
+            var bodyInput = Tools.$('body-input');
+            var contentTypeSelect = Tools.$('content-type-select');
+            var sendStatus = Tools.$('send-status');
+            var respEmpty = Tools.$('resp-empty');
+            var respResult = Tools.$('resp-result');
+            var historyList = Tools.$('history-list');
+            var btnClearHistory = Tools.$('btn-clear-history');
+
+            var headerSeq = 0;
+
+            // ===== 请求头管理 =====
+            function makeHeaderRow(key, value) {
+                var id = 'h-' + (++headerSeq);
+                var row = Tools.el('div', { class: 'header-row', 'data-id': id }, [
+                    Tools.el('input', { type: 'text', class: 'tool-input h-key', placeholder: '名称', value: key || '' }),
+                    Tools.el('input', { type: 'text', class: 'tool-input h-val', placeholder: '值', value: value || '' }),
+                    Tools.el('button', {
+                        type: 'button',
+                        class: 'btn btn-ghost btn-sm btn-remove',
+                        title: '删除',
+                        onclick: function () { row.remove(); }
+                    }, ['×'])
+                ]);
+                return row;
+            }
+
+            function addHeader(key, value) {
+                headersList.appendChild(makeHeaderRow(key, value));
+            }
+
+            function collectHeaders() {
+                var headers = {};
+                var rows = headersList.querySelectorAll('.header-row');
+                rows.forEach(function (row) {
+                    var inputs = row.querySelectorAll('input');
+                    var k = inputs[0].value.trim();
+                    var v = inputs[1].value.trim();
+                    if (k) headers[k] = v;
+                });
+                return headers;
+            }
+
+            btnAddHeader.addEventListener('click', function () { addHeader(); });
+
+            // ===== 方法切换:显示/隐藏请求体 =====
+            function updateBodySection() {
+                if (METHODS_WITH_BODY.indexOf(methodSelect.value) !== -1) {
+                    bodySection.classList.remove('hidden');
+                } else {
+                    bodySection.classList.add('hidden');
+                }
+            }
+            methodSelect.addEventListener('change', updateBodySection);
+
+            // content-type 变化时同步请求头中的 Content-Type
+            contentTypeSelect.addEventListener('change', function () {
+                var ct = contentTypeSelect.value;
+                var found = false;
+                var rows = headersList.querySelectorAll('.header-row');
+                rows.forEach(function (row) {
+                    var inputs = row.querySelectorAll('input');
+                    if (inputs[0].value.trim().toLowerCase() === 'content-type') {
+                        inputs[1].value = ct;
+                        found = true;
+                    }
+                });
+                if (!found) addHeader('Content-Type', ct);
+            });
+
+            // ===== 清空 =====
+            btnClear.addEventListener('click', function () {
+                urlInput.value = 'http://jsonplaceholder.typicode.com/posts/1';
+                methodSelect.value = 'GET';
+                headersList.innerHTML = '';
+                addHeader('Content-Type', 'application/json');
+                bodyInput.value = '';
+                contentTypeSelect.value = 'application/json';
+                updateBodySection();
+                Tools.clearBanner('http-banner');
+            });
+
+            // ===== 格式化字节大小 =====
+            function formatSize(bytes) {
+                if (bytes == null) return '-';
+                if (bytes < 1024) return bytes + ' B';
+                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+                return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+            }
+
+            // ===== 状态码样式 =====
+            function statusClass(code) {
+                if (code >= 200 && code < 300) return 'status-2xx';
+                if (code >= 300 && code < 400) return 'status-3xx';
+                if (code >= 400 && code < 500) return 'status-4xx';
+                if (code >= 500) return 'status-5xx';
+                return 'status-err';
+            }
+
+            // ===== 渲染响应 =====
+            function renderResponse(res) {
+                respEmpty.classList.add('hidden');
+                respResult.classList.remove('hidden');
+                respResult.innerHTML = '';
+
+                var status = res.status;
+                var statusText = res.statusText || '';
+                var headers = res.headers || {};
+                var data = res.data;
+                var time = res.time;
+                var size = res.size;
+
+                // 统计信息
+                var statGrid = Tools.el('div', { class: 'stat-grid' }, [
+                    Tools.el('div', { class: 'stat-box' }, [
+                        Tools.el('div', { class: 'stat-label', text: '状态码' }),
+                        Tools.el('div', { class: 'stat-value' }, [
+                            Tools.el('span', { class: 'status-badge ' + statusClass(status), text: status + ' ' + statusText })
+                        ])
+                    ]),
+                    Tools.el('div', { class: 'stat-box' }, [
+                        Tools.el('div', { class: 'stat-label', text: '响应时间' }),
+                        Tools.el('div', { class: 'stat-value', text: (time != null ? time : '-') + ' ms' })
+                    ]),
+                    Tools.el('div', { class: 'stat-box' }, [
+                        Tools.el('div', { class: 'stat-label', text: '响应大小' }),
+                        Tools.el('div', { class: 'stat-value', text: formatSize(size) })
+                    ])
+                ]);
+                respResult.appendChild(statGrid);
+
+                // 标签页:响应体 / 响应头
+                var tabs = Tools.el('div', { class: 'resp-tabs' }, [
+                    Tools.el('button', { type: 'button', class: 'resp-tab active', 'data-tab': 'body', text: '响应体' }),
+                    Tools.el('button', { type: 'button', class: 'resp-tab', 'data-tab': 'headers', text: '响应头' })
+                ]);
+                respResult.appendChild(tabs);
+
+                var bodyPanel = Tools.el('div', { class: 'resp-panel', 'data-panel': 'body' });
+                var headersPanel = Tools.el('div', { class: 'resp-panel hidden', 'data-panel': 'headers' });
+
+                // 响应体
+                var bodyText;
+                var isJson = false;
+                if (typeof data === 'string') {
+                    bodyText = data;
+                    // 尝试检测JSON
+                    try {
+                        var parsed = JSON.parse(data);
+                        bodyText = JSON.stringify(parsed, null, 2);
+                        isJson = true;
+                    } catch (e) {
+                        isJson = false;
+                    }
+                } else if (data != null) {
+                    try {
+                        bodyText = JSON.stringify(data, null, 2);
+                        isJson = true;
+                    } catch (e) {
+                        bodyText = String(data);
+                    }
+                } else {
+                    bodyText = '';
+                }
+
+                if (isJson && bodyText) {
+                    var jsonView = Tools.el('div', { class: 'tool-output json-view' });
+                    jsonView.innerHTML = Tools.highlightJson(bodyText);
+                    bodyPanel.appendChild(jsonView);
+                } else {
+                    bodyPanel.appendChild(Tools.el('div', { class: 'tool-output' + (bodyText ? '' : ' empty'), text: bodyText || '(空响应体)' }));
+                }
+
+                // 复制响应体按钮
+                var copyBar = Tools.el('div', { class: 'tool-toolbar', style: { marginTop: '0.5rem' } }, [
+                    Tools.el('span', { class: 'spacer' }),
+                    Tools.el('button', {
+                        type: 'button',
+                        class: 'btn btn-ghost btn-sm',
+                        onclick: function () { Tools.copyText(bodyText, this, '已复制'); }
+                    }, ['复制响应体'])
+                ]);
+                bodyPanel.appendChild(copyBar);
+
+                // 响应头列表
+                var headerKeys = Object.keys(headers);
+                if (headerKeys.length === 0) {
+                    headersPanel.appendChild(Tools.el('div', { class: 'tool-output empty', text: '(无响应头)' }));
+                } else {
+                    var list = Tools.el('ul', { class: 'tool-result-list' }, headerKeys.map(function (k) {
+                        return Tools.el('li', {}, [
+                            Tools.el('span', { class: 'label tool-monospace', text: k }),
+                            Tools.el('span', { class: 'value tool-monospace', text: headers[k] })
+                        ]);
+                    }));
+                    headersPanel.appendChild(list);
+                }
+
+                respResult.appendChild(bodyPanel);
+                respResult.appendChild(headersPanel);
+
+                // 标签页切换
+                tabs.querySelectorAll('.resp-tab').forEach(function (tab) {
+                    tab.addEventListener('click', function () {
+                        tabs.querySelectorAll('.resp-tab').forEach(function (t) { t.classList.remove('active'); });
+                        tab.classList.add('active');
+                        var target = tab.getAttribute('data-tab');
+                        bodyPanel.classList.toggle('hidden', target !== 'body');
+                        headersPanel.classList.toggle('hidden', target !== 'headers');
+                    });
+                });
+            }
+
+            // ===== 历史记录 =====
+            function loadHistory() {
+                try {
+                    var raw = localStorage.getItem(HISTORY_KEY);
+                    if (!raw) return [];
+                    return JSON.parse(raw) || [];
+                } catch (e) { return []; }
+            }
+
+            function saveHistory(list) {
+                try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); } catch (e) { }
+            }
+
+            function addHistory(url, method) {
+                var list = loadHistory();
+                // 去重:相同url+method移除旧的
+                list = list.filter(function (h) { return !(h.url === url && h.method === method); });
+                list.unshift({ url: url, method: method, time: Date.now() });
+                if (list.length > MAX_HISTORY) list = list.slice(0, MAX_HISTORY);
+                saveHistory(list);
+                renderHistory();
+            }
+
+            function renderHistory() {
+                var list = loadHistory();
+                historyList.innerHTML = '';
+                if (list.length === 0) {
+                    historyList.appendChild(Tools.el('div', { class: 'tool-hint', style: { textAlign: 'center', padding: '1rem 0' }, text: '暂无历史记录' }));
+                    return;
+                }
+                list.forEach(function (item) {
+                    var d = new Date(item.time);
+                    var timeStr = d.getHours().toString().padStart(2, '0') + ':' + d.getMinutes().toString().padStart(2, '0') + ':' + d.getSeconds().toString().padStart(2, '0');
+                    var row = Tools.el('div', { class: 'history-item', title: item.url }, [
+                        Tools.el('span', { class: 'h-method', text: item.method }),
+                        Tools.el('span', { class: 'h-url', text: item.url }),
+                        Tools.el('span', { class: 'h-time', text: timeStr })
+                    ]);
+                    row.addEventListener('click', function () {
+                        urlInput.value = item.url;
+                        methodSelect.value = item.method;
+                        updateBodySection();
+                    });
+                    historyList.appendChild(row);
+                });
+            }
+
+            btnClearHistory.addEventListener('click', function () {
+                if (confirm('确定要清空历史记录吗?')) {
+                    saveHistory([]);
+                    renderHistory();
+                }
+            });
+
+            // ===== 发送请求 =====
+            function sendRequest() {
+                var url = urlInput.value.trim();
+                var method = methodSelect.value;
+
+                if (!url) {
+                    Tools.showBanner('http-banner', 'error', 'URL不能为空');
+                    return;
+                }
+                if (!/^https?:\/\//i.test(url)) {
+                    Tools.showBanner('http-banner', 'error', 'URL必须以http://或https://开头');
+                    return;
+                }
+
+                var headers = collectHeaders();
+                var body = '';
+                if (METHODS_WITH_BODY.indexOf(method) !== -1) {
+                    body = bodyInput.value;
+                    // 确保Content-Type存在
+                    var hasCt = Object.keys(headers).some(function (k) { return k.toLowerCase() === 'content-type'; });
+                    if (!hasCt) headers['Content-Type'] = contentTypeSelect.value;
+                }
+
+                btnSend.disabled = true;
+                sendStatus.textContent = '请求中...';
+                Tools.clearBanner('http-banner');
+
+                var payload = { url: url, method: method, headers: headers, body: body };
+
+                Api.tools.proxy(payload).then(function (res) {
+                    if (res && res._status >= 200 && res._status < 300 && res.status != null) {
+                        renderResponse(res);
+                        addHistory(url, method);
+                    } else {
+                        var msg = (res && res.error) || ('请求失败,HTTP状态:' + (res && res._status != null ? res._status : '未知'));
+                        Tools.showBanner('http-banner', 'error', msg);
+                        // 即使是错误响应,如果包含status也尝试渲染
+                        if (res && res.status != null) {
+                            renderResponse(res);
+                        } else {
+                            respEmpty.classList.remove('hidden');
+                            respResult.classList.add('hidden');
+                        }
+                    }
+                }).catch(function (err) {
+                    Tools.showBanner('http-banner', 'error', '请求失败:' + (err && err.message ? err.message : '网络错误'));
+                    respEmpty.classList.remove('hidden');
+                    respResult.classList.add('hidden');
+                }).then(function () {
+                    btnSend.disabled = false;
+                    sendStatus.textContent = '';
+                });
+            }
+
+            btnSend.addEventListener('click', sendRequest);
+            urlInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    sendRequest();
+                }
+            });
+
+            // ===== 初始化 =====
+            addHeader('Content-Type', 'application/json');
+            updateBodySection();
+            renderHistory();
+        });
+    </script>
+</body>
+
+</html>

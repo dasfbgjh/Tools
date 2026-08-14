@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML实体编解码</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div class="tool-page">
+        <div class="tool-card">
+            <div id="banner"></div>
+
+            <div class="tool-toolbar">
+                <button class="btn btn-outline btn-sm" id="btn-encode">编码</button>
+                <button class="btn btn-outline btn-sm" id="btn-decode">解码</button>
+                <button class="btn btn-outline btn-sm" id="btn-copy">复制结果</button>
+                <button class="btn btn-outline btn-sm" id="btn-swap">交换</button>
+                <span class="spacer"></span>
+                <button class="btn btn-outline btn-sm" id="btn-clear">清空</button>
+            </div>
+
+            <div class="tool-toolbar" style="margin-top:0.5rem;margin-bottom:0.5rem;">
+                <label class="tool-check-row">
+                    <input type="checkbox" id="opt-named" checked> 编码为命名实体
+                </label>
+                <label class="tool-check-row">
+                    <input type="checkbox" id="opt-numeric"> 编码为数字实体
+                </label>
+                <label class="tool-check-row">
+                    <input type="checkbox" id="opt-decode-all"> 解码所有实体
+                </label>
+            </div>
+
+            <div class="tool-grid-2">
+                <div>
+                    <label class="tool-label" id="input-label">输入原始文本</label>
+                    <textarea class="tool-textarea" id="input-text" placeholder="在此输入要编码的文本..."></textarea>
+                </div>
+                <div>
+                    <label class="tool-label" id="output-label">编码结果</label>
+                    <textarea class="tool-textarea" id="output-text" readonly placeholder="编码结果将显示在这里..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>常用实体参考</h2>
+            <div class="tool-result-list">
+                <li><span class="label">&amp;</span><span class="value">&amp;amp;</span></li>
+                <li><span class="label">&lt;</span><span class="value">&amp;lt;</span></li>
+                <li><span class="label">&gt;</span><span class="value">&amp;gt;</span></li>
+                <li><span class="label">&quot;</span><span class="value">&amp;quot;</span></li>
+                <li><span class="label">&apos;</span><span class="value">&amp;apos;</span></li>
+                <li><span class="label">空格</span><span class="value">&amp;nbsp;</span></li>
+                <li><span class="label">©</span><span class="value">&amp;copy;</span></li>
+                <li><span class="label">®</span><span class="value">&amp;reg;</span></li>
+                <li><span class="label">™</span><span class="value">&amp;trade;</span></li>
+                <li><span class="label">€</span><span class="value">&amp;euro;</span></li>
+            </div>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var lastAction = 'encode';
+            var timer = null;
+
+            var namedEntities = {
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;',
+                ' ': '&nbsp;', '¡': '&iexcl;', '¢': '&cent;', '£': '&pound;', '¤': '&curren;',
+                '¥': '&yen;', '¦': '&brvbar;', '§': '&sect;', '¨': '&uml;', '©': '&copy;',
+                'ª': '&ordf;', '«': '&laquo;', '¬': '&not;', '®': '&reg;', '¯': '&macr;',
+                '°': '&deg;', '±': '&plusmn;', '²': '&sup2;', '³': '&sup3;', '´': '&acute;',
+                'µ': '&micro;', '¶': '&para;', '·': '&middot;', '¸': '&cedil;', '¹': '&sup1;',
+                'º': '&ordm;', '»': '&raquo;', '¼': '&frac14;', '½': '&frac12;', '¾': '&frac34;',
+                '¿': '&iquest;', '×': '&times;', '÷': '&divide;', 'À': '&Agrave;', 'Á': '&Aacute;',
+                'Â': '&Acirc;', 'Ã': '&Atilde;', 'Ä': '&Auml;', 'Å': '&Aring;', 'Æ': '&AElig;',
+                'Ç': '&Ccedil;', 'È': '&Egrave;', 'É': '&Eacute;', 'Ê': '&Ecirc;', 'Ë': '&Euml;',
+                'Ì': '&Igrave;', 'Í': '&Iacute;', 'Î': '&Icirc;', 'Ï': '&Iuml;', 'Ð': '&ETH;',
+                'Ñ': '&Ntilde;', 'Ò': '&Ograve;', 'Ó': '&Oacute;', 'Ô': '&Ocirc;', 'Õ': '&Otilde;',
+                'Ö': '&Ouml;', '×': '&times;', 'Ø': '&Oslash;', 'Ù': '&Ugrave;', 'Ú': '&Uacute;',
+                'Û': '&Ucirc;', 'Ü': '&Uuml;', 'Ý': '&Yacute;', 'Þ': '&THORN;', 'ß': '&szlig;',
+                'à': '&agrave;', 'á': '&aacute;', 'â': '&acirc;', 'ã': '&atilde;', 'ä': '&auml;',
+                'å': '&aring;', 'æ': '&aelig;', 'ç': '&ccedil;', 'è': '&egrave;', 'é': '&eacute;',
+                'ê': '&ecirc;', 'ë': '&euml;', 'ì': '&igrave;', 'í': '&iacute;', 'î': '&icirc;',
+                'ï': '&iuml;', 'ð': '&eth;', 'ñ': '&ntilde;', 'ò': '&ograve;', 'ó': '&oacute;',
+                'ô': '&ocirc;', 'õ': '&otilde;', 'ö': '&ouml;', '÷': '&divide;', 'ø': '&oslash;',
+                'ù': '&ugrave;', 'ú': '&uacute;', 'û': '&ucirc;', 'ü': '&uuml;', 'ý': '&yacute;',
+                'þ': '&thorn;', 'ÿ': '&yuml;', 'ƒ': '&fnof;', 'Α': '&Alpha;', 'Β': '&Beta;',
+                'Γ': '&Gamma;', 'Δ': '&Delta;', 'Ε': '&Epsilon;', 'Ζ': '&Zeta;', 'Η': '&Eta;',
+                'Θ': '&Theta;', 'Ι': '&Iota;', 'Κ': '&Kappa;', 'Λ': '&Lambda;', 'Μ': '&Mu;',
+                'Ν': '&Nu;', 'Ξ': '&Xi;', 'Ο': '&Omicron;', 'Π': '&Pi;', 'Ρ': '&Rho;',
+                'Σ': '&Sigma;', 'Τ': '&Tau;', 'Υ': '&Upsilon;', 'Φ': '&Phi;', 'Χ': '&Chi;',
+                'Ψ': '&Psi;', 'Ω': '&Omega;', 'α': '&alpha;', 'β': '&beta;', 'γ': '&gamma;',
+                'δ': '&delta;', 'ε': '&epsilon;', 'ζ': '&zeta;', 'η': '&eta;', 'θ': '&theta;',
+                'ι': '&iota;', 'κ': '&kappa;', 'λ': '&lambda;', 'μ': '&mu;', 'ν': '&nu;',
+                'ξ': '&xi;', 'ο': '&omicron;', 'π': '&pi;', 'ρ': '&rho;', 'σ': '&sigma;',
+                'ς': '&sigmaf;', 'τ': '&tau;', 'υ': '&upsilon;', 'φ': '&phi;', 'χ': '&chi;',
+                'ψ': '&psi;', 'ω': '&omega;', '∂': '&part;', '∆': '&Delta;', '∇': '&nabla;',
+                '∈': '&isin;', '∉': '&notin;', '∋': '&ni;', '∏': '&prod;', '∑': '&sum;',
+                '−': '&minus;', '∗': '&lowast;', '√': '&radic;', '∝': '&prop;', '∞': '&infin;',
+                '∠': '&ang;', '∧': '&and;', '∨': '&or;', '∩': '&cap;', '∪': '&cup;',
+                '∫': '&int;', '∴': '&there4;', '∼': '&sim;', '≅': '&cong;', '≈': '&asymp;',
+                '≠': '&ne;', '≡': '&equiv;', '≤': '&le;', '≥': '&ge;', '⊂': '&sub;',
+                '⊃': '&sup;', '⊆': '&sube;', '⊇': '&supe;', '⊕': '&oplus;', '⊗': '&otimes;',
+                '⊥': '&perp;', '⋅': '&sdot;', '⌐': '&oline;', '⌠': '&lceil;', '⌡': '&rceil;',
+                '⌢': '&lang;', '⌣': '&rang;', '⌤': '&loz;', '⌥': '&spades;', '⌦': '&clubs;',
+                '⌧': '&hearts;', '⌨': '&diams;', '←': '&larr;', '↑': '&uarr;', '→': '&rarr;',
+                '↓': '&darr;', '↔': '&harr;', '↕': '&varr;', '↖': '&nwarr;', '↗': '&nearr;',
+                '↘': '&searr;', '↙': '&swarr;', '⇐': '&LeftArrow;', '⇑': '&UpArrow;',
+                '⇒': '&RightArrow;', '⇓': '&DownArrow;', '⇔': '&hArr;', '⇕': '&vArr;',
+                '©': '&copy;', '®': '&reg;', '™': '&trade;', '€': '&euro;', '£': '&pound;',
+                '¥': '&yen;', '¢': '&cent;'
+            };
+
+            function opts() {
+                return {
+                    named: Tools.$('opt-named').checked,
+                    numeric: Tools.$('opt-numeric').checked,
+                    decodeAll: Tools.$('opt-decode-all').checked
+                };
+            }
+
+            function encodeText(text, o) {
+                if (!o.named && !o.numeric) return text;
+
+                var result = text;
+                if (o.named) {
+                    for (var char in namedEntities) {
+                        result = result.split(char).join(namedEntities[char]);
+                    }
+                } else {
+                    result = result.replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&apos;');
+                }
+
+                if (o.numeric) {
+                    result = result.replace(/[\u0080-\uffff]/g, function (char) {
+                        return '&#' + char.charCodeAt(0) + ';';
+                    });
+                }
+
+                return result;
+            }
+
+            function decodeText(text, o) {
+                var div = document.createElement('div');
+                if (o.decodeAll) {
+                    div.innerHTML = text;
+                    return div.textContent;
+                } else {
+                    div.innerHTML = text.replace(/&#(\d+);/g, function (m, n) {
+                        return String.fromCharCode(parseInt(n, 10));
+                    }).replace(/&#x([0-9a-fA-F]+);/g, function (m, n) {
+                        return String.fromCharCode(parseInt(n, 16));
+                    });
+                    return div.textContent;
+                }
+            }
+
+            function updateLabels(action) {
+                if (action === 'encode') {
+                    Tools.$('input-label').textContent = '输入原始文本';
+                    Tools.$('output-label').textContent = '编码结果';
+                    Tools.$('input-text').placeholder = '在此输入要编码的文本...';
+                    Tools.$('output-text').placeholder = '编码结果将显示在这里...';
+                } else {
+                    Tools.$('input-label').textContent = '输入编码文本';
+                    Tools.$('output-label').textContent = '解码结果';
+                    Tools.$('input-text').placeholder = '在此输入HTML实体编码...';
+                    Tools.$('output-text').placeholder = '解码结果将显示在这里...';
+                }
+            }
+
+            function run(action) {
+                lastAction = action;
+                var input = Tools.$('input-text').value;
+                var out = Tools.$('output-text');
+                Tools.clearBanner('banner');
+                if (!input) { out.value = ''; return; }
+                try {
+                    out.value = action === 'encode'
+                        ? encodeText(input, opts())
+                        : decodeText(input, opts());
+                } catch (e) {
+                    out.value = '';
+                    Tools.showBanner('banner', 'error', '处理失败：' + e.message);
+                }
+            }
+
+            function debouncedRun() {
+                clearTimeout(timer);
+                timer = setTimeout(function () { run(lastAction); }, 200);
+            }
+
+            Tools.$('input-text').addEventListener('input', debouncedRun);
+            ['opt-named', 'opt-numeric', 'opt-decode-all'].forEach(function (id) {
+                Tools.$(id).addEventListener('change', debouncedRun);
+            });
+            Tools.$('btn-encode').addEventListener('click', function () {
+                updateLabels('encode');
+                run('encode');
+            });
+            Tools.$('btn-decode').addEventListener('click', function () {
+                updateLabels('decode');
+                run('decode');
+            });
+            Tools.$('btn-clear').addEventListener('click', function () {
+                Tools.$('input-text').value = '';
+                Tools.$('output-text').value = '';
+                Tools.clearBanner('banner');
+            });
+            Tools.$('btn-copy').addEventListener('click', function () {
+                var out = Tools.$('output-text').value;
+                if (!out) return;
+                Tools.copyText(out, this, '已复制');
+            });
+            Tools.$('btn-swap').addEventListener('click', function () {
+                var inp = Tools.$('input-text');
+                var out = Tools.$('output-text');
+                if (!out.value) return;
+                inp.value = out.value;
+                var next = lastAction === 'encode' ? 'decode' : 'encode';
+                updateLabels(next);
+                run(next);
+            });
+
+            updateLabels('encode');
+        });
+    </script>
+</body>
+
+</html>

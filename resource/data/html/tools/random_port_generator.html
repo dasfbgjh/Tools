@@ -1,0 +1,68 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>随机端口生成器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./random_port_generator.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div class="tool-grid-3">
+            <div class="tool-card">
+                <h2>选项</h2>
+
+                <label class="tool-label">数量</label>
+                <div class="slider-row">
+                    <input type="range" id="count" min="1" max="100" value="5">
+                    <span class="slider-val" id="count-val">5</span>
+                </div>
+
+                <div style="margin-top:0.75rem;">
+                    <label class="tool-label">端口范围</label>
+                    <div class="port-range-row">
+                        <input type="number" id="min-port" class="tool-input" value="1024" min="1" max="65535">
+                        <span class="port-sep">—</span>
+                        <input type="number" id="max-port" class="tool-input" value="65535" min="1" max="65535">
+                    </div>
+                </div>
+
+                <div style="margin-top:0.75rem;">
+                    <label class="tool-check-row"><input type="checkbox" id="avoid-wellknown" checked> 排除知名端口 (&lt;1024)</label>
+                    <label class="tool-check-row"><input type="checkbox" id="unique" checked> 去重</label>
+                    <label class="tool-check-row"><input type="checkbox" id="sort"> 排序</label>
+                </div>
+
+                <div style="margin-top:1.25rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <button id="btn-generate" class="btn btn-sm" type="button">生成</button>
+                    <button id="btn-copy-all" class="btn btn-outline btn-sm" type="button">复制全部</button>
+                </div>
+            </div>
+
+            <div class="tool-card">
+                <h2>生成结果</h2>
+                <div id="result-list" class="port-list"></div>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>端口分类</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">知名端口</span><span class="value">0 - 1023 (HTTP=80, HTTPS=443, SSH=22, MySQL=3306...)</span></li>
+                <li><span class="label">注册端口</span><span class="value">1024 - 49151 (应用注册)</span></li>
+                <li><span class="label">动态/私有</span><span class="value">49152 - 65535 (临时端口)</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./random_port_generator.js"></script>
+</body>
+
+</html>

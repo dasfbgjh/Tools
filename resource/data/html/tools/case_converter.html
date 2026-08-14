@@ -1,0 +1,32 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大小写转换</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./case_converter.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div class="tool-card">
+            <label class="tool-label" for="input">输入文本</label>
+            <textarea id="input" class="tool-textarea" placeholder="输入要转换的文本..."></textarea>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>转换结果</h2>
+            <div id="result-list" class="case-list"></div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./case_converter.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,410 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YML与Properties互转</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .tab-group {
+            display: inline-flex;
+            gap: 0.25rem;
+            padding: 0.25rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+        }
+
+        .tab-btn {
+            padding: 0.375rem 0.875rem;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: calc(var(--radius) - 2px);
+            font-size: 0.8125rem;
+            font-weight: 500;
+            transition: all 0.15s;
+        }
+
+        .tab-btn:hover {
+            color: var(--text);
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: #fff;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner-container"></div>
+
+        <div class="tool-toolbar">
+            <div class="tab-group" id="tab-group">
+                <button type="button" class="tab-btn active" data-mode="yml2prop">YAML → Properties</button>
+                <button type="button" class="tab-btn" data-mode="prop2yml">Properties → YAML</button>
+            </div>
+            <span class="spacer"></span>
+            <button id="btn-convert" class="btn btn-sm" type="button">转换</button>
+            <button id="btn-copy" class="btn btn-ghost btn-sm" type="button">复制结果</button>
+            <button id="btn-swap" class="btn btn-ghost btn-sm" type="button">交换</button>
+            <button id="btn-clear" class="btn btn-ghost btn-sm" type="button">清空</button>
+        </div>
+
+        <div class="tool-grid-2">
+            <div class="tool-card">
+                <label class="tool-label" id="input-label">YAML 输入</label>
+                <textarea id="input" class="tool-textarea lg" placeholder="请输入 YAML 数据..."></textarea>
+            </div>
+            <div class="tool-card">
+                <label class="tool-label" id="output-label">Properties 输出</label>
+                <textarea id="output" class="tool-textarea lg" readonly placeholder="转换结果将显示在这里..."></textarea>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>转换说明</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">YAML 层级</span><span class="value">使用 2 空格缩进表示嵌套，支持 key: value 与数组 (-
+                        item)</span></li>
+                <li><span class="label">Properties 层级</span><span class="value">使用点号分隔，如 server.port=8080</span></li>
+                <li><span class="label">数组</span><span class="value">在 Properties 中表示为带索引的键，如 list.0、list.1</span></li>
+                <li><span class="label">注释</span><span class="value"># 开头的行视为注释并忽略</span></li>
+                <li><span class="label">注意</span><span class="value">此为简化解析器，仅处理基础场景，复杂 YAML 可能不准确</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var $ = Tools.$;
+            var inputEl = $('input');
+            var outputEl = $('output');
+            var inputLabel = $('input-label');
+            var outputLabel = $('output-label');
+            var tabGroup = $('tab-group');
+            var mode = 'yml2prop';
+
+            function setMode(m) {
+                mode = m;
+                Tools.$$('.tab-btn', tabGroup).forEach(function (b) {
+                    b.classList.toggle('active', b.getAttribute('data-mode') === m);
+                });
+                if (m === 'yml2prop') {
+                    inputLabel.textContent = 'YAML 输入';
+                    outputLabel.textContent = 'Properties 输出';
+                    inputEl.placeholder = '请输入 YAML 数据...';
+                    outputEl.placeholder = '转换后的 Properties 将显示在这里...';
+                } else {
+                    inputLabel.textContent = 'Properties 输入';
+                    outputLabel.textContent = 'YAML 输出';
+                    inputEl.placeholder = '请输入 Properties 数据...';
+                    outputEl.placeholder = '转换后的 YAML 将显示在这里...';
+                }
+            }
+
+            tabGroup.addEventListener('click', function (e) {
+                var btn = e.target.closest('.tab-btn');
+                if (!btn) return;
+                setMode(btn.getAttribute('data-mode'));
+            });
+
+            // ===== YAML parser (basic: 2-space indent, key: value, nested, arrays) =====
+            function parseYaml(src) {
+                var lines = src.replace(/\r\n/g, '\n').split('\n');
+                var idx = 0;
+
+                function getIndent(line) {
+                    var m = /^(\s*)/.exec(line);
+                    return m ? m[1].length : 0;
+                }
+
+                function parseScalar(str) {
+                    str = str.trim();
+                    if (str === '' || str === 'null' || str === '~' || str === 'Null' || str === 'NULL') return null;
+                    if (str === 'true' || str === 'True' || str === 'TRUE') return true;
+                    if (str === 'false' || str === 'False' || str === 'FALSE') return false;
+                    if (/^-?\d+$/.test(str)) return parseInt(str, 10);
+                    if (/^-?\d+\.\d+$/.test(str)) return parseFloat(str);
+                    if (str.length >= 2 && ((str.charAt(0) === '"' && str.charAt(str.length - 1) === '"') ||
+                        (str.charAt(0) === "'" && str.charAt(str.length - 1) === "'"))) {
+                        return str.slice(1, -1);
+                    }
+                    // strip inline comment
+                    var hashIdx = str.indexOf(' #');
+                    if (hashIdx !== -1) str = str.slice(0, hashIdx).trim();
+                    return str;
+                }
+
+                function parseBlock(baseIndent) {
+                    var obj = {};
+                    var arr = null;
+
+                    while (idx < lines.length) {
+                        var raw = lines[idx];
+                        if (!raw.trim() || /^\s*#/.test(raw)) { idx++; continue; }
+                        var indent = getIndent(raw);
+                        if (indent < baseIndent) break;
+                        if (indent > baseIndent) { idx++; continue; }
+                        var content = raw.slice(indent).replace(/\s+$/, '');
+
+                        // array item: "- value" or "-"
+                        if (content === '-' || /^-\s+/.test(content)) {
+                            if (arr === null) { arr = []; }
+                            var val = content === '-' ? '' : content.replace(/^-\s+/, '');
+                            if (val === '') {
+                                idx++;
+                                var child = parseBlock(baseIndent + 2);
+                                arr.push(child);
+                                continue;
+                            }
+                            // array item with inline object: "- key: value"
+                            var inlineObj = /^([a-zA-Z0-9_.-]+):\s*(.*)$/.exec(val);
+                            if (inlineObj) {
+                                var objItem = {};
+                                if (inlineObj[2] === '' || inlineObj[2] === '#') {
+                                    idx++;
+                                    objItem[inlineObj[1]] = parseBlock(baseIndent + 2);
+                                } else {
+                                    objItem[inlineObj[1]] = parseScalar(inlineObj[2]);
+                                    idx++;
+                                }
+                                arr.push(objItem);
+                                continue;
+                            }
+                            arr.push(parseScalar(val));
+                            idx++;
+                            continue;
+                        }
+
+                        // key: value
+                        var kv = /^([a-zA-Z0-9_.\-]+):\s*(.*)$/.exec(content);
+                        if (kv) {
+                            var key = kv[1];
+                            var valueStr = kv[2];
+                            if (valueStr === '' || valueStr === '#') {
+                                idx++;
+                                var nested = parseBlock(baseIndent + 2);
+                                obj[key] = (typeof nested === 'object' && nested !== null && Object.keys(nested).length === 0) ? null : nested;
+                                continue;
+                            }
+                            obj[key] = parseScalar(valueStr);
+                            idx++;
+                            continue;
+                        }
+                        idx++;
+                    }
+                    return arr !== null ? arr : obj;
+                }
+
+                return parseBlock(0);
+            }
+
+            function flatten(obj, prefix, out) {
+                if (obj === null || obj === undefined) {
+                    if (prefix) out[prefix] = '';
+                    return;
+                }
+                if (Array.isArray(obj)) {
+                    if (obj.length === 0) { if (prefix) out[prefix] = ''; return; }
+                    obj.forEach(function (v, i) {
+                        flatten(v, prefix ? prefix + '.' + i : String(i), out);
+                    });
+                    return;
+                }
+                if (typeof obj === 'object') {
+                    var keys = Object.keys(obj);
+                    if (keys.length === 0) { if (prefix) out[prefix] = ''; return; }
+                    keys.forEach(function (k) {
+                        flatten(obj[k], prefix ? prefix + '.' + k : k, out);
+                    });
+                    return;
+                }
+                // scalar
+                out[prefix] = String(obj);
+            }
+
+            function ymlToProperties(src) {
+                var obj = parseYaml(src);
+                var flat = {};
+                flatten(obj, '', flat);
+                var lines = [];
+                Object.keys(flat).forEach(function (k) {
+                    lines.push(k + '=' + flat[k]);
+                });
+                if (lines.length === 0) throw new Error('未能从 YAML 中解析出任何键值对');
+                return lines.join('\n') + '\n';
+            }
+
+            // ===== Properties parser =====
+            function parseProperties(src) {
+                var lines = src.replace(/\r\n/g, '\n').split('\n');
+                var root = {};
+                lines.forEach(function (line) {
+                    var trimmed = line.trim();
+                    if (!trimmed || trimmed.charAt(0) === '#' || trimmed.charAt(0) === '!') return;
+                    // find = or : as delimiter (first occurrence)
+                    var eqIdx = -1;
+                    for (var i = 0; i < trimmed.length; i++) {
+                        if (trimmed.charAt(i) === '=' || trimmed.charAt(i) === ':') { eqIdx = i; break; }
+                    }
+                    var key, value;
+                    if (eqIdx === -1) {
+                        key = trimmed;
+                        value = '';
+                    } else {
+                        key = trimmed.slice(0, eqIdx).trim();
+                        value = trimmed.slice(eqIdx + 1).trim();
+                    }
+                    if (!key) return;
+                    // unescape basic escapes
+                    value = value.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\\\/g, '\\');
+                    // build nested
+                    var parts = key.split('.');
+                    var cur = root;
+                    for (var j = 0; j < parts.length - 1; j++) {
+                        var p = parts[j];
+                        if (cur[p] === undefined || cur[p] === null || typeof cur[p] !== 'object') {
+                            cur[p] = {};
+                        }
+                        cur = cur[p];
+                    }
+                    cur[parts[parts.length - 1]] = value;
+                });
+                return root;
+            }
+
+            function formatYamlValue(v) {
+                if (v === null || v === undefined) return 'null';
+                if (v === true) return 'true';
+                if (v === false) return 'false';
+                var s = String(v);
+                if (s === '') return '""';
+                // quote if contains special chars or looks like a number/bool that should be string
+                if (/[:#\[\]{}&*!|>'"%@`]/.test(s) || /^\s|\s$/.test(s) || /^(true|false|null|yes|no|on|off)$/i.test(s)) {
+                    return '"' + s.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+                }
+                return s;
+            }
+
+            function toYaml(obj, indent) {
+                indent = indent || 0;
+                var pad = new Array(indent + 1).join('  ');
+                var lines = [];
+                if (obj === null || obj === undefined) {
+                    return pad + 'null';
+                }
+                if (Array.isArray(obj)) {
+                    if (obj.length === 0) return pad + '[]';
+                    obj.forEach(function (v) {
+                        if (v !== null && typeof v === 'object' && !(v instanceof Array === false && Object.keys(v).length === 0)) {
+                            if (Array.isArray(v)) {
+                                lines.push(pad + '-');
+                                lines.push(toYaml(v, indent + 1));
+                            } else {
+                                var keys = Object.keys(v);
+                                if (keys.length === 0) {
+                                    lines.push(pad + '- {}');
+                                } else {
+                                    var first = keys[0];
+                                    lines.push(pad + '- ' + first + ': ' + formatYamlValue(v[first]));
+                                    for (var k = 1; k < keys.length; k++) {
+                                        var val = v[keys[k]];
+                                        if (val !== null && typeof val === 'object') {
+                                            lines.push(new Array(indent + 2).join('  ') + keys[k] + ':');
+                                            lines.push(toYaml(val, indent + 2));
+                                        } else {
+                                            lines.push(new Array(indent + 2).join('  ') + keys[k] + ': ' + formatYamlValue(val));
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            lines.push(pad + '- ' + formatYamlValue(v));
+                        }
+                    });
+                    return lines.join('\n');
+                }
+                if (typeof obj === 'object') {
+                    var ks = Object.keys(obj);
+                    if (ks.length === 0) return pad + '{}';
+                    ks.forEach(function (k) {
+                        var v = obj[k];
+                        if (v !== null && typeof v === 'object') {
+                            lines.push(pad + k + ':');
+                            var sub = toYaml(v, indent + 1);
+                            if (sub) lines.push(sub);
+                        } else {
+                            lines.push(pad + k + ': ' + formatYamlValue(v));
+                        }
+                    });
+                    return lines.join('\n');
+                }
+                return pad + formatYamlValue(obj);
+            }
+
+            function propertiesToYml(src) {
+                var obj = parseProperties(src);
+                if (Object.keys(obj).length === 0) throw new Error('未能从 Properties 中解析出任何键值对');
+                return toYaml(obj, 0) + '\n';
+            }
+
+            function convert() {
+                var raw = inputEl.value;
+                Tools.clearBanner('banner-container');
+                if (!raw || !raw.trim()) {
+                    Tools.showBanner('banner-container', 'warn', '请输入需要转换的内容');
+                    outputEl.value = '';
+                    return;
+                }
+                try {
+                    var result = mode === 'yml2prop' ? ymlToProperties(raw) : propertiesToYml(raw);
+                    outputEl.value = result;
+                    Tools.showBanner('banner-container', 'success', '✓ 转换成功');
+                } catch (err) {
+                    outputEl.value = '';
+                    Tools.showBanner('banner-container', 'error', '✗ 转换失败：' + (err && err.message ? err.message : String(err)));
+                }
+            }
+
+            function clearAll() {
+                inputEl.value = '';
+                outputEl.value = '';
+                Tools.clearBanner('banner-container');
+                inputEl.focus();
+            }
+
+            function swap() {
+                if (!outputEl.value) return;
+                inputEl.value = outputEl.value;
+                outputEl.value = '';
+                Tools.clearBanner('banner-container');
+                setMode(mode === 'yml2prop' ? 'prop2yml' : 'yml2prop');
+            }
+
+            $('btn-convert').addEventListener('click', convert);
+            $('btn-copy').addEventListener('click', function () {
+                if (!outputEl.value) {
+                    Tools.showBanner('banner-container', 'warn', '没有可复制的结果');
+                    return;
+                }
+                Tools.copyText(outputEl.value, this, '已复制');
+            });
+            $('btn-swap').addEventListener('click', swap);
+            $('btn-clear').addEventListener('click', clearAll);
+
+            setMode('yml2prop');
+        });
+    </script>
+</body>
+
+</html>

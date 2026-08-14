@@ -1,0 +1,60 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPv4 范围扩展器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./ipv4_range_expander.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner-container"></div>
+
+        <div class="tool-card">
+            <h2>输入 CIDR 或 IP 范围</h2>
+            <input type="text" id="range-input" class="tool-input tool-monospace" placeholder="192.168.1.0/24 或 192.168.1.1-192.168.1.100" value="192.168.1.1-192.168.1.100" autocomplete="off">
+            <p class="tool-hint">支持 CIDR (192.168.1.0/24) 或 IP 范围 (起始IP-结束IP)，自动计算包含该范围的最小 CIDR 网段</p>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>计算结果</h2>
+            <ul class="tool-result-list" id="result-list">
+                <li><span class="label">起始 IP</span><span class="value" data-key="startIp">—</span></li>
+                <li><span class="label">结束 IP</span><span class="value" data-key="endIp">—</span></li>
+                <li><span class="label">网络地址</span><span class="value" data-key="network">—</span></li>
+                <li><span class="label">广播地址</span><span class="value" data-key="broadcast">—</span></li>
+                <li><span class="label">子网掩码</span><span class="value" data-key="mask">—</span></li>
+                <li><span class="label">CIDR 表示</span><span class="value" data-key="cidr">—</span></li>
+                <li><span class="label">前缀位数</span><span class="value" data-key="prefix">—</span></li>
+                <li><span class="label">IP 范围</span><span class="value" data-key="range">—</span></li>
+                <li><span class="label">总 IP 数</span><span class="value" data-key="totalIp">—</span></li>
+                <li><span class="label">可用主机数</span><span class="value" data-key="hostCount">—</span></li>
+                <li><span class="label">输入类型</span><span class="value" data-key="type">—</span></li>
+            </ul>
+            <div class="tool-toolbar" style="margin-top:0.75rem;margin-bottom:0;">
+                <button id="btn-copy-cidr" class="btn btn-outline btn-sm" type="button">复制 CIDR</button>
+                <div class="spacer"></div>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>说明</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">CIDR</span><span class="value">直接解析并显示该网段信息</span></li>
+                <li><span class="label">IP 范围</span><span class="value">计算包含起止 IP 的最小 CIDR 网段</span></li>
+                <li><span class="label">可用主机数</span><span class="value">排除网络地址与广播地址 (/31、/32 除外)</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./ipv4_range_expander.js"></script>
+</body>
+
+</html>

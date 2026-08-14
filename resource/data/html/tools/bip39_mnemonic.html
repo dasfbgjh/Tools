@@ -1,0 +1,278 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BIP39助记词</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div class="tool-page">
+        <div class="tool-card">
+            <div id="banner"></div>
+
+            <div class="tool-grid-2">
+                <div>
+                    <div class="tool-toolbar" style="margin-bottom:1.25rem;align-items:flex-end;gap:1rem;">
+                        <div style="flex:1;min-width:0;">
+                            <label class="tool-label">助记词数量</label>
+                            <select id="word-count" class="tool-select">
+                                <option value="12">12 个词 (128位)</option>
+                                <option value="15">15 个词 (160位)</option>
+                                <option value="18">18 个词 (192位)</option>
+                                <option value="21">21 个词 (224位)</option>
+                                <option value="24">24 个词 (256位)</option>
+                            </select>
+                        </div>
+                        <div style="flex:1;min-width:0;">
+                            <label class="tool-label">语言</label>
+                            <select id="language" class="tool-select">
+                                <option value="englishWordList">English (英文)</option>
+                                <option value="chineseSimplifiedWordList">中文简体</option>
+                                <option value="chineseTraditionalWordList">中文繁体</option>
+                                <option value="czechWordList">Čeština (捷克文)</option>
+                                <option value="frenchWordList">Français (法文)</option>
+                                <option value="italianWordList">Italiano (意大利文)</option>
+                                <option value="japaneseWordList">日本語 (日文)</option>
+                                <option value="koreanWordList">한국어 (韩文)</option>
+                                <option value="portugueseWordList">Português (葡萄牙文)</option>
+                                <option value="spanishWordList">Español (西班牙文)</option>
+                            </select>
+                        </div>
+                        <button class="btn" id="btn-generate">生成助记词</button>
+                    </div>
+
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <label class="tool-label" style="margin:0;">助记词</label>
+                        <button class="btn btn-ghost btn-sm" id="btn-copy">复制</button>
+                    </div>
+                    <textarea class="tool-textarea" id="mnemonic" placeholder="点击上方「生成助记词」，或手动粘贴助记词到此..."></textarea>
+                    <div class="tool-toolbar" style="margin-top:0.6rem;">
+                        <button class="btn btn-outline btn-sm" id="btn-validate">验证助记词</button>
+                        <button class="btn btn-outline btn-sm" id="btn-convert">转成种子</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="tool-label">种子 (Seed)</label>
+                    <textarea class="tool-textarea" id="seed" readonly placeholder="种子将显示在这里..."></textarea>
+
+                    <label class="tool-label" style="margin-top:1rem;">验证结果</label>
+                    <div id="validation" class="tool-output empty">等待验证...</div>
+                </div>
+            </div>
+
+            <div class="tool-card" style="margin-top:1.5rem;">
+                <h2>安全提醒</h2>
+                <ul class="tool-result-list">
+                    <li><span class="label">⚠️</span><span class="value">助记词是您加密资产的唯一恢复方式，请务必妥善保管</span></li>
+                    <li><span class="label">⚠️</span><span class="value">切勿将助记词存储在任何联网设备或云端</span></li>
+                    <li><span class="label">⚠️</span><span class="value">建议使用离线环境生成和保存助记词</span></li>
+                    <li><span class="label">⚠️</span><span class="value">本工具在浏览器本地运行，不会上传您的助记词</span></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./../lib/bip39/wordlist.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var $ = Tools.$;
+
+            function getWordList() {
+                var langKey = $('language').value;
+                var wl = window.BIP39.wordList[langKey];
+                return wl ? wl.words : null;
+            }
+
+            function getSpacer() {
+                var langKey = $('language').value;
+                var wl = window.BIP39.wordList[langKey];
+                return wl ? wl.spacer : ' ';
+            }
+
+            function sha256(data) {
+                return crypto.subtle.digest('SHA-256', data);
+            }
+
+            async function generateMnemonic(count) {
+                var words = getWordList();
+                if (!words || words.length < 2048) throw new Error('词表加载失败');
+                var spacer = getSpacer();
+                var totalBits = count * 11;
+                var checksumBits = count / 3;
+                var entropyBits = totalBits - checksumBits; // = count * 32 / 3
+                var entropyBytes = entropyBits / 8;
+
+                var entropy = new Uint8Array(entropyBytes);
+                crypto.getRandomValues(entropy);
+
+                var hash = await sha256(entropy);
+
+                var entropyBin = Array.prototype.map.call(entropy, function (b) {
+                    return ('00000000' + b.toString(2)).slice(-8);
+                }).join('');
+
+                var checksumBin = Array.prototype.map.call(new Uint8Array(hash), function (b) {
+                    return ('00000000' + b.toString(2)).slice(-8);
+                }).join('').substr(0, checksumBits);
+
+                var bits = entropyBin + checksumBin;
+
+                var result = [];
+                for (var i = 0; i < bits.length; i += 11) {
+                    var idx = parseInt(bits.substr(i, 11), 2);
+                    result.push(words[idx]);
+                }
+
+                return result.join(spacer);
+            }
+
+            async function validateMnemonic(mnemonic) {
+                var words = getWordList();
+                if (!words || words.length < 2048) throw new Error('词表加载失败');
+                var spacer = getSpacer();
+                var wordArray = mnemonic.trim().split(spacer === ' ' ? /\s+/ : spacer);
+
+                if (wordArray.length % 3 !== 0) return false;
+                if ([12, 15, 18, 21, 24].indexOf(wordArray.length) === -1) return false;
+
+                for (var i = 0; i < wordArray.length; i++) {
+                    if (words.indexOf(wordArray[i]) === -1) return false;
+                }
+
+                var bits = wordArray.map(function (word) {
+                    var idx = words.indexOf(word);
+                    return ('00000000000' + idx.toString(2)).slice(-11);
+                }).join('');
+
+                var checksumBits = wordArray.length * 11 / 33;
+                var entropyBits = bits.substr(0, bits.length - checksumBits);
+                var checksum = bits.substr(bits.length - checksumBits);
+
+                var entropyBytes = new Uint8Array(Math.ceil(entropyBits.length / 8));
+                for (var j = 0; j < entropyBits.length; j += 8) {
+                    entropyBytes[j / 8] = parseInt(entropyBits.substr(j, 8), 2);
+                }
+
+                var hash = await sha256(entropyBytes);
+                var expectedChecksum = Array.prototype.map.call(new Uint8Array(hash), function (b) {
+                    return ('00000000' + b.toString(2)).slice(-8);
+                }).join('').substr(0, checksumBits);
+
+                return checksum === expectedChecksum;
+            }
+
+            async function mnemonicToSeed(mnemonic, passphrase) {
+                var salt = 'mnemonic' + (passphrase || '');
+                var encoder = new TextEncoder();
+
+                var key = await crypto.subtle.importKey(
+                    'raw',
+                    encoder.encode(mnemonic.normalize('NFKD')),
+                    { name: 'PBKDF2' },
+                    false,
+                    ['deriveBits']
+                );
+
+                var bits = await crypto.subtle.deriveBits(
+                    {
+                        name: 'PBKDF2',
+                        salt: encoder.encode(salt.normalize('NFKD')),
+                        iterations: 2048,
+                        hash: 'SHA-512'
+                    },
+                    key,
+                    512
+                );
+
+                return Array.prototype.map.call(new Uint8Array(bits), function (b) {
+                    return ('00' + b.toString(16)).slice(-2);
+                }).join('');
+            }
+
+            async function generate() {
+                Tools.clearBanner('banner');
+                var count = parseInt($('word-count').value, 10);
+                try {
+                    var mnemonic = await generateMnemonic(count);
+                    $('mnemonic').value = mnemonic;
+                    $('seed').value = '';
+                    resetValidation();
+                } catch (e) {
+                    Tools.showBanner('banner', 'error', '生成失败：' + e.message);
+                }
+            }
+
+            function resetValidation() {
+                $('validation').textContent = '等待验证...';
+                $('validation').classList.remove('error', 'success');
+                $('validation').classList.add('empty');
+            }
+
+            async function validate() {
+                Tools.clearBanner('banner');
+                var mnemonic = $('mnemonic').value.trim();
+
+                if (!mnemonic) {
+                    $('validation').textContent = '请输入助记词';
+                    $('validation').classList.remove('success', 'empty');
+                    $('validation').classList.add('error');
+                    return;
+                }
+
+                try {
+                    var isValid = await validateMnemonic(mnemonic);
+                    if (isValid) {
+                        $('validation').textContent = '✅ 助记词有效';
+                        $('validation').classList.remove('error', 'empty');
+                        $('validation').classList.add('success');
+                    } else {
+                        $('validation').textContent = '❌ 助记词无效或格式错误';
+                        $('validation').classList.remove('success', 'empty');
+                        $('validation').classList.add('error');
+                    }
+                } catch (e) {
+                    $('validation').textContent = '验证失败：' + e.message;
+                    $('validation').classList.remove('success', 'empty');
+                    $('validation').classList.add('error');
+                }
+            }
+
+            async function convertToSeed() {
+                Tools.clearBanner('banner');
+                var mnemonic = $('mnemonic').value.trim();
+                if (!mnemonic) {
+                    Tools.showBanner('banner', 'error', '请先输入或生成助记词');
+                    return;
+                }
+
+                try {
+                    var seed = await mnemonicToSeed(mnemonic);
+                    $('seed').value = seed;
+                } catch (e) {
+                    Tools.showBanner('banner', 'error', '转换失败：' + e.message);
+                }
+            }
+
+            $('btn-generate').addEventListener('click', generate);
+            $('btn-validate').addEventListener('click', validate);
+            $('btn-convert').addEventListener('click', convertToSeed);
+            $('btn-copy').addEventListener('click', function () {
+                Tools.copyText($('mnemonic').value, this, '已复制');
+            });
+            $('language').addEventListener('change', generate);
+
+            generate();
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,55 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAC 地址查询</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./mac_address_lookup.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner-container"></div>
+
+        <div class="tool-card">
+            <h2>输入 MAC 地址</h2>
+            <input type="text" id="mac-input" class="tool-input tool-monospace" placeholder="AA:BB:CC:DD:EE:FF" value="00:1B:63:11:22:33" autocomplete="off">
+            <p class="tool-hint">支持 AA:BB:CC:DD:EE:FF、AA-BB-CC-DD-EE-FF、AABB.CCDD.EEFF、AABBCCDDEEFF 等格式</p>
+            <div class="tool-toolbar" style="margin-top:0.75rem;margin-bottom:0;">
+                <button id="btn-copy" class="btn btn-outline btn-sm" type="button">复制标准化 MAC</button>
+                <div class="spacer"></div>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>查询结果</h2>
+            <ul class="tool-result-list" id="result-list">
+                <li><span class="label">标准化 MAC</span><span class="value" data-key="standard">—</span></li>
+                <li><span class="label">OUI</span><span class="value" data-key="oui">—</span></li>
+                <li><span class="label">厂商</span><span class="value" data-key="vendor">—</span></li>
+                <li><span class="label">地址类型</span><span class="value" data-key="type">—</span></li>
+                <li><span class="label">原始输入</span><span class="value" data-key="raw">—</span></li>
+            </ul>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>说明</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">OUI</span><span class="value">前 3 字节为厂商识别码 (Organizationally Unique Identifier)</span></li>
+                <li><span class="label">单播/组播</span><span class="value">首字节最低位为 0 表示单播，为 1 表示组播</span></li>
+                <li><span class="label">本地/全球</span><span class="value">首字节次低位为 0 表示全球唯一，为 1 表示本地管理</span></li>
+                <li><span class="label">数据来源</span><span class="value">内置常见厂商 OUI 对照表，未收录会显示“未知”</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./mac_address_lookup.js"></script>
+</body>
+
+</html>

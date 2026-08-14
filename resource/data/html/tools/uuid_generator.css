@@ -1,0 +1,71 @@
+/* ===== UUID Generator ===== */
+
+.slider-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.slider-row input[type=range] {
+    flex: 1;
+}
+
+.slider-val {
+    font-weight: 600;
+    color: var(--primary);
+    min-width: 2.5rem;
+    text-align: right;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+
+.uuid-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 520px;
+    overflow-y: auto;
+}
+
+.uuid-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-muted);
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.8125rem;
+    transition: border-color 0.15s;
+}
+
+.uuid-item:hover {
+    border-color: var(--primary);
+}
+
+.uuid-item .uuid-text {
+    flex: 1;
+    word-break: break-all;
+    color: var(--text);
+}
+
+.uuid-item .uuid-idx {
+    color: var(--text-light);
+    font-size: 0.6875rem;
+    min-width: 1.5rem;
+    text-align: right;
+}
+
+.uuid-item .btn-copy-item {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.6875rem;
+    flex-shrink: 0;
+}
+
+.uuid-empty {
+    text-align: center;
+    color: var(--text-light);
+    font-style: italic;
+    padding: 2rem 1rem;
+    font-size: 0.875rem;
+}

@@ -1,0 +1,71 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>代码格式化</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner-container"></div>
+
+        <div class="tool-toolbar">
+            <label class="tool-label" for="language" style="margin:0;">语言</label>
+            <select id="language" class="tool-select" style="width:auto;">
+                <option value="html">HTML</option>
+                <option value="css">CSS</option>
+                <option value="javascript">JavaScript</option>
+                <option value="sql">SQL</option>
+                <option value="json" selected>JSON</option>
+                <option value="xml">XML</option>
+            </select>
+            <label class="tool-label" for="indent" style="margin:0;">缩进</label>
+            <select id="indent" class="tool-select" style="width:auto;">
+                <option value="2" selected>2 空格</option>
+                <option value="4">4 空格</option>
+                <option value="tab">Tab</option>
+            </select>
+            <label class="tool-check-row" style="margin:0;" for="uppercase-sql">
+                <input type="checkbox" id="uppercase-sql"> SQL 关键字大写
+            </label>
+            <span class="spacer"></span>
+            <button id="btn-format" class="btn btn-sm" type="button">格式化</button>
+            <button id="btn-minify" class="btn btn-outline btn-sm" type="button">压缩</button>
+            <button id="btn-copy" class="btn btn-ghost btn-sm" type="button">复制</button>
+            <button id="btn-clear" class="btn btn-ghost btn-sm" type="button">清空</button>
+        </div>
+
+        <div class="tool-grid-2">
+            <div class="tool-card">
+                <label class="tool-label" for="input">输入代码</label>
+                <textarea id="input" class="tool-textarea lg" placeholder="请输入需要格式化的代码..."></textarea>
+            </div>
+            <div class="tool-card">
+                <label class="tool-label" for="output">格式化结果</label>
+                <pre id="output" class="tool-output empty" style="min-height:320px;max-height:560px;"></pre>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>使用说明</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">JSON</span><span class="value">使用原生 JSON.parse/stringify，严格校验</span></li>
+                <li><span class="label">HTML / XML</span><span class="value">按标签层级缩进，自闭合标签不增加缩进</span></li>
+                <li><span class="label">CSS</span><span class="value">每条规则换行，属性按缩进对齐</span></li>
+                <li><span class="label">JavaScript</span><span class="value">基础格式化：分号/大括号后换行并按层级缩进（非完整解析器）</span></li>
+                <li><span class="label">SQL</span><span class="value">关键字换行，可选大写</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./code_formatter.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,199 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备信息</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div class="tool-page">
+        <div class="tool-card">
+            <div id="banner"></div>
+
+            <div class="tool-toolbar">
+                <button class="btn btn-sm" id="btn-refresh">刷新信息</button>
+                <button class="btn btn-outline btn-sm" id="btn-copy">复制全部</button>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>浏览器信息</h2>
+            <ul id="browser-info" class="tool-result-list"></ul>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>屏幕信息</h2>
+            <ul id="screen-info" class="tool-result-list"></ul>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>系统信息</h2>
+            <ul id="system-info" class="tool-result-list"></ul>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>网络信息</h2>
+            <ul id="network-info" class="tool-result-list"></ul>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>存储信息</h2>
+            <ul id="storage-info" class="tool-result-list"></ul>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            function showInfo(id, data) {
+                var el = Tools.$(id);
+                el.innerHTML = '';
+                for (var key in data) {
+                    if (data.hasOwnProperty(key)) {
+                        var li = Tools.el('li', {}, [
+                            Tools.el('span', { class: 'label', text: key }),
+                            Tools.el('span', { class: 'value', text: data[key] })
+                        ]);
+                        el.appendChild(li);
+                    }
+                }
+            }
+
+            function formatBytes(bytes) {
+                if (bytes === 0) return '0 B';
+                var k = 1024;
+                var sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+                var i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            function refresh() {
+                Tools.clearBanner('banner');
+
+                var browserInfo = {
+                    '用户代理': navigator.userAgent,
+                    '浏览器语言': navigator.language || navigator.userLanguages?.[0] || '-',
+                    '浏览器名称': navigator.appName,
+                    '浏览器版本': navigator.appVersion,
+                    '产品名称': navigator.product,
+                    '产品版本': navigator.productSub,
+                    '平台': navigator.platform,
+                    '供应商': navigator.vendor,
+                    '语言列表': navigator.languages ? navigator.languages.join(', ') : '-',
+                    '在线状态': navigator.onLine ? '在线' : '离线',
+                    'Cookie启用': navigator.cookieEnabled ? '是' : '否',
+                    'DoNotTrack': navigator.doNotTrack || '-',
+                    '硬件并发数': navigator.hardwareConcurrency || '-'
+                };
+                showInfo('browser-info', browserInfo);
+
+                var screenInfo = {
+                    '屏幕宽度': screen.width + ' px',
+                    '屏幕高度': screen.height + ' px',
+                    '可用宽度': screen.availWidth + ' px',
+                    '可用高度': screen.availHeight + ' px',
+                    '色深': screen.colorDepth + ' 位',
+                    '像素深度': screen.pixelDepth + ' 位',
+                    '设备像素比': window.devicePixelRatio,
+                    '视口宽度': window.innerWidth + ' px',
+                    '视口高度': window.innerHeight + ' px'
+                };
+                showInfo('screen-info', screenInfo);
+
+                var systemInfo = {
+                    'CPU架构': navigator.cpuClass || navigator.platform || '-',
+                    '内存大小': navigator.deviceMemory ? navigator.deviceMemory + ' GB' : '-',
+                    '最大触摸点数': navigator.maxTouchPoints || 0,
+                    '是否支持触摸': 'ontouchstart' in window ? '是' : '否',
+                    '是否支持震动': navigator.vibrate ? '是' : '否',
+                    '是否支持电池API': navigator.getBattery ? '是' : '否',
+                    '是否支持地理位置': navigator.geolocation ? '是' : '否',
+                    '是否支持蓝牙': navigator.bluetooth ? '是' : '否',
+                    '是否支持USB': navigator.usb ? '是' : '否',
+                    '是否支持NFC': navigator.nfc ? '是' : '否'
+                };
+                showInfo('system-info', systemInfo);
+
+                var networkInfo = {
+                    '连接类型': navigator.connection?.effectiveType || '-',
+                    '下行速度': navigator.connection?.downlink ? navigator.connection.downlink + ' Mbps' : '-',
+                    '往返延迟': navigator.connection?.rtt ? navigator.connection.rtt + ' ms' : '-',
+                    '节省数据': navigator.connection?.saveData ? '是' : '否',
+                    '连接方式': navigator.connection?.type || '-'
+                };
+                showInfo('network-info', networkInfo);
+
+                try {
+                    var storageInfo = {
+                        'localStorage容量': typeof localStorage !== 'undefined' ? formatBytes(JSON.stringify(localStorage).length * 2) : '不可用',
+                        'sessionStorage容量': typeof sessionStorage !== 'undefined' ? formatBytes(JSON.stringify(sessionStorage).length * 2) : '不可用',
+                        'IndexedDB可用': !!window.indexedDB ? '是' : '否',
+                        'File API可用': !!window.FileReader ? '是' : '否',
+                        'Blob可用': !!window.Blob ? '是' : '否'
+                    };
+                } catch (e) {
+                    var storageInfo = {
+                        'localStorage容量': '访问被拒绝',
+                        'sessionStorage容量': '访问被拒绝',
+                        'IndexedDB可用': !!window.indexedDB ? '是' : '否',
+                        'File API可用': !!window.FileReader ? '是' : '否',
+                        'Blob可用': !!window.Blob ? '是' : '否'
+                    };
+                }
+                showInfo('storage-info', storageInfo);
+
+                if (navigator.getBattery) {
+                    navigator.getBattery().then(function (battery) {
+                        var batteryInfo = {
+                            '电量': Math.round(battery.level * 100) + '%',
+                            '正在充电': battery.charging ? '是' : '否',
+                            '充电时间': battery.chargingTime === Infinity ? '正在充电' : (battery.chargingTime + ' 秒'),
+                            '放电时间': battery.dischargingTime === Infinity ? '未知' : (battery.dischargingTime + ' 秒')
+                        };
+
+                        var batteryCard = document.createElement('div');
+                        batteryCard.className = 'tool-card';
+                        batteryCard.style.marginTop = '1.5rem';
+                        batteryCard.innerHTML = '<h2>电池信息</h2><ul class="tool-result-list"></ul>';
+                        Tools.$('storage-info').parentNode.parentNode.appendChild(batteryCard);
+
+                        var ul = batteryCard.querySelector('ul');
+                        for (var key in batteryInfo) {
+                            ul.appendChild(Tools.el('li', {}, [
+                                Tools.el('span', { class: 'label', text: key }),
+                                Tools.el('span', { class: 'value', text: batteryInfo[key] })
+                            ]));
+                        }
+                    });
+                }
+            }
+
+            function copyAll() {
+                var allData = [];
+                ['browser-info', 'screen-info', 'system-info', 'network-info', 'storage-info'].forEach(function (id) {
+                    var ul = Tools.$(id);
+                    ul.querySelectorAll('li').forEach(function (li) {
+                        var label = li.querySelector('.label').textContent;
+                        var value = li.querySelector('.value').textContent;
+                        allData.push(label + ': ' + value);
+                    });
+                });
+                Tools.copyText(allData.join('\n'), Tools.$('btn-copy'), '已复制');
+            }
+
+            Tools.$('btn-refresh').addEventListener('click', refresh);
+            Tools.$('btn-copy').addEventListener('click', copyAll);
+
+            refresh();
+        });
+    </script>
+</body>
+
+</html>

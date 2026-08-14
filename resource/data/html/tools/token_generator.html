@@ -1,0 +1,203 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token生成器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        #preset-tags .btn {
+            padding: 0.2rem 0.6rem;
+            font-size: 0.75rem;
+            border-radius: 999px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+        <div class="tool-card">
+            <div id="banner"></div>
+
+            <div class="tool-grid-2">
+                <div>
+                    <div class="tool-toolbar" style="margin-bottom:1rem;align-items:flex-end;gap:1rem;">
+                        <div style="flex:1;min-width:0;">
+                            <label class="tool-label">Token类型</label>
+                            <select id="token-type" class="tool-select">
+                                <option value="random">随机Token</option>
+                                <option value="uuid">UUID</option>
+                                <option value="jwt">JWT格式</option>
+                                <option value="hex">十六进制</option>
+                                <option value="base64">Base64</option>
+                                <option value="bearer">Bearer Token</option>
+                            </select>
+                        </div>
+                        <div style="flex:0 0 8rem;">
+                            <label class="tool-label">长度</label>
+                            <input type="number" id="token-length" class="tool-input" value="32" min="4" max="256">
+                        </div>
+                        <button class="btn" id="btn-generate">生成</button>
+                    </div>
+
+                    <label class="tool-label">字符集</label>
+                    <div class="tool-check-row">
+                        <label><input type="checkbox" id="charset-lower" checked> 小写字母</label>
+                        <label><input type="checkbox" id="charset-upper" checked> 大写字母</label>
+                        <label><input type="checkbox" id="charset-numbers" checked> 数字</label>
+                        <label><input type="checkbox" id="charset-symbols"> 特殊字符</label>
+                    </div>
+
+                    <label class="tool-label" style="margin-top:1rem;">预设模板</label>
+                    <div class="tool-tags" id="preset-tags">
+                        <button class="btn btn-sm btn-outline" data-type="random" data-length="16">API Key</button>
+                        <button class="btn btn-sm btn-outline" data-type="random" data-length="32">Secret Key</button>
+                        <button class="btn btn-sm btn-outline" data-type="uuid" data-length="36">UUID v4</button>
+                        <button class="btn btn-sm btn-outline" data-type="hex" data-length="64">Hex 64</button>
+                        <button class="btn btn-sm btn-outline" data-type="base64" data-length="44">Base64 44</button>
+                        <button class="btn btn-sm btn-outline" data-type="bearer" data-length="64">Bearer</button>
+                    </div>
+                </div>
+
+                <div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <label class="tool-label" style="margin:0;">生成结果</label>
+                        <button class="btn btn-ghost btn-sm" id="btn-copy">复制</button>
+                    </div>
+                    <textarea class="tool-textarea" id="output" readonly placeholder="生成的Token将显示在这里..."></textarea>
+                    <div style="margin-top:0.6rem;">
+                        <span class="tool-output small" id="token-info"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var $ = Tools.$;
+
+            function getCharset() {
+                var chars = '';
+                if ($('charset-lower').checked) chars += 'abcdefghijklmnopqrstuvwxyz';
+                if ($('charset-upper').checked) chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                if ($('charset-numbers').checked) chars += '0123456789';
+                if ($('charset-symbols').checked) chars += '!@#$%^&*()_+-=[]{}|;:,.<>?';
+                return chars || 'abcdefghijklmnopqrstuvwxyz0123456789';
+            }
+
+            function generateRandom(len, charset) {
+                var result = '';
+                var array = new Uint32Array(len);
+                crypto.getRandomValues(array);
+                for (var i = 0; i < len; i++) {
+                    result += charset[array[i] % charset.length];
+                }
+                return result;
+            }
+
+            function generateUUID() {
+                var array = new Uint8Array(16);
+                crypto.getRandomValues(array);
+                array[6] = (array[6] & 0x0f) | 0x40;
+                array[8] = (array[8] & 0x3f) | 0x80;
+                var hex = Array.prototype.map.call(array, function (b) {
+                    return ('00' + b.toString(16)).slice(-2);
+                }).join('');
+                return hex.substr(0, 8) + '-' + hex.substr(8, 4) + '-' + hex.substr(12, 4) + '-' + hex.substr(16, 4) + '-' + hex.substr(20, 12);
+            }
+
+            function generateHex(len) {
+                var bytes = Math.ceil(len / 2);
+                var array = new Uint8Array(bytes);
+                crypto.getRandomValues(array);
+                return Array.prototype.map.call(array, function (b) {
+                    return ('00' + b.toString(16)).slice(-2);
+                }).join('').substr(0, len);
+            }
+
+            function generateBase64(len) {
+                var bytes = Math.ceil(len * 3 / 4);
+                var array = new Uint8Array(bytes);
+                crypto.getRandomValues(array);
+                return btoa(String.fromCharCode.apply(null, array)).substr(0, len).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+            }
+
+            function generateJWT() {
+                var header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).replace(/=/g, '');
+                var payload = btoa(JSON.stringify({
+                    iss: 'tools',
+                    exp: Math.floor(Date.now() / 1000) + 3600,
+                    iat: Math.floor(Date.now() / 1000),
+                    jti: generateRandom(16, 'abcdefghijklmnopqrstuvwxyz0123456789')
+                })).replace(/=/g, '');
+                var signature = generateHex(40);
+                return header + '.' + payload + '.' + signature;
+            }
+
+            function generateBearer(len) {
+                return 'Bearer ' + generateRandom(len, 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_');
+            }
+
+            function generate() {
+                var type = $('token-type').value;
+                var len = parseInt($('token-length').value, 10);
+                var result = '';
+                var info = '';
+
+                switch (type) {
+                    case 'random':
+                        result = generateRandom(len, getCharset());
+                        info = '随机字符串，长度 ' + len;
+                        break;
+                    case 'uuid':
+                        result = generateUUID();
+                        info = 'UUID v4 格式';
+                        break;
+                    case 'jwt':
+                        result = generateJWT();
+                        info = 'JWT 格式（假签名）';
+                        break;
+                    case 'hex':
+                        result = generateHex(len);
+                        info = '十六进制，长度 ' + len;
+                        break;
+                    case 'base64':
+                        result = generateBase64(len);
+                        info = 'Base64 URL安全，长度 ' + len;
+                        break;
+                    case 'bearer':
+                        result = generateBearer(len);
+                        info = 'Bearer Token，有效长度 ' + len;
+                        break;
+                }
+
+                $('output').value = result;
+                $('token-info').textContent = info;
+            }
+
+            $('btn-generate').addEventListener('click', generate);
+            $('btn-copy').addEventListener('click', function () {
+                Tools.copyText($('output').value, this, '已复制');
+            });
+
+            document.querySelectorAll('[data-type]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    $('token-type').value = this.dataset.type;
+                    $('token-length').value = this.dataset.length;
+                    generate();
+                });
+            });
+
+            generate();
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,61 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cron表达式生成</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner-box"></div>
+
+        <div class="tool-grid-2">
+            <!-- 左:生成表单 -->
+            <div class="tool-card">
+                <h2>生成表达式</h2>
+                <div id="form-area"></div>
+                <div class="tool-hint">标准 5 字段格式: 分 时 日 月 周(0-6,0=周日)</div>
+            </div>
+
+            <!-- 右:预览与解析 -->
+            <div class="tool-card">
+                <h2>表达式预览</h2>
+
+                <div class="tool-toolbar">
+                    <input type="text" class="tool-input tool-monospace" id="expr-input" readonly>
+                    <button class="btn btn-outline btn-sm" id="expr-copy" title="复制表达式">📋</button>
+                </div>
+
+                <div style="margin-top:0.5rem;">
+                    <span class="tool-label">可读描述</span>
+                    <div class="tool-output" id="expr-desc"></div>
+                </div>
+
+                <div style="margin-top:0.75rem;">
+                    <span class="tool-label">解析表达式(粘贴后点击解析)</span>
+                    <div class="tool-toolbar" style="margin-bottom:0;">
+                        <input type="text" class="tool-input tool-monospace" id="parse-input"
+                            placeholder="如 0 9 * * MON">
+                        <button class="btn btn-sm" id="parse-btn">解析</button>
+                    </div>
+                </div>
+
+                <div style="margin-top:0.75rem;">
+                    <span class="tool-label">下次 5 次执行时间</span>
+                    <ul class="tool-result-list" id="exec-list"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./cron_generator.js"></script>
+</body>
+
+</html>

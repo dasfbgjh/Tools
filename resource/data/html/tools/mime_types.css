@@ -1,0 +1,139 @@
+/* ===== MIME Types Reference ===== */
+
+.mime-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.875rem;
+}
+
+.mime-search {
+    flex: 1;
+    min-width: 220px;
+}
+
+.mime-count {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.mime-count strong {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.mime-cats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.mime-table-wrap {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: auto;
+    max-height: 70vh;
+}
+
+.mime-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    min-width: 480px;
+}
+
+.mime-table thead th {
+    text-align: left;
+    padding: 0.625rem 0.875rem;
+    background: var(--bg-muted);
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.8125rem;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    white-space: nowrap;
+}
+
+.mime-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.12s;
+}
+
+.mime-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.mime-table tbody tr:hover {
+    background: var(--bg-muted);
+}
+
+.mime-table tbody tr.copied {
+    background: var(--primary-light);
+}
+
+.mime-table td {
+    padding: 0.5rem 0.875rem;
+    color: var(--text);
+    vertical-align: middle;
+}
+
+.mime-ext {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-weight: 600;
+    color: var(--primary);
+    white-space: nowrap;
+}
+
+.mime-mime {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.8125rem;
+    word-break: break-all;
+}
+
+.col-ext { width: 16%; }
+.col-cat { width: 18%; }
+
+.mime-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Category badge colors */
+.mime-badge.cat-doc { background: rgba(59, 130, 246, 0.15); color: #2563eb; }
+.mime-badge.cat-img { background: rgba(168, 85, 247, 0.15); color: #9333ea; }
+.mime-badge.cat-audio { background: rgba(236, 72, 153, 0.15); color: #db2777; }
+.mime-badge.cat-video { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
+.mime-badge.cat-archive { background: rgba(249, 115, 22, 0.15); color: #ea580c; }
+.mime-badge.cat-code { background: rgba(34, 197, 94, 0.15); color: #16a34a; }
+.mime-badge.cat-font { background: rgba(20, 184, 166, 0.15); color: #0d9488; }
+.mime-badge.cat-other { background: rgba(107, 114, 128, 0.15); color: #4b5563; }
+
+.mime-empty {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--text-light);
+    font-style: italic;
+    font-size: 0.875rem;
+}
+
+/* ===== Dark theme overrides ===== */
+:root[data-theme="dark"] .mime-badge.cat-doc { color: #93c5fd; }
+:root[data-theme="dark"] .mime-badge.cat-img { color: #d8b4fe; }
+:root[data-theme="dark"] .mime-badge.cat-audio { color: #f9a8d4; }
+:root[data-theme="dark"] .mime-badge.cat-video { color: #fca5a5; }
+:root[data-theme="dark"] .mime-badge.cat-archive { color: #fdba74; }
+:root[data-theme="dark"] .mime-badge.cat-code { color: #86efac; }
+:root[data-theme="dark"] .mime-badge.cat-font { color: #5eead4; }
+:root[data-theme="dark"] .mime-badge.cat-other { color: #d1d5db; }

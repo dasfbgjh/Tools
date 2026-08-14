@@ -1,0 +1,207 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTTP状态码</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div class="tool-page">
+        <div class="tool-card">
+            <div id="banner"></div>
+
+            <div class="tool-toolbar">
+                <input type="text" id="search" class="tool-input" style="flex:1;" placeholder="搜索状态码或描述...">
+                <select id="filter" class="tool-select" style="width:auto;">
+                    <option value="all">全部</option>
+                    <option value="1xx">1xx 信息</option>
+                    <option value="2xx">2xx 成功</option>
+                    <option value="3xx">3xx 重定向</option>
+                    <option value="4xx">4xx 客户端错误</option>
+                    <option value="5xx">5xx 服务器错误</option>
+                </select>
+            </div>
+
+            <div id="codes-container" class="codes-container"></div>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var codes = [
+                { code: 100, message: 'Continue', desc: '继续，请求已被服务器接受，客户端应继续发送请求的剩余部分' },
+                { code: 101, message: 'Switching Protocols', desc: '切换协议，服务器正在根据客户端的请求切换协议' },
+                { code: 102, message: 'Processing', desc: '处理中，服务器已接收请求并正在处理' },
+                { code: 103, message: 'Early Hints', desc: '提前提示，服务器可以发送一些响应头给客户端' },
+
+                { code: 200, message: 'OK', desc: '请求成功，请求所希望的响应头或数据体将随此响应返回' },
+                { code: 201, message: 'Created', desc: '已创建，请求成功且服务器创建了新的资源' },
+                { code: 202, message: 'Accepted', desc: '已接受，服务器已接受请求，但尚未处理完成' },
+                { code: 203, message: 'Non-Authoritative Information', desc: '非权威信息，服务器成功处理请求，但返回的元信息来自非原始源' },
+                { code: 204, message: 'No Content', desc: '无内容，服务器成功处理请求，但没有返回任何内容' },
+                { code: 205, message: 'Reset Content', desc: '重置内容，服务器成功处理请求，但要求客户端重置视图' },
+                { code: 206, message: 'Partial Content', desc: '部分内容，服务器成功处理部分GET请求' },
+                { code: 207, message: 'Multi-Status', desc: '多状态，针对多个资源的操作返回多个状态码' },
+                { code: 208, message: 'Already Reported', desc: '已报告，在DAV绑定的属性中使用，避免重复枚举' },
+                { code: 226, message: 'IM Used', desc: '已使用，服务器已完成对资源的请求，且响应是对当前实例应用一个或多个实例操作的结果' },
+
+                { code: 300, message: 'Multiple Choices', desc: '多种选择，请求的资源有多个可能的响应' },
+                { code: 301, message: 'Moved Permanently', desc: '永久重定向，资源已被永久移动到新位置' },
+                { code: 302, message: 'Found', desc: '临时重定向，资源临时移动到新位置' },
+                { code: 303, message: 'See Other', desc: '查看其他位置，建议客户端使用GET方法获取资源' },
+                { code: 304, message: 'Not Modified', desc: '未修改，资源未修改，使用缓存版本' },
+                { code: 305, message: 'Use Proxy', desc: '使用代理，必须通过指定的代理访问资源' },
+                { code: 306, message: 'Switch Proxy', desc: '切换代理，已废弃' },
+                { code: 307, message: 'Temporary Redirect', desc: '临时重定向，保持请求方法不变' },
+                { code: 308, message: 'Permanent Redirect', desc: '永久重定向，保持请求方法不变' },
+
+                { code: 400, message: 'Bad Request', desc: '请求错误，服务器无法理解请求' },
+                { code: 401, message: 'Unauthorized', desc: '未授权，请求需要身份验证' },
+                { code: 402, message: 'Payment Required', desc: '需要付费，保留状态码' },
+                { code: 403, message: 'Forbidden', desc: '禁止访问，服务器理解请求但拒绝执行' },
+                { code: 404, message: 'Not Found', desc: '未找到，服务器找不到请求的资源' },
+                { code: 405, message: 'Method Not Allowed', desc: '方法不允许，请求方法不被服务器支持' },
+                { code: 406, message: 'Not Acceptable', desc: '不可接受，服务器无法生成符合客户端要求的响应' },
+                { code: 407, message: 'Proxy Authentication Required', desc: '需要代理认证，客户端必须先通过代理认证' },
+                { code: 408, message: 'Request Timeout', desc: '请求超时，服务器等待客户端请求超时' },
+                { code: 409, message: 'Conflict', desc: '冲突，请求与服务器当前状态冲突' },
+                { code: 410, message: 'Gone', desc: '已删除，资源已永久删除且无转发地址' },
+                { code: 411, message: 'Length Required', desc: '需要Content-Length，服务器需要Content-Length头' },
+                { code: 412, message: 'Precondition Failed', desc: '预处理失败，请求头条件未满足' },
+                { code: 413, message: 'Payload Too Large', desc: '请求体过大，请求实体超过服务器限制' },
+                { code: 414, message: 'URI Too Long', desc: 'URI过长，请求的URI超过服务器限制' },
+                { code: 415, message: 'Unsupported Media Type', desc: '不支持的媒体类型，请求的媒体类型不被服务器支持' },
+                { code: 416, message: 'Range Not Satisfiable', desc: '范围不满足，请求的范围无效' },
+                { code: 417, message: 'Expectation Failed', desc: '期望失败，服务器无法满足Expect头' },
+                { code: 418, message: "I'm a teapot", desc: '愚人节玩笑，服务器是茶壶' },
+                { code: 421, message: 'Misdirected Request', desc: '请求被错误定向，请求被发送到无法产生响应的服务器' },
+                { code: 422, message: 'Unprocessable Entity', desc: '无法处理的实体，请求格式正确但语义错误' },
+                { code: 423, message: 'Locked', desc: '资源被锁定' },
+                { code: 424, message: 'Failed Dependency', desc: '依赖失败，当前请求依赖的前置请求失败' },
+                { code: 425, message: 'Too Early', desc: '太早，服务器不愿处理可能重复的请求' },
+                { code: 426, message: 'Upgrade Required', desc: '需要升级，客户端需要切换到TLS/1.0' },
+                { code: 428, message: 'Precondition Required', desc: '需要预处理，请求必须包含If-Modified-Since等头' },
+                { code: 429, message: 'Too Many Requests', desc: '请求过多，客户端发送请求过于频繁' },
+                { code: 431, message: 'Request Header Fields Too Large', desc: '请求头字段过大' },
+                { code: 451, message: 'Unavailable For Legal Reasons', desc: '因法律原因不可用' },
+
+                { code: 500, message: 'Internal Server Error', desc: '服务器内部错误，服务器遇到意外情况' },
+                { code: 501, message: 'Not Implemented', desc: '未实现，服务器不支持请求的功能' },
+                { code: 502, message: 'Bad Gateway', desc: '网关错误，服务器作为网关收到无效响应' },
+                { code: 503, message: 'Service Unavailable', desc: '服务不可用，服务器暂时无法处理请求' },
+                { code: 504, message: 'Gateway Timeout', desc: '网关超时，服务器作为网关等待响应超时' },
+                { code: 505, message: 'HTTP Version Not Supported', desc: 'HTTP版本不支持，服务器不支持请求的HTTP版本' },
+                { code: 506, message: 'Variant Also Negotiates', desc: '变体也协商，服务器内部配置错误' },
+                { code: 507, message: 'Insufficient Storage', desc: '存储空间不足，服务器无法存储响应' },
+                { code: 508, message: 'Loop Detected', desc: '检测到循环，服务器在处理请求时检测到无限循环' },
+                { code: 510, message: 'Not Extended', desc: '未扩展，请求需要扩展但服务器不支持' },
+                { code: 511, message: 'Network Authentication Required', desc: '需要网络认证，客户端需要通过网络认证' }
+            ];
+
+            function getCategory(code) {
+                if (code >= 100 && code < 200) return { name: '1xx', label: '信息', color: '#0ea5e9' };
+                if (code >= 200 && code < 300) return { name: '2xx', label: '成功', color: '#22c55e' };
+                if (code >= 300 && code < 400) return { name: '3xx', label: '重定向', color: '#f59e0b' };
+                if (code >= 400 && code < 500) return { name: '4xx', label: '客户端错误', color: '#ef4444' };
+                if (code >= 500 && code < 600) return { name: '5xx', label: '服务器错误', color: '#dc2626' };
+                return { name: 'unknown', label: '未知', color: '#6b7280' };
+            }
+
+            function render(filter, search) {
+                var container = Tools.$('codes-container');
+                container.innerHTML = '';
+
+                var filtered = codes.filter(function (c) {
+                    var matchFilter = filter === 'all' || getCategory(c.code).name === filter;
+                    var matchSearch = !search ||
+                        c.code.toString().includes(search) ||
+                        c.message.toLowerCase().includes(search.toLowerCase()) ||
+                        c.desc.includes(search);
+                    return matchFilter && matchSearch;
+                });
+
+                if (filtered.length === 0) {
+                    container.innerHTML = '<p class="tool-output empty">未找到匹配的状态码</p>';
+                    return;
+                }
+
+                filtered.forEach(function (c) {
+                    var cat = getCategory(c.code);
+                    var card = Tools.el('div', { class: 'status-card' }, [
+                        Tools.el('div', { class: 'status-header' }, [
+                            Tools.el('span', { class: 'status-code', style: 'background-color:' + cat.color }, c.code),
+                            Tools.el('span', { class: 'status-message' }, c.message),
+                            Tools.el('span', { class: 'status-category', style: 'color:' + cat.color }, cat.label)
+                        ]),
+                        Tools.el('p', { class: 'status-desc' }, c.desc)
+                    ]);
+                    container.appendChild(card);
+                });
+            }
+
+            Tools.$('search').addEventListener('input', function () {
+                render(Tools.$('filter').value, this.value.trim());
+            });
+            Tools.$('filter').addEventListener('change', function () {
+                render(this.value, Tools.$('search').value.trim());
+            });
+
+            render('all', '');
+        });
+    </script>
+    <style>
+        .codes-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .status-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius);
+            padding: 1rem;
+            border: 1px solid var(--border);
+        }
+        .status-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+        .status-code {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius);
+            min-width: 3.5rem;
+            text-align: center;
+        }
+        .status-message {
+            font-weight: 600;
+            font-size: 0.9375rem;
+        }
+        .status-category {
+            margin-left: auto;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .status-desc {
+            margin: 0;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+    </style>
+</body>
+
+</html>

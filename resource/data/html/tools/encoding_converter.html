@@ -1,0 +1,276 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>编码转换</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .conv-types {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .conv-type-btn {
+            padding: 0.375rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface);
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.8125rem;
+            transition: all 0.15s;
+        }
+
+        .conv-type-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .conv-type-btn.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        .conv-output {
+            min-height: 200px;
+        }
+
+        .conv-desc {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-top: 0.5rem;
+            padding: 0.625rem 0.875rem;
+            background: var(--bg-muted);
+            border-radius: var(--radius);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+
+
+        <div class="tool-card">
+            <div id="banner"></div>
+
+            <div class="conv-types" id="conv-types"></div>
+
+            <div class="tool-toolbar">
+                <button class="btn btn-sm" id="btn-convert">转换</button>
+                <button class="btn btn-ghost btn-sm" id="btn-copy">复制结果</button>
+                <button class="btn btn-ghost btn-sm" id="btn-swap">交换</button>
+                <span class="spacer"></span>
+                <button class="btn btn-outline btn-sm" id="btn-clear">清空</button>
+            </div>
+
+            <div class="tool-grid-2">
+                <div>
+                    <label class="tool-label" id="input-label">输入文本</label>
+                    <textarea class="tool-textarea" id="input-text" placeholder="输入要处理的内容..."></textarea>
+                </div>
+                <div>
+                    <label class="tool-label">转换结果</label>
+                    <textarea class="tool-textarea conv-output" id="output-text" readonly
+                        placeholder="结果将在这里显示..."></textarea>
+                </div>
+            </div>
+
+            <div class="conv-desc" id="conv-desc"></div>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var TYPES = [
+                { id: 'text2base64', label: '文本 → Base64', desc: '将文本编码为 Base64 字符串，常用于在 HTTP 环境下传输二进制数据。' },
+                { id: 'base64totext', label: 'Base64 → 文本', desc: '将 Base64 字符串解码为可读文本。' },
+                { id: 'text2url', label: '文本 → URL编码', desc: '将文本编码为 URL 安全格式，特殊字符转为 %XX 形式。' },
+                { id: 'url2text', label: 'URL编码 → 文本', desc: '将 URL 编码字符串解码为可读文本。' },
+                { id: 'text2hex', label: '文本 → Hex', desc: '将文本每个字符转换为两位十六进制数字。' },
+                { id: 'hex2text', label: 'Hex → 文本', desc: '将十六进制字符串转换回可读文本。' },
+                { id: 'text2unicode', label: '文本 → Unicode转义', desc: '将非 ASCII 字符转换为 \\uXXXX 形式的 Unicode 转义序列。' },
+                { id: 'unicode2text', label: 'Unicode转义 → 文本', desc: '将 \\uXXXX 形式的 Unicode 转义序列转换回可读文本。' }
+            ];
+
+            var state = { type: 'text2base64', timer: null };
+
+            // Render type buttons
+            var typeBox = Tools.$('conv-types');
+            TYPES.forEach(function (t) {
+                var btn = Tools.el('button', {
+                    class: 'conv-type-btn' + (t.id === state.type ? ' active' : ''),
+                    'data-id': t.id,
+                    text: t.label,
+                    onclick: function () {
+                        state.type = t.id;
+                        Tools.$$('button', typeBox).forEach(function (b) { b.classList.remove('active'); });
+                        this.classList.add('active');
+                        updateLabel();
+                        updateDesc();
+                        convert();
+                    }
+                });
+                typeBox.appendChild(btn);
+            });
+
+            function updateLabel() {
+                var isDecode = state.type.indexOf('2text') !== -1 || state.type.indexOf('totext') !== -1;
+                Tools.$('input-label').textContent = isDecode ? '输入编码' : '输入文本';
+            }
+
+            function updateDesc() {
+                var t = TYPES.filter(function (x) { return x.id === state.type; })[0];
+                Tools.$('conv-desc').textContent = t ? t.desc : '';
+            }
+
+            // UTF-8 aware base64 encode/decode
+            function b64Encode(str) {
+                return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function (_, p1) {
+                    return String.fromCharCode(parseInt(p1, 16));
+                }));
+            }
+            function b64Decode(str) {
+                var s = str.replace(/\s/g, '');
+                var bin = atob(s);
+                return decodeURIComponent(Array.prototype.map.call(bin, function (c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+            }
+
+            function hexEncode(str) {
+                var out = '';
+                for (var i = 0; i < str.length; i++) {
+                    out += ('0000' + str.charCodeAt(i).toString(16)).slice(-4);
+                }
+                // collapse surrogate pairs into single hex for readability? keep simple: per-UTF-16 code unit
+                return out;
+            }
+            function hexDecode(str) {
+                var s = str.replace(/\s+/g, '');
+                // Try 4-digit UTF-16 code units first
+                var out = '';
+                var i = 0;
+                // Handle both 2-digit (byte) and 4-digit (utf16 code unit) hex
+                if (s.length % 4 === 0) {
+                    for (i = 0; i < s.length; i += 4) {
+                        out += String.fromCharCode(parseInt(s.substr(i, 4), 16));
+                    }
+                    return out;
+                }
+                // Fallback: 2-digit bytes -> UTF-8 decode
+                var bytes = [];
+                for (i = 0; i + 1 < s.length; i += 2) {
+                    bytes.push(parseInt(s.substr(i, 2), 16));
+                }
+                try {
+                    return new TextDecoder('utf-8').decode(new Uint8Array(bytes));
+                } catch (e) {
+                    // fallback to raw
+                    var r = '';
+                    for (i = 0; i < bytes.length; i++) r += String.fromCharCode(bytes[i]);
+                    return r;
+                }
+            }
+
+            function unicodeEncode(str) {
+                return Array.from(str).map(function (ch) {
+                    var code = ch.charCodeAt(0);
+                    if (code > 127) {
+                        return '\\u' + ('0000' + code.toString(16)).slice(-4);
+                    }
+                    return ch;
+                }).join('');
+            }
+            function unicodeDecode(str) {
+                return str.replace(/\\u([0-9a-fA-F]{4})/g, function (_, hex) {
+                    return String.fromCharCode(parseInt(hex, 16));
+                });
+            }
+
+            function convert() {
+                var input = Tools.$('input-text').value;
+                var out = Tools.$('output-text');
+                Tools.clearBanner('banner');
+                if (!input) { out.value = ''; return; }
+                try {
+                    var result = '';
+                    switch (state.type) {
+                        case 'text2base64': result = b64Encode(input); break;
+                        case 'base64totext': result = b64Decode(input); break;
+                        case 'text2url': result = encodeURIComponent(input); break;
+                        case 'url2text': result = decodeURIComponent(input); break;
+                        case 'text2hex': result = hexEncode(input); break;
+                        case 'hex2text': result = hexDecode(input); break;
+                        case 'text2unicode': result = unicodeEncode(input); break;
+                        case 'unicode2text': result = unicodeDecode(input); break;
+                        default: throw new Error('不支持的转换类型');
+                    }
+                    out.value = result;
+                } catch (e) {
+                    out.value = '';
+                    var msg = '转换失败';
+                    if (state.type === 'base64totext') msg = '无效的 Base64 编码字符串';
+                    else if (state.type === 'url2text') msg = '无效的 URL 编码字符串';
+                    else if (state.type === 'unicode2text') msg = '无效的 Unicode 编码字符串';
+                    else if (state.type === 'hex2text') msg = '无效的 Hex 编码字符串';
+                    Tools.showBanner('banner', 'error', msg);
+                }
+            }
+
+            function debouncedConvert() {
+                clearTimeout(state.timer);
+                state.timer = setTimeout(convert, 200);
+            }
+
+            // Event bindings
+            Tools.$('input-text').addEventListener('input', debouncedConvert);
+            Tools.$('btn-convert').addEventListener('click', convert);
+            Tools.$('btn-clear').addEventListener('click', function () {
+                Tools.$('input-text').value = '';
+                Tools.$('output-text').value = '';
+                Tools.clearBanner('banner');
+            });
+            Tools.$('btn-copy').addEventListener('click', function () {
+                var out = Tools.$('output-text').value;
+                if (!out) return;
+                Tools.copyText(out, this, '已复制');
+            });
+            Tools.$('btn-swap').addEventListener('click', function () {
+                var inp = Tools.$('input-text');
+                var out = Tools.$('output-text');
+                if (!out.value) return;
+                // swap: output becomes input, flip direction
+                inp.value = out.value;
+                // flip the conversion type
+                var flipMap = {
+                    'text2base64': 'base64totext', 'base64totext': 'text2base64',
+                    'text2url': 'url2text', 'url2text': 'text2url',
+                    'text2hex': 'hex2text', 'hex2text': 'text2hex',
+                    'text2unicode': 'unicode2text', 'unicode2text': 'text2unicode'
+                };
+                state.type = flipMap[state.type] || state.type;
+                Tools.$$('button', typeBox).forEach(function (b) {
+                    b.classList.toggle('active', b.getAttribute('data-id') === state.type);
+                });
+                updateLabel();
+                updateDesc();
+                convert();
+            });
+
+            updateLabel();
+            updateDesc();
+        });
+    </script>
+</body>
+
+</html>

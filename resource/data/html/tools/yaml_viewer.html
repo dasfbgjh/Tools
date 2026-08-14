@@ -1,0 +1,290 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YAML 查看器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .tab-group {
+            display: inline-flex;
+            gap: 0.25rem;
+            padding: 0.25rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+        }
+
+        .tab-btn {
+            padding: 0.375rem 0.875rem;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: calc(var(--radius) - 2px);
+            font-size: 0.8125rem;
+            font-weight: 500;
+            transition: all 0.15s;
+        }
+
+        .tab-btn:hover {
+            color: var(--text);
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .yaml-key {
+            color: #6366f1;
+        }
+
+        .yaml-string {
+            color: #16a34a;
+        }
+
+        .yaml-number {
+            color: #d97706;
+        }
+
+        .yaml-bool {
+            color: #dc2626;
+        }
+
+        .yaml-null {
+            color: #6b7280;
+            font-style: italic;
+        }
+
+        .yaml-comment {
+            color: #94a3b8;
+            font-style: italic;
+        }
+
+        .yaml-dash {
+            color: #8b5cf6;
+            font-weight: 600;
+        }
+
+        :root[data-theme="dark"] .yaml-key {
+            color: #a5b4fc;
+        }
+
+        :root[data-theme="dark"] .yaml-string {
+            color: #86efac;
+        }
+
+        :root[data-theme="dark"] .yaml-number {
+            color: #fbbf24;
+        }
+
+        :root[data-theme="dark"] .yaml-bool {
+            color: #fca5a5;
+        }
+
+        :root[data-theme="dark"] .yaml-null {
+            color: #94a3b8;
+        }
+
+        :root[data-theme="dark"] .yaml-comment {
+            color: #64748b;
+        }
+
+        :root[data-theme="dark"] .yaml-dash {
+            color: #c4b5fd;
+        }
+
+        .tree {
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+            font-size: 0.8125rem;
+            line-height: 1.7;
+        }
+
+        .tree-node {}
+
+        .tree-header {
+            display: flex;
+            gap: 0.375rem;
+            align-items: baseline;
+            padding: 0.062rem 0;
+        }
+
+        .tree-toggle {
+            cursor: pointer;
+            user-select: none;
+            width: 1em;
+            display: inline-block;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            flex-shrink: 0;
+        }
+
+        .tree-toggle.placeholder {
+            cursor: default;
+        }
+
+        .tree-key {
+            color: #6366f1;
+            font-weight: 500;
+        }
+
+        :root[data-theme="dark"] .tree-key {
+            color: #a5b4fc;
+        }
+
+        .tree-idx {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .tree-type {
+            color: var(--text-muted);
+            font-size: 0.7rem;
+        }
+
+        .tree-value {
+            color: var(--text);
+            word-break: break-all;
+        }
+
+        .tree-value.string {
+            color: #16a34a;
+        }
+
+        .tree-value.number {
+            color: #d97706;
+        }
+
+        .tree-value.boolean {
+            color: #dc2626;
+        }
+
+        .tree-value.null {
+            color: #6b7280;
+            font-style: italic;
+        }
+
+        :root[data-theme="dark"] .tree-value.string {
+            color: #86efac;
+        }
+
+        :root[data-theme="dark"] .tree-value.number {
+            color: #fbbf24;
+        }
+
+        :root[data-theme="dark"] .tree-value.boolean {
+            color: #fca5a5;
+        }
+
+        :root[data-theme="dark"] .tree-value.null {
+            color: #94a3b8;
+        }
+
+        .tree-children {
+            padding-left: 1.1rem;
+            margin-left: 0.45rem;
+            border-left: 1px dashed var(--border);
+        }
+
+        .tree-node.collapsed>.tree-children {
+            display: none;
+        }
+
+        .tree-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .tree-actions button {
+            padding: 0.2rem 0.6rem;
+            font-size: 0.72rem;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-muted);
+            border-radius: var(--radius);
+            cursor: pointer;
+        }
+
+        .tree-actions button:hover {
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner"></div>
+
+        <div class="tool-toolbar">
+            <button id="btn-format" class="btn btn-outline btn-sm" type="button">格式化</button>
+            <button id="btn-to-json" class="btn btn-outline btn-sm" type="button">转 JSON</button>
+            <button id="btn-compress" class="btn btn-outline btn-sm" type="button">压缩</button>
+            <button id="btn-validate" class="btn btn-outline btn-sm" type="button">校验</button>
+            <button id="btn-sample" class="btn btn-outline btn-sm" type="button">示例</button>
+            <button id="btn-clear" class="btn btn-ghost btn-sm" type="button">清空</button>
+            <span class="spacer"></span>
+            <label class="tool-check-row" style="margin:0;">
+                <input type="checkbox" id="sort-keys"> 键名排序
+            </label>
+            <button id="btn-copy" class="btn btn-ghost btn-sm" type="button">复制结果</button>
+        </div>
+
+        <div class="tool-grid-2">
+            <div class="tool-card">
+                <label class="tool-label" for="input">YAML 输入</label>
+                <textarea id="input" class="tool-textarea lg" placeholder="请输入 YAML 文本..."></textarea>
+                <p class="tool-hint">支持键值对、嵌套、数组、引号字符串、数字/布尔、注释、多行字符串（| 与 &gt;）。</p>
+            </div>
+            <div class="tool-card">
+                <div class="tool-toolbar" style="margin-bottom:0.75rem;">
+                    <div class="tab-group" id="tab-group">
+                        <button type="button" class="tab-btn active" data-view="yaml">YAML</button>
+                        <button type="button" class="tab-btn" data-view="json">JSON</button>
+                        <button type="button" class="tab-btn" data-view="tree">树形</button>
+                    </div>
+                    <span class="spacer"></span>
+                    <span id="view-meta" class="tool-hint" style="margin:0;"></span>
+                </div>
+                <pre id="output-yaml" class="tool-output empty" style="min-height:320px;max-height:560px;"></pre>
+                <pre id="output-json" class="tool-output empty"
+                    style="display:none;min-height:320px;max-height:560px;"></pre>
+                <div id="output-tree" class="tool-output"
+                    style="display:none;min-height:320px;max-height:560px;overflow:auto;">
+                    <div class="tree-actions">
+                        <button type="button" id="btn-expand-all">全部展开</button>
+                        <button type="button" id="btn-collapse-all">全部折叠</button>
+                    </div>
+                    <div id="tree-root"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>使用说明</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">格式化</span><span class="value">解析后重新序列化为标准 2 空格缩进的 YAML</span></li>
+                <li><span class="label">转 JSON</span><span class="value">将 YAML 解析为 JavaScript 对象并以 JSON 形式展示</span>
+                </li>
+                <li><span class="label">压缩</span><span class="value">去除空行与注释，输出紧凑 YAML</span></li>
+                <li><span class="label">校验</span><span class="value">检查 YAML 语法并提示出错行号</span></li>
+                <li><span class="label">树形视图</span><span class="value">以可折叠/展开的树形结构展示数据，支持全部展开/折叠</span></li>
+                <li><span class="label">键名排序</span><span class="value">勾选后格式化时按键名字母顺序排序对象键</span></li>
+                <li><span class="label">多行字符串</span><span class="value">支持 | 保留换行 与 &gt; 折叠换行，及 +/− 截断标记</span></li>
+                <li><span class="label">注意</span><span class="value">内置简化解析器，未使用外部库；复杂 YAML 特性可能不支持</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./yaml_viewer.js"></script>
+</body>
+
+</html>

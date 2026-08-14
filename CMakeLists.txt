@@ -1,0 +1,124 @@
+cmake_minimum_required(VERSION 3.10)
+project(Tools
+    VERSION 1.0.0
+    DESCRIPTION "Tools - A collection of useful tools for developers"
+    HOMEPAGE_URL "https://example.com"
+)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
+
+# 导入应用信息
+include(${CMAKE_CURRENT_SOURCE_DIR}/appInfo/AppInfo.cmake)
+
+# 导入 httplib 库
+include(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/httplib/http.cmake)
+
+# 导入 webview2 库
+include(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/webview2/webview2.cmake)
+
+set(HWINFO_SHARED OFF)
+set(HWINFO_STATIC ON)
+add_subdirectory(3rdparty/hwinfo)
+
+# 导入资源文件
+set(RESOURCE_NAME_PREIFX tools)
+add_subdirectory(resource)
+
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(WIN_GUI WIN32)
+endif()
+
+add_executable(${PROJECT_NAME} ${WIN_GUI}
+    ${APPINFO_SRC}
+    src/main.cpp
+    src/common/App.cpp
+    src/common/Config.cpp
+    src/common/SystemTray.cpp
+    src/common/EventLoop.cpp
+    src/core/Server.cpp
+    src/core/Sha256.cpp
+    src/core/TransferTracker.cpp
+    src/core/Utils.cpp
+    src/core/Database.cpp
+    src/core/HttpServerManager.cpp
+    src/core/ProcManager.cpp
+    src/core/WebviewWrapper.cpp
+    src/routes/Admin.cpp
+    src/routes/Auth.cpp
+    src/routes/Clipboard.cpp
+    src/routes/Teams.cpp
+    src/routes/FileService.cpp
+    src/routes/Tools.cpp
+    src/routes/PdfTools.cpp
+    src/routes/Settings.cpp
+    src/routes/LocalTools.cpp
+    src/routes/FfmpegTool.cpp
+    src/routes/CertTool.cpp
+    src/routes/DocTool.cpp
+    src/routes/SysMonitor.cpp
+    src/routes/OcrTools.cpp
+    3rdparty/qrcodegen/qrcodegen.cpp
+)
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/cli11
+    ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/qrcodegen
+    ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/tray/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/stb
+)
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    -DTRAY_WINAPI=1 # 启用系统托盘
+    -DCMAKE_SOURCE_DIR="${CMAKE_SOURCE_DIR}" # 用于日志中转换文件路径到相对路径
+)
+
+# Debug 模式下，直接读取资源从系统目录
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_definitions(${PROJECT_NAME} PRIVATE
+        -DRESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/resource/data"
+    )
+endif()
+
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    ${RESOURCE_NAME_PREIFX}_resource
+    libsqlite3.a
+    iphlpapi
+
+    # boost
+    libboost_process-mt.a
+    libboost_filesystem-mt.a
+    ntdll
+    bcrypt
+
+    # hwinfo
+    hwinfo_cpu
+    hwinfo_ram
+    hwinfo_mainboard
+    hwinfo_disk
+    hwinfo_os
+    hwinfo_battery
+    hwinfo_gpu
+    hwinfo_network
+)
+
+# ----------------------------------------------------------------
+add_executable(test ${APPINFO_SRC}
+    test/test.cpp
+)
+target_include_directories(test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+target_compile_definitions(test PRIVATE
+    -DCMAKE_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
+)
+target_link_libraries(test PRIVATE
+    libboost_process-mt.a
+    libboost_filesystem-mt.a
+    ntdll
+    bcrypt
+    ws2_32
+    libssl.a
+    libcrypto.a
+)

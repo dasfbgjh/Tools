@@ -1,0 +1,76 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Basic Auth 生成器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./basic_auth_generator.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner-container"></div>
+
+        <div class="tool-grid-2">
+            <div class="tool-card">
+                <h2>生成 Basic Auth</h2>
+                <label class="tool-label" for="username">用户名</label>
+                <input type="text" id="username" class="tool-input" placeholder="username" value="admin" autocomplete="off">
+
+                <label class="tool-label" for="password" style="margin-top:0.75rem;">密码</label>
+                <div class="pwd-input-row">
+                    <input type="text" id="password" class="tool-input" placeholder="password" value="secret" autocomplete="off">
+                    <button id="btn-toggle-pwd" class="btn btn-ghost btn-sm" type="button" title="切换显示">👁</button>
+                </div>
+
+                <div class="tool-toolbar" style="margin-top:0.75rem;margin-bottom:0;">
+                    <button id="btn-generate" class="btn btn-sm" type="button">生成</button>
+                    <div class="spacer"></div>
+                    <button id="btn-copy-header" class="btn btn-outline btn-sm" type="button">复制 Header</button>
+                    <button id="btn-copy-token" class="btn btn-ghost btn-sm" type="button">复制 Token</button>
+                </div>
+            </div>
+
+            <div class="tool-card">
+                <h2>解析 Basic Auth</h2>
+                <label class="tool-label" for="decode-input">输入 Token 或 Header</label>
+                <textarea id="decode-input" class="tool-textarea sm" placeholder="Authorization: Basic YWRtaW46c2VjcmV0 或 YWRtaW46c2VjcmV0">Authorization: Basic YWRtaW46c2VjcmV0</textarea>
+                <div class="tool-toolbar" style="margin-top:0.75rem;margin-bottom:0;">
+                    <button id="btn-decode" class="btn btn-sm" type="button">解析</button>
+                    <div class="spacer"></div>
+                </div>
+                <ul class="tool-result-list" id="decode-result" style="margin-top:0.75rem;">
+                    <li><span class="label">用户名</span><span class="value" id="decoded-user">—</span></li>
+                    <li><span class="label">密码</span><span class="value" id="decoded-pwd">—</span></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>结果</h2>
+            <label class="tool-label">Authorization Header</label>
+            <div class="auth-output" id="header-output">Authorization: Basic YWRtaW46c2VjcmV0</div>
+            <label class="tool-label" style="margin-top:0.75rem;">Base64 Token</label>
+            <div class="auth-output" id="token-output">YWRtaW46c2VjcmV0</div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>说明</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">格式</span><span class="value">Authorization: Basic base64(username:password)</span></li>
+                <li><span class="label">编码</span><span class="value">使用 UTF-8 编码，支持中文用户名/密码</span></li>
+                <li><span class="label">注意</span><span class="value">Basic Auth 不加密，务必配合 HTTPS 使用</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./basic_auth_generator.js"></script>
+</body>
+
+</html>

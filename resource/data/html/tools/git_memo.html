@@ -1,0 +1,319 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git 命令备忘</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .git-cats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .git-cat-btn {
+            padding: 0.375rem 0.875rem;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: var(--surface);
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.8125rem;
+            transition: all 0.15s;
+        }
+        .git-cat-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .git-cat-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .git-section { margin-bottom: 1.5rem; }
+        .git-section h3 {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: var(--text);
+            margin: 0 0 0.625rem;
+            padding-bottom: 0.375rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .git-table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+        }
+        .git-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8125rem;
+            background: var(--surface);
+        }
+        .git-table thead th {
+            text-align: left;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            background: var(--bg-muted);
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        .git-table tbody tr { cursor: pointer; transition: background 0.12s; }
+        .git-table tbody tr:hover { background: var(--primary-light); }
+        .git-table tbody td {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+            color: var(--text);
+        }
+        .git-table tbody tr:last-child td { border-bottom: none; }
+        .git-table .col-cmd {
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+            color: var(--primary);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .git-table .col-desc { color: var(--text-muted); }
+        .git-count { font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+        .git-empty { padding: 2rem 1rem; text-align: center; color: var(--text-light); font-size: 0.875rem; }
+        @media (max-width: 640px) {
+            .git-table thead { display: none; }
+            .git-table, .git-table tbody, .git-table tr, .git-table td { display: block; width: 100%; }
+            .git-table tbody tr { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
+            .git-table tbody td { border: none; padding: 0.15rem 0; }
+            .git-table tbody td::before {
+                content: attr(data-label);
+                display: inline-block;
+                min-width: 3.5rem;
+                color: var(--text-light);
+                font-size: 0.75rem;
+                margin-right: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="tool-page">
+        <div class="tool-card">
+            <div id="banner"></div>
+
+            <div class="tool-toolbar">
+                <input type="text" id="search" class="tool-input" style="flex:1;" placeholder="搜索命令或说明...">
+            </div>
+
+            <div class="git-cats" id="cats"></div>
+            <div class="git-count" id="count"></div>
+            <div id="container"></div>
+            <p class="tool-hint">点击任意一行即可复制对应命令到剪贴板</p>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var $ = Tools.$;
+
+            var SECTIONS = [
+                {
+                    cat: '配置', items: [
+                        { cmd: 'git config --global user.name "名字"', desc: '设置全局提交用户名' },
+                        { cmd: 'git config --global user.email "邮箱"', desc: '设置全局提交邮箱' },
+                        { cmd: 'git config --list', desc: '查看所有配置信息' },
+                        { cmd: 'git config --global core.editor "code --wait"', desc: '设置默认编辑器' },
+                        { cmd: 'git config --global alias.co checkout', desc: '设置命令别名' },
+                        { cmd: 'git config --global init.defaultBranch main', desc: '设置默认分支名为 main' }
+                    ]
+                },
+                {
+                    cat: '初始化', items: [
+                        { cmd: 'git init', desc: '在当前目录初始化一个 Git 仓库' },
+                        { cmd: 'git init <目录>', desc: '在指定目录创建新仓库' },
+                        { cmd: 'git clone <url>', desc: '克隆远程仓库到本地' },
+                        { cmd: 'git clone <url> <目录>', desc: '克隆到指定目录' },
+                        { cmd: 'git clone --depth 1 <url>', desc: '浅克隆，只取最新一次提交' }
+                    ]
+                },
+                {
+                    cat: '暂存', items: [
+                        { cmd: 'git status', desc: '查看工作区与暂存区状态' },
+                        { cmd: 'git add <file>', desc: '将指定文件加入暂存区' },
+                        { cmd: 'git add .', desc: '将所有改动加入暂存区' },
+                        { cmd: 'git add -A', desc: '添加全部改动（含删除）到暂存区' },
+                        { cmd: 'git add -p', desc: '交互式选择部分改动加入暂存区' },
+                        { cmd: 'git rm <file>', desc: '删除文件并加入暂存区' },
+                        { cmd: 'git mv <old> <new>', desc: '重命名文件并加入暂存区' },
+                        { cmd: 'git restore <file>', desc: '撤销工作区改动（未暂存）' },
+                        { cmd: 'git restore --staged <file>', desc: '将文件移出暂存区' }
+                    ]
+                },
+                {
+                    cat: '提交', items: [
+                        { cmd: 'git commit -m "消息"', desc: '提交暂存区到仓库并附带消息' },
+                        { cmd: 'git commit -am "消息"', desc: '暂存已跟踪文件并提交' },
+                        { cmd: 'git commit --amend', desc: '修改最近一次提交' },
+                        { cmd: 'git commit --amend --no-edit', desc: '并入暂存区但不修改提交消息' },
+                        { cmd: 'git log', desc: '查看提交历史' },
+                        { cmd: 'git log --oneline --graph', desc: '以紧凑图形方式查看历史' }
+                    ]
+                },
+                {
+                    cat: '分支', items: [
+                        { cmd: 'git branch', desc: '列出本地分支' },
+                        { cmd: 'git branch -a', desc: '列出所有分支（含远程）' },
+                        { cmd: 'git branch <name>', desc: '创建新分支' },
+                        { cmd: 'git branch -d <name>', desc: '删除分支（安全）' },
+                        { cmd: 'git branch -D <name>', desc: '强制删除分支' },
+                        { cmd: 'git checkout <branch>', desc: '切换到指定分支' },
+                        { cmd: 'git checkout -b <name>', desc: '创建并切换到新分支' },
+                        { cmd: 'git switch <branch>', desc: '切换分支（新版命令）' },
+                        { cmd: 'git switch -c <name>', desc: '创建并切换到新分支（新版）' },
+                        { cmd: 'git branch -m <old> <new>', desc: '重命名分支' }
+                    ]
+                },
+                {
+                    cat: '合并', items: [
+                        { cmd: 'git merge <branch>', desc: '将指定分支合并到当前分支' },
+                        { cmd: 'git merge --no-ff <branch>', desc: '禁用快进，保留合并提交' },
+                        { cmd: 'git merge --squash <branch>', desc: '压缩合并为一次提交' },
+                        { cmd: 'git rebase <branch>', desc: '将当前分支变基到指定分支' },
+                        { cmd: 'git rebase -i HEAD~3', desc: '交互式变基最近 3 次提交' },
+                        { cmd: 'git rebase --abort', desc: '中止变基' },
+                        { cmd: 'git mergetool', desc: '调用合并工具解决冲突' }
+                    ]
+                },
+                {
+                    cat: '远程', items: [
+                        { cmd: 'git remote -v', desc: '查看远程仓库地址' },
+                        { cmd: 'git remote add origin <url>', desc: '添加远程仓库' },
+                        { cmd: 'git remote remove <name>', desc: '移除远程仓库' },
+                        { cmd: 'git remote set-url origin <url>', desc: '修改远程仓库地址' },
+                        { cmd: 'git fetch', desc: '拉取远程更新但不合并' },
+                        { cmd: 'git fetch --all', desc: '拉取所有远程的更新' },
+                        { cmd: 'git pull', desc: '拉取并合并远程分支' },
+                        { cmd: 'git pull --rebase', desc: '拉取并变基到远程分支' },
+                        { cmd: 'git push', desc: '推送本地提交到远程' },
+                        { cmd: 'git push -u origin <branch>', desc: '推送并设置上游分支' },
+                        { cmd: 'git push --force-with-lease', desc: '安全强制推送（推荐）' }
+                    ]
+                },
+                {
+                    cat: '标签', items: [
+                        { cmd: 'git tag', desc: '列出所有标签' },
+                        { cmd: 'git tag <name>', desc: '创建轻量标签' },
+                        { cmd: 'git tag -a <name> -m "消息"', desc: '创建附注标签' },
+                        { cmd: 'git tag -d <name>', desc: '删除本地标签' },
+                        { cmd: 'git push origin <tag>', desc: '推送单个标签到远程' },
+                        { cmd: 'git push --tags', desc: '推送所有标签到远程' },
+                        { cmd: 'git tag <name> <commit>', desc: '给指定提交打标签' }
+                    ]
+                },
+                {
+                    cat: '撤销', items: [
+                        { cmd: 'git restore <file>', desc: '丢弃工作区未暂存的改动' },
+                        { cmd: 'git restore --staged <file>', desc: '取消暂存（保留改动）' },
+                        { cmd: 'git checkout -- <file>', desc: '丢弃工作区改动（旧命令）' },
+                        { cmd: 'git reset HEAD <file>', desc: '取消暂存（旧命令）' },
+                        { cmd: 'git reset --soft HEAD~1', desc: '撤销最近提交，保留改动在暂存区' },
+                        { cmd: 'git reset --mixed HEAD~1', desc: '撤销提交与暂存，保留工作区改动' },
+                        { cmd: 'git reset --hard HEAD~1', desc: '彻底丢弃最近提交（危险）' },
+                        { cmd: 'git revert <commit>', desc: '创建一个提交来反转指定提交' },
+                        { cmd: 'git clean -fd', desc: '删除未跟踪的文件和目录' }
+                    ]
+                },
+                {
+                    cat: '查看历史', items: [
+                        { cmd: 'git log', desc: '查看提交历史' },
+                        { cmd: 'git log --oneline', desc: '单行简洁显示历史' },
+                        { cmd: 'git log --graph --oneline', desc: '图形化显示分支历史' },
+                        { cmd: 'git log -p <file>', desc: '查看文件的提交历史与差异' },
+                        { cmd: 'git log --author="名字"', desc: '按作者过滤历史' },
+                        { cmd: 'git log --since="2 weeks ago"', desc: '按时间过滤历史' },
+                        { cmd: 'git show <commit>', desc: '查看某次提交的详情' },
+                        { cmd: 'git diff', desc: '查看工作区与暂存区的差异' },
+                        { cmd: 'git diff --staged', desc: '查看暂存区与最新提交的差异' },
+                        { cmd: 'git diff <branch1> <branch2>', desc: '比较两个分支的差异' },
+                        { cmd: 'git blame <file>', desc: '查看文件每行的最后修改者' },
+                        { cmd: 'git reflog', desc: '查看 HEAD 移动记录（恢复误操作）' }
+                    ]
+                }
+            ];
+
+            var state = { cat: '全部', search: '' };
+
+            function renderCats() {
+                var cats = $('cats');
+                cats.innerHTML = '';
+                var all = ['全部'].concat(SECTIONS.map(function (s) { return s.cat; }));
+                all.forEach(function (cat) {
+                    cats.appendChild(Tools.el('button', {
+                        class: 'git-cat-btn' + (state.cat === cat ? ' active' : ''),
+                        type: 'button',
+                        text: cat,
+                        onclick: function () { state.cat = cat; renderCats(); render(); }
+                    }));
+                });
+            }
+
+            function matchItem(item, term) {
+                if (!term) return true;
+                if (item.cmd.toLowerCase().indexOf(term) !== -1) return true;
+                if (item.desc.indexOf(term) !== -1) return true;
+                return false;
+            }
+
+            function render() {
+                var container = $('container');
+                container.innerHTML = '';
+                var term = state.search.toLowerCase();
+                var total = 0;
+
+                SECTIONS.forEach(function (section) {
+                    if (state.cat !== '全部' && state.cat !== section.cat) return;
+                    var matched = section.items.filter(function (it) { return matchItem(it, term); });
+                    if (matched.length === 0) return;
+                    total += matched.length;
+
+                    var sec = Tools.el('div', { class: 'git-section' });
+                    sec.appendChild(Tools.el('h3', { text: section.cat + '（' + matched.length + '）' }));
+
+                    var wrap = Tools.el('div', { class: 'git-table-wrap' });
+                    var table = Tools.el('table', { class: 'git-table' });
+                    table.appendChild(Tools.el('thead', {}, [
+                        Tools.el('tr', {}, [
+                            Tools.el('th', { text: '命令' }),
+                            Tools.el('th', { text: '说明' })
+                        ])
+                    ]));
+                    var tbody = Tools.el('tbody', {});
+                    matched.forEach(function (item) {
+                        var tr = Tools.el('tr', {}, [
+                            Tools.el('td', { class: 'col-cmd', 'data-label': '命令', text: item.cmd }),
+                            Tools.el('td', { class: 'col-desc', 'data-label': '说明', text: item.desc })
+                        ]);
+                        tr.addEventListener('click', function () {
+                            Tools.copyText(item.cmd, tr, '已复制');
+                        });
+                        tbody.appendChild(tr);
+                    });
+                    table.appendChild(tbody);
+                    wrap.appendChild(table);
+                    sec.appendChild(wrap);
+                    container.appendChild(sec);
+                });
+
+                $('count').textContent = '共 ' + total + ' 条结果';
+                if (total === 0) {
+                    container.appendChild(Tools.el('div', { class: 'git-empty', text: '未找到匹配的命令' }));
+                }
+            }
+
+            $('search').addEventListener('input', function () {
+                state.search = this.value.trim();
+                render();
+            });
+
+            renderCats();
+            render();
+        });
+    </script>
+</body>
+</html>

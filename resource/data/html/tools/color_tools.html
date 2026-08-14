@@ -1,0 +1,99 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>颜色工具</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./color_tools.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="msg-banner"></div>
+
+        <div class="tool-grid-2">
+            <div class="tool-card">
+                <h2>颜色选择</h2>
+                <div class="picker-row">
+                    <input type="color" id="main-color" value="#6366F1">
+                    <div class="picker-info">
+                        <div class="picker-hex" id="picker-hex">#6366F1</div>
+                        <div class="picker-name">点击左侧色块或下方格式输入框进行编辑</div>
+                    </div>
+                    <button id="btn-random" class="btn btn-ghost btn-sm">🎲 随机</button>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">颜色格式 (点击复制)</div>
+                    <div class="format-row">
+                        <span class="format-label">HEX</span>
+                        <input type="text" id="fmt-hex" class="tool-input format-input" value="#6366F1">
+                        <button class="btn btn-outline copy-btn" data-copy="hex">复制</button>
+                    </div>
+                    <div class="format-row">
+                        <span class="format-label">RGB</span>
+                        <input type="text" id="fmt-rgb" class="tool-input format-input" value="rgb(99, 102, 241)">
+                        <button class="btn btn-outline copy-btn" data-copy="rgb">复制</button>
+                    </div>
+                    <div class="format-row">
+                        <span class="format-label">HSL</span>
+                        <input type="text" id="fmt-hsl" class="tool-input format-input" value="hsl(239, 84%, 67%)">
+                        <button class="btn btn-outline copy-btn" data-copy="hsl">复制</button>
+                    </div>
+                    <div class="format-row">
+                        <span class="format-label">HSV</span>
+                        <input type="text" id="fmt-hsv" class="tool-input format-input" value="hsv(239, 59%, 95%)">
+                        <button class="btn btn-outline copy-btn" data-copy="hsv">复制</button>
+                    </div>
+                    <div class="format-row">
+                        <span class="format-label">CMYK</span>
+                        <input type="text" id="fmt-cmyk" class="tool-input format-input" value="cmyk(59%, 58%, 0%, 5%)">
+                        <button class="btn btn-outline copy-btn" data-copy="cmyk">复制</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tool-card">
+                <h2>颜色预览</h2>
+                <div class="color-preview" id="color-preview">
+                    <span class="preview-text" id="preview-text">#6366F1</span>
+                </div>
+
+                <div class="harmony-section">
+                    <div class="harmony-title">亮度色阶 (深 → 浅)</div>
+                    <div class="swatch-row" id="shades-row"></div>
+                </div>
+
+                <div class="harmony-section">
+                    <div class="harmony-title">互补色</div>
+                    <div class="harmony-grid cols-1" id="complementary-row"></div>
+                </div>
+
+                <div class="harmony-section">
+                    <div class="harmony-title">三元色 (Triadic)</div>
+                    <div class="harmony-grid cols-3" id="triadic-row"></div>
+                </div>
+
+                <div class="harmony-section">
+                    <div class="harmony-title">类似色 (Analogous)</div>
+                    <div class="harmony-grid cols-5" id="analogous-row"></div>
+                </div>
+
+                <div class="harmony-section">
+                    <div class="harmony-title">调色板</div>
+                    <div class="harmony-grid cols-5" id="palette-row"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./color_tools.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,58 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数学表达式计算</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./math_evaluator.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner-container"></div>
+
+        <div class="tool-card">
+            <label class="tool-label" for="input">表达式</label>
+            <input type="text" id="input" class="tool-input tool-monospace" placeholder="例如: 2 + 3 * sqrt(16) - pi" autocomplete="off">
+            <div class="tool-toolbar" style="margin-top:0.75rem;margin-bottom:0;">
+                <span class="tool-hint" style="margin:0;">支持 + - * / ^ % () 及函数 sqrt/sin/cos/tan/log/ln/abs/round/floor/ceil 与常量 pi/e</span>
+                <div class="spacer"></div>
+                <button id="btn-copy" class="btn btn-outline btn-sm" type="button">复制结果</button>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>结果</h2>
+            <div id="result" class="math-result empty">输入表达式后自动计算</div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>历史记录</h2>
+            <div id="history" class="math-history"></div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>示例</h2>
+            <div class="math-examples">
+                <button class="example-btn" data-expr="2 + 3 * 4">2 + 3 * 4</button>
+                <button class="example-btn" data-expr="sqrt(144)">sqrt(144)</button>
+                <button class="example-btn" data-expr="2^10">2^10</button>
+                <button class="example-btn" data-expr="sin(pi/2)">sin(pi/2)</button>
+                <button class="example-btn" data-expr="log(1000)">log(1000)</button>
+                <button class="example-btn" data-expr="(1+2)*(3+4)">(1+2)*(3+4)</button>
+                <button class="example-btn" data-expr="round(pi * 100) / 100">round(pi * 100) / 100</button>
+                <button class="example-btn" data-expr="5!">5!</button>
+            </div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./math_evaluator.js"></script>
+</body>
+
+</html>

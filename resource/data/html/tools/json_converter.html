@@ -1,0 +1,419 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON转换</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner-container"></div>
+
+        <div class="tool-grid-2">
+            <div class="tool-card">
+                <label class="tool-label" for="input">JSON / 其他格式 输入</label>
+                <textarea id="input" class="tool-textarea lg" placeholder="输入 JSON 或目标格式文本（自动识别方向）..."></textarea>
+                <div class="tool-toolbar" style="margin-top:0.75rem;margin-bottom:0;">
+                    <button id="btn-convert" class="btn btn-sm" type="button">转换</button>
+                    <button id="btn-swap" class="btn btn-outline btn-sm" type="button">交换</button>
+                    <button id="btn-clear" class="btn btn-ghost btn-sm" type="button">清空</button>
+                </div>
+                <p class="tool-hint">输入合法 JSON 时执行 JSON → 目标格式；否则执行 目标格式 → JSON</p>
+            </div>
+            <div class="tool-card">
+                <label class="tool-label">目标格式</label>
+                <div class="tool-check-row">
+                    <label><input type="radio" name="format" value="xml" checked> XML</label>
+                </div>
+                <div class="tool-check-row">
+                    <label><input type="radio" name="format" value="csv"> CSV</label>
+                </div>
+                <div class="tool-check-row">
+                    <label><input type="radio" name="format" value="yaml"> YAML</label>
+                </div>
+                <label class="tool-label" for="output" style="margin-top:0.75rem;">转换结果</label>
+                <textarea id="output" class="tool-textarea lg" readonly placeholder="转换结果将显示在这里..."></textarea>
+                <div class="tool-toolbar" style="margin-top:0.75rem;margin-bottom:0;">
+                    <button id="btn-copy" class="btn btn-outline btn-sm" type="button">复制结果</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>转换说明</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">XML</span><span class="value">对象键 → 元素，数组 → 同名重复元素，自动转义特殊字符</span></li>
+                <li><span class="label">CSV</span><span class="value">仅支持根为数组对象，首项键作为表头，嵌套对象自动展平</span></li>
+                <li><span class="label">YAML</span><span class="value">2 空格缩进，数组用 -，对象用 key: value</span></li>
+                <li><span class="label">交换</span><span class="value">把当前输出作为下一次输入，方便反向转换</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var $ = Tools.$;
+            var inputEl = $('input');
+            var outputEl = $('output');
+
+            function getFormat() {
+                var checked = document.querySelector('input[name="format"]:checked');
+                return checked ? checked.value : 'xml';
+            }
+
+            // ===== XML =====
+            function escapeXml(s) {
+                return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+            }
+
+            function jsonToXml(value, rootName) {
+                rootName = rootName || 'root';
+                function build(val, name, depth) {
+                    var pad = new Array(depth + 1).join('  ');
+                    if (val === null || val === undefined) return pad + '<' + name + '></' + name + '>';
+                    if (Array.isArray(val)) {
+                        return val.map(function (item) { return build(item, name, depth); }).join('\n');
+                    }
+                    if (typeof val === 'object') {
+                        var inner = Object.keys(val).map(function (k) { return build(val[k], k, depth + 1); }).join('\n');
+                        return pad + '<' + name + '>\n' + inner + '\n' + pad + '</' + name + '>';
+                    }
+                    return pad + '<' + name + '>' + escapeXml(val) + '</' + name + '>';
+                }
+                return '<?xml version="1.0" encoding="UTF-8"?>\n' + build(value, rootName, 0);
+            }
+
+            function xmlToJson(xml) {
+                var doc = new DOMParser().parseFromString(xml, 'text/xml');
+                var parseError = doc.querySelector('parsererror');
+                if (parseError) throw new Error('XML 解析失败：' + parseError.textContent.trim().split('\n')[0]);
+                function build(node) {
+                    var children = node.children;
+                    if (children.length === 0) {
+                        var text = (node.textContent || '').trim();
+                        if (text === '') return '';
+                        if (/^-?\d+(\.\d+)?$/.test(text)) return parseFloat(text);
+                        if (text === 'true') return true;
+                        if (text === 'false') return false;
+                        return text;
+                    }
+                    var obj = {};
+                    for (var i = 0; i < children.length; i++) {
+                        var child = children[i];
+                        var childObj = build(child);
+                        if (child.tagName in obj) {
+                            if (!Array.isArray(obj[child.tagName])) obj[child.tagName] = [obj[child.tagName]];
+                            obj[child.tagName].push(childObj);
+                        } else {
+                            obj[child.tagName] = childObj;
+                        }
+                    }
+                    return obj;
+                }
+                var rootEl = doc.documentElement;
+                var result = {};
+                result[rootEl.tagName] = build(rootEl);
+                return JSON.stringify(result, null, 2);
+            }
+
+            // ===== CSV =====
+            function csvEscape(s) {
+                s = String(s);
+                if (s.indexOf(',') >= 0 || s.indexOf('"') >= 0 || s.indexOf('\n') >= 0 || s.indexOf('\r') >= 0) {
+                    return '"' + s.replace(/"/g, '""') + '"';
+                }
+                return s;
+            }
+
+            function flatten(obj, prefix, out) {
+                for (var k in obj) {
+                    if (!Object.prototype.hasOwnProperty.call(obj, k)) continue;
+                    var v = obj[k];
+                    var key = prefix ? prefix + '.' + k : k;
+                    if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
+                        flatten(v, key, out);
+                    } else if (Array.isArray(v)) {
+                        out[key] = JSON.stringify(v);
+                    } else {
+                        out[key] = v;
+                    }
+                }
+                return out;
+            }
+
+            function jsonToCsv(jsonStr) {
+                var arr = JSON.parse(jsonStr);
+                if (!Array.isArray(arr)) throw new Error('CSV 转换需要根节点为数组');
+                if (arr.length === 0) return '';
+                var rows = arr.map(function (item) {
+                    if (item !== null && typeof item === 'object' && !Array.isArray(item)) {
+                        return flatten(item, '', {});
+                    }
+                    return { value: item };
+                });
+                var headers = [];
+                rows.forEach(function (r) {
+                    Object.keys(r).forEach(function (k) { if (headers.indexOf(k) < 0) headers.push(k); });
+                });
+                var lines = [headers.map(function (h) { return csvEscape(h); }).join(',')];
+                rows.forEach(function (r) {
+                    lines.push(headers.map(function (h) {
+                        var v = r[h];
+                        if (v === undefined || v === null) return '';
+                        return csvEscape(v);
+                    }).join(','));
+                });
+                return lines.join('\n');
+            }
+
+            function csvToJson(csvStr) {
+                var rows = [];
+                var i = 0, len = csvStr.length;
+                var field = '', row = [], inQuotes = false;
+                while (i < len) {
+                    var c = csvStr.charAt(i);
+                    if (inQuotes) {
+                        if (c === '"') {
+                            if (csvStr.charAt(i + 1) === '"') { field += '"'; i += 2; continue; }
+                            inQuotes = false; i++; continue;
+                        }
+                        field += c; i++; continue;
+                    }
+                    if (c === '"') { inQuotes = true; i++; continue; }
+                    if (c === ',') { row.push(field); field = ''; i++; continue; }
+                    if (c === '\r') { i++; continue; }
+                    if (c === '\n') { row.push(field); rows.push(row); field = ''; row = []; i++; continue; }
+                    field += c; i++;
+                }
+                if (field !== '' || row.length > 0) { row.push(field); rows.push(row); }
+                if (rows.length === 0) return '[]';
+                var headers = rows[0];
+                var result = [];
+                for (var r = 1; r < rows.length; r++) {
+                    var obj = {};
+                    for (var ci = 0; ci < headers.length; ci++) {
+                        var val = rows[r][ci];
+                        if (val === undefined) val = '';
+                        if (/^-?\d+(\.\d+)?$/.test(val)) obj[headers[ci]] = parseFloat(val);
+                        else if (val === 'true') obj[headers[ci]] = true;
+                        else if (val === 'false') obj[headers[ci]] = false;
+                        else obj[headers[ci]] = val;
+                    }
+                    result.push(obj);
+                }
+                return JSON.stringify(result, null, 2);
+            }
+
+            // ===== YAML =====
+            function yamlNeedsQuote(s) {
+                if (s === '') return true;
+                if (/^\s|\s$/.test(s)) return true;
+                if (/[:#\-?,&*!|>'"%@`{}[\]]/.test(s)) return true;
+                if (/^-?\d+(\.\d+)?$/.test(s)) return true;
+                if (s === 'true' || s === 'false' || s === 'null' || s === 'yes' || s === 'no' || s === '~') return true;
+                return false;
+            }
+
+            function yamlScalar(v) {
+                if (v === null) return 'null';
+                if (typeof v === 'boolean') return v ? 'true' : 'false';
+                if (typeof v === 'number') return String(v);
+                var s = String(v);
+                if (yamlNeedsQuote(s)) return "'" + s.replace(/'/g, "''") + "'";
+                return s;
+            }
+
+            function jsonToYaml(value, indent) {
+                indent = indent || 0;
+                var pad = new Array(indent + 1).join(' ');
+                if (value === null) return pad + 'null';
+                if (Array.isArray(value)) {
+                    if (value.length === 0) return pad + '[]';
+                    var lines = value.map(function (item) {
+                        if (item !== null && typeof item === 'object') {
+                            var sub = jsonToYaml(item, indent + 2);
+                            return pad + '- ' + sub.replace(/^\s+/, '');
+                        }
+                        return pad + '- ' + yamlScalar(item);
+                    });
+                    return lines.join('\n');
+                }
+                if (typeof value === 'object') {
+                    var keys = Object.keys(value);
+                    if (keys.length === 0) return pad + '{}';
+                    var out = keys.map(function (k) {
+                        var v = value[k];
+                        if (v !== null && typeof v === 'object') {
+                            return pad + k + ':\n' + jsonToYaml(v, indent + 2);
+                        }
+                        return pad + k + ': ' + yamlScalar(v);
+                    });
+                    return out.join('\n');
+                }
+                return pad + yamlScalar(value);
+            }
+
+            function yamlToJson(yamlStr) {
+                var lines = yamlStr.split(/\r?\n/);
+                var idx = 0;
+
+                function getIndent(line) {
+                    var m = /^(\s*)/.exec(line);
+                    return m ? m[1].length : 0;
+                }
+
+                function parseScalar(s) {
+                    s = s.trim();
+                    if (s === '') return '';
+                    if (s === 'null' || s === '~') return null;
+                    if (s === 'true' || s === 'yes') return true;
+                    if (s === 'false' || s === 'no') return false;
+                    if (/^-?\d+$/.test(s)) return parseInt(s, 10);
+                    if (/^-?\d+\.\d+$/.test(s)) return parseFloat(s);
+                    if (s.length >= 2 && s.charAt(0) === "'" && s.charAt(s.length - 1) === "'") {
+                        return s.slice(1, -1).replace(/''/g, "'");
+                    }
+                    if (s.length >= 2 && s.charAt(0) === '"' && s.charAt(s.length - 1) === '"') {
+                        return s.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+                    }
+                    return s;
+                }
+
+                function parseDeeper(expectedIndent) {
+                    var saved = idx;
+                    while (idx < lines.length && (/^\s*$/.test(lines[idx]) || /^\s*#/.test(lines[idx]))) idx++;
+                    if (idx >= lines.length) { idx = saved; return ''; }
+                    var nextIndent = getIndent(lines[idx]);
+                    if (nextIndent < expectedIndent) { idx = saved; return ''; }
+                    return parseValue(nextIndent);
+                }
+
+                function parseValue(indent) {
+                    var result = null;
+                    while (idx < lines.length) {
+                        var raw = lines[idx];
+                        if (/^\s*$/.test(raw) || /^\s*#/.test(raw)) { idx++; continue; }
+                        var curIndent = getIndent(raw);
+                        if (curIndent < indent) break;
+                        if (curIndent > indent) { idx++; continue; }
+                        var content = raw.slice(curIndent);
+                        if (content.charAt(0) === '-') {
+                            if (result === null) result = [];
+                            if (!Array.isArray(result)) throw new Error('YAML 解析失败：混合类型');
+                            var rest = content.slice(1).replace(/^\s+/, '');
+                            if (rest === '') {
+                                idx++;
+                                result.push(parseValue(indent + 2));
+                            } else if (/^[^:]+:/.test(rest)) {
+                                var obj = {};
+                                var km = /^([^:]+):\s*(.*)$/.exec(rest);
+                                var key = km[1].trim();
+                                var val = km[2];
+                                idx++;
+                                if (val === '') {
+                                    obj[key] = parseDeeper(indent + 2);
+                                } else {
+                                    obj[key] = parseScalar(val);
+                                }
+                                var more = parseValue(indent + 2);
+                                if (more && typeof more === 'object' && !Array.isArray(more)) {
+                                    for (var mk in more) obj[mk] = more[mk];
+                                }
+                                result.push(obj);
+                            } else {
+                                result.push(parseScalar(rest));
+                                idx++;
+                            }
+                        } else if (/^[^:]+:/.test(content)) {
+                            if (result === null) result = {};
+                            if (Array.isArray(result)) throw new Error('YAML 解析失败：混合类型');
+                            var km2 = /^([^:]+):\s*(.*)$/.exec(content);
+                            var key2 = km2[1].trim();
+                            var val2 = km2[2];
+                            idx++;
+                            if (val2 === '') {
+                                result[key2] = parseDeeper(indent + 2);
+                            } else {
+                                result[key2] = parseScalar(val2);
+                            }
+                        } else {
+                            idx++;
+                        }
+                    }
+                    return result;
+                }
+
+                var res = parseValue(0);
+                return JSON.stringify(res, null, 2);
+            }
+
+            // ===== Convert =====
+            function convert() {
+                Tools.clearBanner('banner-container');
+                var input = inputEl.value;
+                if (!input || !input.trim()) {
+                    outputEl.value = '';
+                    return;
+                }
+                var format = getFormat();
+                try {
+                    var result = '';
+                    var isJson = true;
+                    try { JSON.parse(input); } catch (e) { isJson = false; }
+                    if (isJson) {
+                        if (format === 'xml') result = jsonToXml(JSON.parse(input));
+                        else if (format === 'csv') result = jsonToCsv(input);
+                        else if (format === 'yaml') result = jsonToYaml(JSON.parse(input), 0);
+                        Tools.showBanner('banner-container', 'success', '✓ 转换成功（JSON → ' + format.toUpperCase() + '）');
+                    } else {
+                        if (format === 'xml') result = xmlToJson(input);
+                        else if (format === 'csv') result = csvToJson(input);
+                        else if (format === 'yaml') result = yamlToJson(input);
+                        Tools.showBanner('banner-container', 'success', '✓ 转换成功（' + format.toUpperCase() + ' → JSON）');
+                    }
+                    outputEl.value = result;
+                } catch (e) {
+                    outputEl.value = '';
+                    Tools.showBanner('banner-container', 'error', '✗ ' + (e.message || '转换失败'));
+                }
+            }
+
+            function swap() {
+                var out = outputEl.value;
+                inputEl.value = out;
+                outputEl.value = '';
+                Tools.clearBanner('banner-container');
+            }
+
+            function clearAll() {
+                inputEl.value = '';
+                outputEl.value = '';
+                Tools.clearBanner('banner-container');
+            }
+
+            function copyResult(btn) {
+                if (!outputEl.value) {
+                    Tools.showBanner('banner-container', 'warn', '没有可复制的结果');
+                    return;
+                }
+                Tools.copyText(outputEl.value, btn, '已复制');
+            }
+
+            $('btn-convert').addEventListener('click', convert);
+            $('btn-swap').addEventListener('click', swap);
+            $('btn-clear').addEventListener('click', clearAll);
+            $('btn-copy').addEventListener('click', function () { copyResult($('btn-copy')); });
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,64 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>剪切板</title>
+    <link rel="stylesheet" href="./../style.css" />
+    <link rel="stylesheet" href="index.css" />
+    <script src="./../theme.js"></script>
+
+</head>
+
+<body>
+    <div id="app">
+        <div class="actions-bar">
+            <div class="container">
+                <div class="flex items-center space-x-3">
+                    <button class="btn" id="paste-btn" title="粘贴剪贴板内容">
+                        <span>📋</span><span class="hidden-mobile">粘贴</span>
+                    </button>
+                    <input type="file" id="file-input" class="hidden" />
+                    <button class="btn btn-outline" id="upload-btn" title="粘贴文件">
+                        <span>⬆</span><span class="hidden-mobile">粘贴文件</span>
+                    </button>
+                </div>
+                <div class="flex items-center justify-between mt-3">
+                    <div class="text-sm text-muted" id="hint">支持粘贴文本、图片、HTML内容</div>
+                    <div class="flex items-center" style="margin-left: 2rem; gap: 1rem;">
+                        <div class="text-sm" id="current-team" style="color: var(--primary); font-weight: 500;">-</div>
+                        <button class="btn btn-outline btn-sm" id="team-toggle-btn" title="团队管理">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                <circle cx="9" cy="7" r="4" />
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                            </svg><span class="hidden-mobile">团队管理</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="list-container">
+            <div class="container">
+                <div id="items-grid" class="clipboard-grid"></div>
+                <div id="empty-state" class="empty-state hidden">
+                    <div>
+                        <div class="icon">📋</div>
+                        <h3>暂无内容</h3>
+                        <p>粘贴或上传文件到剪贴板</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./../app.js"></script>
+    <script src="index.js"></script>
+</body>
+
+</html>

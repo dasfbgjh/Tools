@@ -1,0 +1,230 @@
+.tool-header-info {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.tool-header-info h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+.tool-header-info .tool-desc {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+/* 统一的上传+预览区域 */
+.upload-preview {
+    position: relative;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    background-color: var(--bg-card);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+    margin-bottom: 0.75rem;
+    min-height: 280px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.upload-preview:hover,
+.upload-preview.dragover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+.upload-preview.dragover {
+    border-style: solid;
+}
+
+.upload-preview input[type=file] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    font-size: 0;
+    z-index: 2;
+}
+
+/* 空状态提示 */
+.preview-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 2rem 1rem;
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+    text-align: center;
+    pointer-events: none;
+}
+
+.upload-preview:hover .preview-empty,
+.upload-preview.dragover .preview-empty {
+    color: var(--primary);
+}
+
+.drop-zone-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+    opacity: 0.6;
+}
+
+.preview-empty-text {
+    font-size: 0.875rem;
+}
+
+.preview-hint {
+    font-size: 0.75rem;
+    color: var(--text-light);
+    margin-top: 0.25rem;
+}
+
+/* 图片预览容器（选中文件后显示） */
+.preview-image-wrap {
+    display: none;
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem;
+    pointer-events: none;
+}
+
+.preview-image-wrap.visible {
+    display: flex;
+}
+
+.preview-image-wrap img {
+    max-width: 100%;
+    max-height: 360px;
+    object-fit: contain;
+    border-radius: calc(var(--radius) - 2px);
+}
+
+.format-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.format-option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.format-option:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.format-option input[type="radio"] {
+    display: none;
+}
+
+.format-option:has(input:checked) {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+.format-name {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.quality-section {
+    margin-bottom: 1rem;
+    display: none;
+}
+
+.quality-section.visible {
+    display: block;
+}
+
+.ico-section {
+    margin-bottom: 1rem;
+    display: none;
+}
+
+.ico-section.visible {
+    display: block;
+}
+
+.ico-sizes-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+}
+
+.ico-size-option {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.8125rem;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.ico-size-option:hover {
+    border-color: var(--primary);
+}
+
+.ico-size-option input[type="checkbox"] {
+    accent-color: var(--primary);
+}
+
+.ico-size-option:has(input:checked) {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.quality-slider-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.quality-slider-wrap input[type="range"] {
+    flex: 1;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+}
+
+.quality-slider-wrap input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--primary);
+    cursor: pointer;
+}
+
+.quality-value {
+    min-width: 3rem;
+    text-align: right;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}

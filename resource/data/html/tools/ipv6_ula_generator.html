@@ -1,0 +1,66 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPv6 ULA 生成器</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./ipv6_ula_generator.css">
+</head>
+
+<body>
+    <div class="tool-page">
+
+        <div id="banner-container"></div>
+
+        <div class="tool-grid-3">
+            <div class="tool-card">
+                <h2>生成选项</h2>
+
+                <label class="tool-label">数量</label>
+                <div class="slider-row">
+                    <input type="range" id="count" min="1" max="50" value="5">
+                    <span class="slider-val" id="count-val">5</span>
+                </div>
+
+                <div style="margin-top:0.75rem;">
+                    <label class="tool-label">子网 ID (十六进制，留空随机)</label>
+                    <input type="text" id="subnet" class="tool-input tool-monospace" placeholder="如 0001" maxlength="4" autocomplete="off">
+                </div>
+
+                <div style="margin-top:0.75rem;">
+                    <label class="tool-check-row"><input type="checkbox" id="random-iid"> 随机接口 ID (默认全 0)</label>
+                </div>
+
+                <div class="tool-toolbar" style="margin-top:1rem;margin-bottom:0;">
+                    <button id="btn-generate" class="btn btn-sm" type="button">生成</button>
+                    <button id="btn-copy-all" class="btn btn-outline btn-sm" type="button">复制全部</button>
+                    <button id="btn-clear" class="btn btn-ghost btn-sm" type="button">清空</button>
+                </div>
+            </div>
+
+            <div class="tool-card">
+                <h2>生成结果</h2>
+                <div id="result-list" class="ula-list"></div>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <h2>说明</h2>
+            <ul class="tool-result-list">
+                <li><span class="label">ULA 范围</span><span class="value">fc00::/7 (实际使用 fd00::/8)</span></li>
+                <li><span class="label">RFC 4193</span><span class="value">fd + 40 位随机 Global ID + 16 位子网 ID + 64 位接口 ID</span></li>
+                <li><span class="label">L 位</span><span class="value">置 1 表示本地分配，首字节固定为 fd</span></li>
+                <li><span class="label">用途</span><span class="value">内网 IPv6 地址规划，无需向 IANA 申请</span></li>
+            </ul>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./ipv6_ula_generator.js"></script>
+</body>
+
+</html>

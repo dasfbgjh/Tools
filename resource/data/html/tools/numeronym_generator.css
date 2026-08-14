@@ -1,0 +1,81 @@
+/* ===== Numeronym Generator ===== */
+
+.numeronym-result {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.numeronym-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-muted);
+}
+
+.numeronym-row .orig {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    word-break: break-all;
+}
+
+.numeronym-row .arrow {
+    color: var(--text-light);
+}
+
+.numeronym-row .abbr {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--primary);
+    min-width: 3rem;
+    text-align: right;
+}
+
+.numeronym-row.same .abbr {
+    color: var(--text-light);
+    font-weight: 400;
+}
+
+.numeronym-empty {
+    color: var(--text-light);
+    font-style: italic;
+    padding: 1rem;
+    font-size: 0.875rem;
+}
+
+.numeronym-ref {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.5rem;
+}
+
+.numeronym-ref-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.8125rem;
+}
+
+.numeronym-ref-item .word {
+    color: var(--text-muted);
+    flex: 1;
+}
+
+.numeronym-ref-item .arrow {
+    color: var(--text-light);
+}
+
+.numeronym-ref-item .abbr {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-weight: 700;
+    color: var(--primary);
+}

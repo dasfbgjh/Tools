@@ -1,0 +1,57 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文本对比</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./text_diff.css">
+</head>
+<body>
+    <div class="tool-page">
+
+        <div id="banner-container"></div>
+
+        <div class="tool-grid-2">
+            <div class="tool-card">
+                <label class="tool-label" for="old-text">原始文本</label>
+                <textarea id="old-text" class="tool-textarea" placeholder="输入原始文本..."></textarea>
+            </div>
+            <div class="tool-card">
+                <label class="tool-label" for="new-text">修改后文本</label>
+                <textarea id="new-text" class="tool-textarea" placeholder="输入修改后的文本..."></textarea>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <div class="tool-toolbar" style="margin-bottom:0;">
+                <button id="btn-diff" class="btn btn-sm" type="button">对比</button>
+                <button id="btn-swap" class="btn btn-outline btn-sm" type="button">交换</button>
+                <button id="btn-clear" class="btn btn-ghost btn-sm" type="button">清空</button>
+                <div class="spacer"></div>
+                <label class="tool-check-row"><input type="checkbox" id="opt-ignore-ws"> 忽略空白</label>
+                <label class="tool-check-row"><input type="checkbox" id="opt-case-sensitive" checked> 区分大小写</label>
+                <button id="btn-copy" class="btn btn-outline btn-sm" type="button" disabled>复制差异</button>
+            </div>
+        </div>
+
+        <div class="tool-card" style="margin-top:1.5rem;">
+            <div class="tool-toolbar" style="margin-bottom:0.75rem;">
+                <h2 style="margin:0;">对比结果</h2>
+                <div class="spacer"></div>
+                <div class="diff-stats">
+                    <span class="diff-stat-added">新增 <b id="stat-added">0</b></span>
+                    <span class="diff-stat-removed">删除 <b id="stat-removed">0</b></span>
+                    <span class="diff-stat-equal">不变 <b id="stat-equal">0</b></span>
+                </div>
+            </div>
+            <div id="diff-view" class="diff-view empty">点击“对比”查看差异</div>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./text_diff.js"></script>
+</body>
+</html>

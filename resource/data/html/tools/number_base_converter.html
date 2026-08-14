@@ -1,0 +1,304 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>进制转换</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .input-row {
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .input-row .main-input {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .input-row .base-select {
+            width: auto;
+            min-width: 140px;
+        }
+
+        .result-rows {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .result-row {
+            display: grid;
+            grid-template-columns: 80px 1fr auto;
+            gap: 0.75rem;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+        }
+
+        .result-row .label {
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .result-row .value {
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+            font-size: 0.875rem;
+            color: var(--text);
+            word-break: break-all;
+            min-height: 1.25rem;
+        }
+
+        .result-row .value.empty {
+            color: var(--text-light);
+            font-style: italic;
+        }
+
+        .ref-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8125rem;
+            margin-top: 0.5rem;
+        }
+
+        .ref-table th,
+        .ref-table td {
+            padding: 0.375rem 0.5rem;
+            border: 1px solid var(--border);
+            text-align: left;
+        }
+
+        .ref-table th {
+            background: var(--surface);
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .ref-table td {
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+        }
+
+        .ref-table td:first-child {
+            font-family: inherit;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+
+
+        <div class="tool-card">
+            <div id="banner"></div>
+
+            <label class="tool-label">输入数值</label>
+            <div class="input-row">
+                <input type="text" class="tool-input main-input" id="input-value" placeholder="输入要转换的数值...">
+                <select class="tool-select base-select" id="from-base">
+                    <option value="2">二进制 (Base 2)</option>
+                    <option value="8">八进制 (Base 8)</option>
+                    <option value="10" selected>十进制 (Base 10)</option>
+                    <option value="16">十六进制 (Base 16)</option>
+                </select>
+            </div>
+            <div class="tool-hint">支持大数（BigInt）与小数。输入会自动转换。</div>
+
+            <div class="tool-toolbar">
+                <span class="spacer"></span>
+                <button class="btn btn-outline btn-sm" id="btn-clear">清空</button>
+            </div>
+
+            <label class="tool-label">转换结果</label>
+            <div class="result-rows">
+                <div class="result-row">
+                    <span class="label">二进制</span>
+                    <span class="value empty" id="out-2">—</span>
+                    <button class="btn btn-ghost btn-sm" data-copy="out-2">复制</button>
+                </div>
+                <div class="result-row">
+                    <span class="label">八进制</span>
+                    <span class="value empty" id="out-8">—</span>
+                    <button class="btn btn-ghost btn-sm" data-copy="out-8">复制</button>
+                </div>
+                <div class="result-row">
+                    <span class="label">十进制</span>
+                    <span class="value empty" id="out-10">—</span>
+                    <button class="btn btn-ghost btn-sm" data-copy="out-10">复制</button>
+                </div>
+                <div class="result-row">
+                    <span class="label">十六进制</span>
+                    <span class="value empty" id="out-16">—</span>
+                    <button class="btn btn-ghost btn-sm" data-copy="out-16">复制</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tool-card">
+            <h2>常用参考值</h2>
+            <table class="ref-table">
+                <thead>
+                    <tr>
+                        <th>十进制</th>
+                        <th>二进制</th>
+                        <th>八进制</th>
+                        <th>十六进制</th>
+                    </tr>
+                </thead>
+                <tbody id="ref-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var DIGITS = '0123456789abcdefghijklmnopqrstuvwxyz';
+            var state = { timer: null };
+
+            function parseNumber(str, base) {
+                str = str.trim().toLowerCase();
+                if (!str) throw new Error('输入为空');
+                var negative = false;
+                if (str[0] === '-') { negative = true; str = str.slice(1); }
+                else if (str[0] === '+') { str = str.slice(1); }
+                if (base === 2 && str.indexOf('0b') === 0) str = str.slice(2);
+                else if (base === 8 && str.indexOf('0o') === 0) str = str.slice(2);
+                else if (base === 16 && str.indexOf('0x') === 0) str = str.slice(2);
+                if (!str) throw new Error('输入为空');
+                for (var i = 0; i < str.length; i++) {
+                    if (str[i] === '.') continue;
+                    var d = DIGITS.indexOf(str[i]);
+                    if (d < 0 || d >= base) throw new Error('无效字符 "' + str[i] + '"（不在 ' + base + ' 进制中）');
+                }
+                var dot = str.indexOf('.');
+                var intStr = dot === -1 ? str : str.slice(0, dot);
+                var fracStr = dot === -1 ? '' : str.slice(dot + 1);
+                var intPart = 0n;
+                if (intStr) {
+                    var b = BigInt(base);
+                    for (var i = 0; i < intStr.length; i++) {
+                        intPart = intPart * b + BigInt(DIGITS.indexOf(intStr[i]));
+                    }
+                }
+                var fracNum = 0;
+                if (fracStr) {
+                    for (var i = 0; i < fracStr.length; i++) {
+                        fracNum += DIGITS.indexOf(fracStr[i]) / Math.pow(base, i + 1);
+                    }
+                }
+                return { sign: negative, int: intPart, frac: fracNum };
+            }
+
+            function bigIntToBase(n, base) {
+                if (n === 0n) return '0';
+                var negative = n < 0n;
+                if (negative) n = -n;
+                var b = BigInt(base);
+                var out = '';
+                while (n > 0n) {
+                    out = DIGITS[Number(n % b)] + out;
+                    n = n / b;
+                }
+                return (negative ? '-' : '') + out;
+            }
+
+            function fractionToBase(frac, base, precision) {
+                precision = precision || 24;
+                if (frac <= 0) return '';
+                var out = '';
+                for (var i = 0; i < precision; i++) {
+                    if (frac <= 1e-12) break;
+                    frac *= base;
+                    var d = Math.floor(frac);
+                    out += DIGITS[d];
+                    frac -= d;
+                }
+                return out;
+            }
+
+            function setResult(id, text) {
+                var el = Tools.$(id);
+                el.textContent = text || '—';
+                el.classList.toggle('empty', !text);
+            }
+
+            function clearResults() {
+                ['out-2', 'out-8', 'out-10', 'out-16'].forEach(function (id) { setResult(id, ''); });
+            }
+
+            function convert() {
+                var input = Tools.$('input-value').value;
+                var base = parseInt(Tools.$('from-base').value, 10);
+                Tools.clearBanner('banner');
+                if (!input.trim()) { clearResults(); return; }
+                try {
+                    var parts = parseNumber(input, base);
+                    var results = {};
+                    [2, 8, 10, 16].forEach(function (t) {
+                        var s = bigIntToBase(parts.int, t);
+                        if (parts.frac > 0) {
+                            var f = fractionToBase(parts.frac, t);
+                            if (f) s += '.' + f;
+                        }
+                        if (parts.sign && (parts.int !== 0n || parts.frac > 0)) s = '-' + s;
+                        results[t] = s;
+                    });
+                    setResult('out-2', results[2]);
+                    setResult('out-8', results[8]);
+                    setResult('out-10', results[10]);
+                    setResult('out-16', results[16].toUpperCase());
+                } catch (e) {
+                    clearResults();
+                    Tools.showBanner('banner', 'error', e.message || '转换失败');
+                }
+            }
+
+            function debouncedConvert() {
+                clearTimeout(state.timer);
+                state.timer = setTimeout(convert, 150);
+            }
+
+            var refValues = [8, 16, 64, 128, 255, 1024, 65535, 16777215];
+            var refBody = Tools.$('ref-body');
+            refValues.forEach(function (v) {
+                var b = BigInt(v);
+                refBody.appendChild(Tools.el('tr', {}, [
+                    Tools.el('td', { text: String(v) }),
+                    Tools.el('td', { text: bigIntToBase(b, 2) }),
+                    Tools.el('td', { text: bigIntToBase(b, 8) }),
+                    Tools.el('td', { text: bigIntToBase(b, 16).toUpperCase() })
+                ]));
+            });
+
+            Tools.$('input-value').addEventListener('input', debouncedConvert);
+            Tools.$('from-base').addEventListener('change', convert);
+            Tools.$('btn-clear').addEventListener('click', function () {
+                Tools.$('input-value').value = '';
+                clearResults();
+                Tools.clearBanner('banner');
+            });
+            Tools.$$('[data-copy]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var target = Tools.$(btn.getAttribute('data-copy'));
+                    var text = target.textContent;
+                    if (!text || text === '—') return;
+                    Tools.copyText(text, btn, '已复制');
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

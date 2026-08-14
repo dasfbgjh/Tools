@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webview</title>
+
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #ffffff;
+            --bg-secondary: #f9fafb;
+            --surface: #ffffff;
+            --text: #1f2937;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
+            --shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        [data-theme="dark"] {
+            --primary: #818cf8;
+            --primary-hover: #a5b4fc;
+            --bg: #0f172a;
+            --bg-secondary: #1e293b;
+            --surface: #1e293b;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .window {
+            width: 100vw;
+            height: 100vh;
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow);
+        }
+
+        .titlebar {
+            height: 44px;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            user-select: none;
+            flex-shrink: 0;
+            background: var(--bg-secondary);
+            border-bottom: 2px solid var(--border);
+        }
+
+        .titlebar-title {
+            flex: 1;
+            font-size: 20px;
+            font-weight: 500;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .titlebar-buttons {
+            display: flex;
+            gap: 6px;
+        }
+
+        .titlebar-btn {
+            width: 32px;
+            height: 28px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.15s ease;
+            color: var(--text-muted);
+        }
+
+        .titlebar-btn:hover {
+            background: var(--border);
+            color: var(--text);
+        }
+
+        .titlebar-btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn-power {
+            color: #e81123;
+        }
+
+        .btn-power:hover {
+            background: #e81123;
+            color: #fff;
+        }
+
+        .content {
+            flex: 1;
+            overflow: hidden;
+            background: var(--bg);
+        }
+
+        .content iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .drag-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            display: none;
+        }
+    </style>
+
+    <script src="./theme.js"></script>
+</head>
+
+<body>
+    <div class="window" id="window">
+        <div class="titlebar" id="titlebar">
+            <span class="titlebar-title">🔨🌏🏞️</span>
+            <div class="titlebar-buttons">
+                <button class="titlebar-btn btn-power" id="btn-power" title="退出">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                        <line x1="12" y1="2" x2="12" y2="12"></line>
+                    </svg>
+                </button>
+                <button class="titlebar-btn btn-refresh" id="btn-refresh" title="刷新">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                    </svg>
+                </button>
+                <button class="titlebar-btn btn-minimize" id="btn-minimize" title="最小化窗口">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                        <rect x="2" y="5.5" width="8" height="1" fill="currentColor" />
+                    </svg>
+                </button>
+                <button class="titlebar-btn btn-maximize" id="btn-maximize" title="最大化窗口">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                        <rect x="2" y="2" width="8" height="8" stroke="currentColor" stroke-width="1" fill="none" />
+                    </svg>
+                </button>
+                <button class="titlebar-btn btn-close" id="btn-close" title="关闭">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                        <line x1="2.5" y1="2.5" x2="9.5" y2="9.5" stroke="currentColor" stroke-width="1.5" />
+                        <line x1="9.5" y1="2.5" x2="2.5" y2="9.5" stroke="currentColor" stroke-width="1.5" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="content">
+            <iframe id="iframe" src="about:blank"></iframe>
+        </div>
+    </div>
+    <div class="drag-overlay" id="drag-overlay"></div>
+
+    <script>
+        (function () {
+            let isMaximized = false;
+            let isDragging = false;
+            let dragStartScreenX = 0;
+            let dragStartScreenY = 0;
+
+            function startMove(e) {
+                if (isMaximized) return;
+                if (e.button !== 0) return;
+                if (e.target.closest('.titlebar-btn')) return;
+                e.preventDefault();
+
+                dragStartScreenX = e.screenX;
+                dragStartScreenY = e.screenY;
+                isDragging = true;
+                dragOverlay.style.display = 'block';
+            }
+
+            function endMove() {
+                isDragging = false;
+                dragOverlay.style.display = 'none';
+            }
+
+            function move(e) {
+                if (!isDragging) return;
+                if (isMaximized) return;
+                const dx = (e.screenX - dragStartScreenX) * window.devicePixelRatio;
+                const dy = (e.screenY - dragStartScreenY) * window.devicePixelRatio;
+                dragStartScreenX = e.screenX;
+                dragStartScreenY = e.screenY;
+
+                window.__updateWindowPos({
+                    dx: dx,
+                    dy: dy
+                });
+            }
+
+            const dragOverlay = document.getElementById('drag-overlay');
+            dragOverlay.addEventListener('mousedown', startMove);
+            dragOverlay.addEventListener('mousemove', move);
+            dragOverlay.addEventListener('mouseup', endMove);
+            dragOverlay.addEventListener('mouseout', endMove);
+
+            document.getElementById('btn-minimize').addEventListener('click', () => {
+                window.__minimize();
+            });
+
+            document.getElementById('btn-maximize').addEventListener('click', () => {
+                window.__maximize().then((v) => {
+                    isMaximized = v.maximized;
+                });
+            });
+
+            document.getElementById('btn-close').addEventListener('click', () => {
+                window.__close();
+            });
+
+            document.getElementById('btn-power').addEventListener('click', () => {
+                window.__exit();
+            });
+
+            document.getElementById('titlebar').addEventListener('dblclick', (e) => {
+                if (e.target.closest('.titlebar-btn')) return;
+                document.getElementById('btn-maximize').click();
+            });
+
+            document.getElementById('titlebar').addEventListener('mousedown', (e) => {
+                dragOverlay.style.cursor = 'move';
+                startMove(e);
+            });
+            document.getElementById('titlebar').addEventListener('mouseenter', endMove);
+
+            document.oncontextmenu = (e) => {
+                e.preventDefault();
+                e.returnValue = false;
+            };
+
+            const iframe = document.getElementById('iframe');
+            iframe.src = './index.html';
+            document.getElementById('btn-refresh').addEventListener('click', () => {
+                iframe.contentWindow.location.reload();
+            });
+
+        }());
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自签名证书生成</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./common.css">
+    <style>
+        /* ===== 自签名证书工具专用样式 ===== */
+        .ct-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.875rem 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .ct-section h2 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text);
+            margin: 0 0 0.625rem;
+            letter-spacing: 0.01em;
+        }
+
+        .ct-section h2:not(:first-child) {
+            margin-top: 1rem;
+        }
+
+        .ct-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.375rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .ct-info .pill {
+            background: var(--bg-muted);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 0.0625rem 0.5rem;
+            font-family: ui-monospace, monospace;
+        }
+
+        .ct-info .pill.ok {
+            color: #16a34a;
+            border-color: #bbf7d0;
+            background: #f0fdf4;
+        }
+
+        .ct-info .pill.err {
+            color: #dc2626;
+            border-color: #fecaca;
+            background: #fef2f2;
+        }
+
+        .ct-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+        }
+
+        @media (min-width: 980px) {
+            .ct-grid {
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            }
+        }
+
+        .ct-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .ct-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .ct-row {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .ct-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .ct-item {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .ct-item input {
+            flex: 1;
+        }
+
+        .ct-output {
+            font-family: ui-monospace, monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            word-break: break-all;
+        }
+
+        .ct-files {
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+        }
+
+        .ct-file {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.375rem 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: var(--bg-muted);
+            font-size: 0.75rem;
+        }
+
+        .ct-file .name {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .ct-file .size {
+            color: var(--text-muted);
+            font-family: ui-monospace, monospace;
+        }
+
+        .ct-empty {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 0.75rem 0.375rem;
+            border: 1px dashed var(--border);
+            border-radius: 4px;
+        }
+
+        .ct-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .ct-hint {
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+            margin: 0.25rem 0 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="admin-wrap">
+        <div class="lt-head">
+            <a class="lt-back" href="./index.html" title="返回工具列表">← 返回</a>
+            <div class="lt-head-text" style="flex:1;min-width:0;">
+                <h1 class="admin-title">自签名证书生成</h1>
+                <p class="admin-subtitle">基于本地 OpenSSL 生成自签名 X.509 证书 · 仅本机可访问</p>
+            </div>
+            <div class="lt-head-actions">
+                <button class="btn btn-primary" id="ct-btn-generate" disabled>生成证书</button>
+            </div>
+        </div>
+
+        <div id="ct-banner"></div>
+
+        <!-- openssl 信息 -->
+        <div class="ct-section" style="padding: 0.5rem 0.75rem;">
+            <div class="ct-info" id="ct-info">
+                <span class="pill">OpenSSL: 检测中...</span>
+            </div>
+        </div>
+
+        <div class="ct-grid">
+            <!-- 左：参数 -->
+            <div>
+                <div class="ct-section">
+                    <h2>输出位置</h2>
+                    <div class="ct-row">
+                        <input type="text" class="br-input" id="ct-output-dir" style="flex:1;"
+                            placeholder="证书文件输出目录，例如 D:\certs">
+                        <button class="btn btn-outline btn-sm" id="ct-btn-pick-dir">浏览...</button>
+                    </div>
+                    <div class="ct-row" style="margin-top: 0.5rem;">
+                        <label class="ct-label" style="min-width:5rem;">文件名前缀</label>
+                        <input type="text" class="br-input" id="ct-base-name" style="flex:1;" value="server"
+                            placeholder="生成 server.key / server.crt">
+                    </div>
+                    <label class="br-toggle" style="margin-top: 0.5rem;">
+                        <input type="checkbox" id="ct-overwrite">
+                        <span>允许覆盖同名文件</span>
+                    </label>
+                </div>
+
+                <div class="ct-section">
+                    <h2>主体信息</h2>
+                    <div class="ct-field">
+                        <label class="ct-label">通用名称 CN（必填）</label>
+                        <input type="text" class="br-input" id="ct-cn" placeholder="例如 example.com 或 192.168.1.10">
+                    </div>
+                    <div class="ct-row" style="gap:0.5rem;">
+                        <div class="ct-field" style="flex:1; min-width:0;">
+                            <label class="ct-label">国家 C</label>
+                            <input type="text" class="br-input" id="ct-c" placeholder="CN" maxlength="2">
+                        </div>
+                        <div class="ct-field" style="flex:1; min-width:0;">
+                            <label class="ct-label">省/州 ST</label>
+                            <input type="text" class="br-input" id="ct-st" placeholder="Beijing">
+                        </div>
+                        <div class="ct-field" style="flex:1; min-width:0;">
+                            <label class="ct-label">城市 L</label>
+                            <input type="text" class="br-input" id="ct-l" placeholder="Beijing">
+                        </div>
+                    </div>
+                    <div class="ct-row" style="gap:0.5rem;">
+                        <div class="ct-field" style="flex:1; min-width:0;">
+                            <label class="ct-label">组织 O</label>
+                            <input type="text" class="br-input" id="ct-o" placeholder="(可选)">
+                        </div>
+                        <div class="ct-field" style="flex:1; min-width:0;">
+                            <label class="ct-label">组织单位 OU</label>
+                            <input type="text" class="br-input" id="ct-ou" placeholder="(可选)">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ct-section">
+                    <h2>SAN 备用名称</h2>
+                    <p class="ct-hint">添加 IP（如 127.0.0.1）与 DNS（如 localhost）。按回车或“+”添加。</p>
+                    <div class="ct-list" id="ct-ip-list"></div>
+                    <div class="ct-row" style="margin-top:0.25rem;">
+                        <input type="text" class="br-input" id="ct-ip-input" style="flex:1;" placeholder="IP 地址">
+                        <button class="btn btn-outline btn-sm" id="ct-btn-add-ip">+ IP</button>
+                    </div>
+                    <div class="ct-list" id="ct-dns-list" style="margin-top:0.5rem;"></div>
+                    <div class="ct-row" style="margin-top:0.25rem;">
+                        <input type="text" class="br-input" id="ct-dns-input" style="flex:1;" placeholder="DNS 域名">
+                        <button class="btn btn-outline btn-sm" id="ct-btn-add-dns">+ DNS</button>
+                    </div>
+                </div>
+
+                <div class="ct-section">
+                    <h2>证书参数</h2>
+                    <div class="ct-row" style="gap:0.5rem;">
+                        <div class="ct-field" style="flex:1; min-width:0;">
+                            <label class="ct-label">有效天数</label>
+                            <input type="number" class="br-input" id="ct-days" min="1" max="36500" value="365">
+                        </div>
+                        <div class="ct-field" style="flex:1; min-width:0;">
+                            <label class="ct-label">私钥位数</label>
+                            <select class="br-input" id="ct-key-bits">
+                                <option value="2048" selected>2048</option>
+                                <option value="3072">3072</option>
+                                <option value="4096">4096</option>
+                            </select>
+                        </div>
+                        <div class="ct-field" style="flex:1; min-width:0;">
+                            <label class="ct-label">摘要算法</label>
+                            <select class="br-input" id="ct-digest">
+                                <option value="sha256" selected>sha256</option>
+                                <option value="sha384">sha384</option>
+                                <option value="sha512">sha512</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右：结果 -->
+            <div>
+                <div class="ct-section">
+                    <h2>生成结果</h2>
+                    <div class="ct-files" id="ct-result-list">
+                        <div class="ct-empty">尚未生成</div>
+                    </div>
+                </div>
+
+                <div class="ct-section">
+                    <h2>openssl 信息</h2>
+                    <div id="ct-detail" class="ct-output">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 目录浏览器弹窗（复用 ffmpeg 风格） -->
+    <div class="br-fs" id="ct-fs" hidden>
+        <div class="br-fs-head">
+            <input type="text" class="br-input" id="ct-fs-path" placeholder="输入路径跳转 (例如 D:\certs)" style="flex:1;">
+            <button class="btn btn-sm" id="ct-fs-go">跳转</button>
+            <button class="btn btn-outline btn-sm" id="ct-fs-up" title="上一级">↑</button>
+        </div>
+        <div class="br-fs-bc" id="ct-fs-bc"></div>
+        <div class="br-fs-list-bar">
+            <span class="br-fs-list-hint">点击目录进入；点“选择”使用当前目录作为输出目录</span>
+        </div>
+        <div class="br-fs-list" id="ct-fs-list">加载中...</div>
+        <div class="br-fs-foot">
+            <span class="br-fs-list-hint" id="ct-fs-current">当前：-</span>
+            <span class="br-spacer"></span>
+            <button class="btn btn-outline" id="ct-fs-cancel">取消</button>
+            <button class="btn" id="ct-fs-ok">选择此目录</button>
+        </div>
+    </div>
+
+    <script src="../api.js"></script>
+    <script>
+        (function () {
+            'use strict';
+            var Api = window.Api;
+
+            // ===== 工具函数 =====
+            function $(id) { return document.getElementById(id); }
+            function showBanner(type, msg) {
+                var cls = 'info';
+                if (type === 'error') cls = 'err';
+                else if (type === 'warn') cls = 'warn';
+                else if (type === 'success') cls = 'ok';
+                var el = $('ct-banner');
+                if (!el) return;
+                el.innerHTML = '<div class="banner banner-' + cls + '">' + Api.escapeHtml(msg) + '</div>';
+                if (type === 'success') setTimeout(clearBanner, 4000);
+            }
+            function clearBanner() { var el = $('ct-banner'); if (el) el.innerHTML = ''; }
+
+            function formatSize(b) {
+                if (b == null || isNaN(b)) return '-';
+                if (b < 1024) return b + ' B';
+                var u = ['KB', 'MB', 'GB', 'TB'];
+                var i = -1;
+                var n = b;
+                do { n /= 1024; i++; } while (n >= 1024 && i < u.length - 1);
+                return n.toFixed(2) + ' ' + u[i];
+            }
+
+            function copyToClipboard(text, btn) {
+                var done = function () {
+                    if (btn) {
+                        var orig = btn.textContent;
+                        btn.textContent = '已复制';
+                        btn.disabled = true;
+                        setTimeout(function () { btn.textContent = orig; btn.disabled = false; }, 1500);
+                    }
+                };
+                var fail = function () {
+                    if (btn) {
+                        var orig = btn.textContent;
+                        btn.textContent = '失败';
+                        setTimeout(function () { btn.textContent = orig; }, 1500);
+                    }
+                };
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(done).catch(function () {
+                        fallbackCopy(text) ? done() : fail();
+                    });
+                } else {
+                    fallbackCopy(text) ? done() : fail();
+                }
+            }
+            function fallbackCopy(text) {
+                try {
+                    var ta = document.createElement('textarea');
+                    ta.value = text;
+                    ta.style.position = 'fixed';
+                    ta.style.top = '-1000px';
+                    ta.style.opacity = '0';
+                    document.body.appendChild(ta);
+                    ta.focus();
+                    ta.select();
+                    var ok = document.execCommand('copy');
+                    document.body.removeChild(ta);
+                    return !!ok;
+                } catch (e) { return false; }
+            }
+
+            // ===== 状态 =====
+            var altIps = [];
+            var altDnss = [];
+            var opensslInfo = null;
+            var browsePath = '';
+
+            // ===== 检测 OpenSSL =====
+            function loadInfo() {
+                Api.localTools.cert.info().then(function (data) {
+                    opensslInfo = data || {};
+                    var info = $('ct-info');
+                    if (!data || data.available === false) {
+                        info.innerHTML = '<span class="pill err">OpenSSL 不可用</span>' +
+                            '<span class="pill">' + Api.escapeHtml((data && data.error) || '未知错误') + '</span>';
+                        $('ct-detail').textContent = '-';
+                    } else {
+                        var html = '<span class="pill ok">✓ 可用</span>';
+                        if (data.version) html += '<span class="pill">' + Api.escapeHtml(data.version) + '</span>';
+                        if (data.opensslPath) html += '<span class="pill" title="' + Api.escapeHtml(data.opensslPath) + '">' + Api.escapeHtml(data.opensslPath) + '</span>';
+                        info.innerHTML = html;
+                        $('ct-detail').textContent = data.version + '\n' + (data.opensslPath || '');
+                    }
+                    loadConfig();
+                    updateGenerateBtn();
+                }).catch(function (err) {
+                    $('ct-info').innerHTML = '<span class="pill err">请求失败</span>';
+                    $('ct-detail').textContent = '请求失败: ' + err;
+                    loadConfig();
+                });
+            }
+
+            // ===== SAN 列表渲染 =====
+            function renderAltList(kind) {
+                var arr = kind === 'ip' ? altIps : altDnss;
+                var host = $(kind === 'ip' ? 'ct-ip-list' : 'ct-dns-list');
+                if (!arr.length) {
+                    host.innerHTML = '<div class="ct-empty">未添加' + (kind === 'ip' ? ' IP' : ' DNS') + '</div>';
+                    return;
+                }
+                host.innerHTML = '';
+                arr.forEach(function (v, i) {
+                    var row = document.createElement('div');
+                    row.className = 'ct-item';
+                    var input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'br-input';
+                    input.value = v;
+                    input.addEventListener('change', function () {
+                        arr[i] = input.value.trim();
+                    });
+                    var rm = document.createElement('button');
+                    rm.className = 'btn btn-ghost btn-sm';
+                    rm.textContent = '✕';
+                    rm.title = '移除';
+                    rm.onclick = function () {
+                        arr.splice(i, 1);
+                        renderAltList(kind);
+                    };
+                    row.appendChild(input);
+                    row.appendChild(rm);
+                    host.appendChild(row);
+                });
+            }
+
+            function addAlt(kind) {
+                var inputEl = $(kind === 'ip' ? 'ct-ip-input' : 'ct-dns-input');
+                var v = (inputEl.value || '').trim();
+                if (!v) return;
+                var arr = kind === 'ip' ? altIps : altDnss;
+                if (arr.indexOf(v) === -1) arr.push(v);
+                inputEl.value = '';
+                renderAltList(kind);
+            }
+
+            $('ct-btn-add-ip').onclick = function () { addAlt('ip'); };
+            $('ct-btn-add-dns').onclick = function () { addAlt('dns'); };
+            $('ct-ip-input').addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') { e.preventDefault(); addAlt('ip'); }
+            });
+            $('ct-dns-input').addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') { e.preventDefault(); addAlt('dns'); }
+            });
+
+            // ===== 文件浏览器 =====
+            var fsPanel = $('ct-fs');
+            var fsList = $('ct-fs-list');
+            var fsBc = $('ct-fs-bc');
+            var fsPathInput = $('ct-fs-path');
+            var fsCurrent = $('ct-fs-current');
+            var fsOk = $('ct-fs-ok');
+            var outputDirInput = $('ct-output-dir');
+
+            function parentPath(p) {
+                if (!p) return '';
+                var sep = p.indexOf('\\') >= 0 ? '\\' : '/';
+                while (p.length > 1 && p.charAt(p.length - 1) === sep) p = p.substring(0, p.length - 1);
+                var idx = p.lastIndexOf(sep);
+                if (idx < 0) return '';
+                if (idx === 2 && p.charAt(1) === ':') return '';
+                return p.substring(0, idx);
+            }
+            function renderBc(p) {
+                if (!p) {
+                    fsBc.innerHTML = '<span class="br-fs-bc-root">本机</span>';
+                    return;
+                }
+                var sep = p.indexOf('\\') >= 0 ? '\\' : '/';
+                var html = '<a class="br-fs-bc-root" data-idx="-1">本机</a>';
+                var parts = p.split(/[\\/]/);
+                var lastIdx = parts.length - 1;
+                parts.forEach(function (part, i) {
+                    if (!part) return;
+                    if (i === lastIdx) {
+                        html += '<span class="sep">›</span><span>' + Api.escapeHtml(part) + '</span>';
+                    } else {
+                        html += '<span class="sep">›</span><a data-idx="' + i + '">' + Api.escapeHtml(part) + '</a>';
+                    }
+                });
+                fsBc.innerHTML = html;
+                Array.prototype.forEach.call(fsBc.querySelectorAll('a'), function (a) {
+                    a.onclick = function () {
+                        var idx = parseInt(a.getAttribute('data-idx'), 10);
+                        if (idx < 0) return loadFs('');
+                        var target = parts.slice(0, idx + 1).join(sep);
+                        if (sep === '\\' && !/^[A-Z]:/.test(target)) target = target.replace(/^\\+/, '');
+                        loadFs(target);
+                    };
+                });
+            }
+
+            function openBrowser() {
+                fsPanel.hidden = false;
+                loadFs(outputDirInput.value.trim() || '');
+            }
+            function closeBrowser() { fsPanel.hidden = true; }
+
+            function loadFs(path) {
+                fsList.innerHTML = '<div class="br-fs-list-empty">加载中...</div>';
+                Api.localTools.browse(path).then(function (data) {
+                    if (!data || data.success === false) {
+                        fsList.innerHTML = '<div class="br-fs-list-empty">浏览失败: ' + Api.escapeHtml((data && data.error) || '未知') + '</div>';
+                        return;
+                    }
+                    browsePath = data.path || path || '';
+                    renderBc(browsePath);
+                    fsPathInput.value = browsePath;
+                    fsCurrent.textContent = '当前：' + (browsePath || '本机根');
+                    var entries = data.entries || [];
+                    fsList.innerHTML = '';
+                    if (!entries.length) {
+                        fsList.innerHTML = '<div class="br-fs-list-empty">空目录</div>';
+                        return;
+                    }
+                    entries.sort(function (a, b) {
+                        if (a.isDir && !b.isDir) return -1;
+                        if (!a.isDir && b.isDir) return 1;
+                        return a.name.localeCompare(b.name, 'zh-CN');
+                    });
+                    if (browsePath) {
+                        var upRow = document.createElement('div');
+                        upRow.className = 'br-fs-entry';
+                        upRow.innerHTML = '<span class="icon">↩</span><span class="br-fs-name">..</span><span class="br-fs-size"></span>';
+                        upRow.onclick = function () { loadFs(parentPath(browsePath)); };
+                        fsList.appendChild(upRow);
+                    }
+                    entries.forEach(function (e) {
+                        var row = document.createElement('div');
+                        row.className = 'br-fs-entry';
+                        row.innerHTML = '<span class="icon">' + (e.isDir ? '📁' : '📄') + '</span>' +
+                            '<span class="br-fs-name" title="' + Api.escapeHtml(e.fullPath) + '">' + Api.escapeHtml(e.name) + '</span>' +
+                            '<span class="br-fs-size">' + (e.isDir ? '' : formatSize(e.size)) + '</span>';
+                        if (e.isDir) {
+                            row.style.cursor = 'pointer';
+                            row.onclick = function () { loadFs(e.fullPath); };
+                        }
+                        fsList.appendChild(row);
+                    });
+                }).catch(function (err) {
+                    fsList.innerHTML = '<div class="br-fs-list-empty">浏览失败: ' + Api.escapeHtml(String(err)) + '</div>';
+                });
+            }
+
+            $('ct-btn-pick-dir').onclick = openBrowser;
+            $('ct-fs-cancel').onclick = closeBrowser;
+            $('ct-fs-up').onclick = function () { loadFs(parentPath(browsePath)); };
+            $('ct-fs-go').onclick = function () { loadFs(fsPathInput.value.trim()); };
+            $('ct-fs-ok').onclick = function () {
+                outputDirInput.value = browsePath;
+                closeBrowser();
+                updateGenerateBtn();
+            };
+            fsPathInput.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Enter') { ev.preventDefault(); loadFs(fsPathInput.value.trim()); }
+            });
+            outputDirInput.addEventListener('input', updateGenerateBtn);
+            $('ct-cn').addEventListener('input', updateGenerateBtn);
+
+            // ===== 生成 =====
+            function updateGenerateBtn() {
+                var btn = $('ct-btn-generate');
+                var ok = opensslInfo && opensslInfo.available === true;
+                var dirOk = !!(outputDirInput.value || '').trim();
+                var cnOk = !!($('ct-cn').value || '').trim();
+                btn.disabled = !(ok && dirOk && cnOk);
+            }
+
+            function renderResult(data) {
+                var host = $('ct-result-list');
+                if (!data || !data.success) {
+                    host.innerHTML = '<div class="ct-empty">' + Api.escapeHtml((data && data.error) || '生成失败') + '</div>';
+                    return;
+                }
+                var files = data.files || [];
+                if (!files.length) {
+                    host.innerHTML = '<div class="ct-empty">生成成功，但未返回文件信息</div>';
+                    return;
+                }
+                host.innerHTML = '';
+                files.forEach(function (f) {
+                    var row = document.createElement('div');
+                    row.className = 'ct-file';
+                    var name = document.createElement('div');
+                    name.className = 'name';
+                    name.textContent = f.name + '   (' + f.path + ')';
+                    name.title = f.path;
+                    var size = document.createElement('div');
+                    size.className = 'size';
+                    size.textContent = formatSize(f.size);
+                    var copy = document.createElement('button');
+                    copy.className = 'btn btn-ghost btn-sm';
+                    copy.textContent = '复制路径';
+                    copy.onclick = (function (p, btn) {
+                        return function () { copyToClipboard(p, btn); };
+                    })(f.path, copy);
+                    row.appendChild(name);
+                    row.appendChild(size);
+                    row.appendChild(copy);
+                    host.appendChild(row);
+                });
+            }
+
+            $('ct-btn-generate').onclick = function () {
+                clearBanner();
+                var body = {
+                    outputDir: (outputDirInput.value || '').trim(),
+                    baseName: ($('ct-base-name').value || '').trim() || 'server',
+                    commonName: ($('ct-cn').value || '').trim(),
+                    country: ($('ct-c').value || '').trim(),
+                    state: ($('ct-st').value || '').trim(),
+                    locality: ($('ct-l').value || '').trim(),
+                    organization: ($('ct-o').value || '').trim(),
+                    organizationalUnit: ($('ct-ou').value || '').trim(),
+                    days: parseInt($('ct-days').value, 10) || 365,
+                    keyBits: parseInt($('ct-key-bits').value, 10) || 2048,
+                    digest: $('ct-digest').value || 'sha256',
+                    altNamesIp: altIps.slice(),
+                    altNamesDns: altDnss.slice(),
+                    overwrite: $('ct-overwrite').checked
+                };
+                if (!body.outputDir) { showBanner('error', '请填写输出目录'); return; }
+                if (!body.commonName) { showBanner('error', '请填写通用名称(CN)'); return; }
+                $('ct-btn-generate').disabled = true;
+                $('ct-btn-generate').textContent = '生成中...';
+                Api.localTools.cert.generate(body).then(function (data) {
+                    if (data && data.success) {
+                        showBanner('success', '生成成功：' + (data.files || []).length + ' 个文件');
+                        renderResult(data);
+                    } else {
+                        showBanner('error', (data && data.error) || '生成失败');
+                        renderResult(data);
+                    }
+                }).catch(function (err) {
+                    showBanner('error', '生成失败: ' + err);
+                }).finally(function () {
+                    $('ct-btn-generate').disabled = false;
+                    $('ct-btn-generate').textContent = '生成证书';
+                    updateGenerateBtn();
+                });
+            };
+
+            // ===== 配置保存 =====
+            var CONFIG_KEY = 'cert_tool_ui_config';
+
+            function collectConfig() {
+                return {
+                    outputDir: outputDirInput.value,
+                    baseName: $('ct-base-name').value,
+                    overwrite: $('ct-overwrite').checked,
+                    cn: $('ct-cn').value,
+                    c: $('ct-c').value,
+                    st: $('ct-st').value,
+                    l: $('ct-l').value,
+                    o: $('ct-o').value,
+                    ou: $('ct-ou').value,
+                    days: $('ct-days').value,
+                    keyBits: $('ct-key-bits').value,
+                    digest: $('ct-digest').value,
+                    altIps: altIps.slice(),
+                    altDnss: altDnss.slice()
+                };
+            }
+            function applyConfig(cfg) {
+                if (!cfg || typeof cfg !== 'object') return;
+                if (typeof cfg.outputDir === 'string') outputDirInput.value = cfg.outputDir;
+                if (typeof cfg.baseName === 'string') $('ct-base-name').value = cfg.baseName;
+                if (typeof cfg.overwrite === 'boolean') $('ct-overwrite').checked = cfg.overwrite;
+                if (typeof cfg.cn === 'string') $('ct-cn').value = cfg.cn;
+                if (typeof cfg.c === 'string') $('ct-c').value = cfg.c;
+                if (typeof cfg.st === 'string') $('ct-st').value = cfg.st;
+                if (typeof cfg.l === 'string') $('ct-l').value = cfg.l;
+                if (typeof cfg.o === 'string') $('ct-o').value = cfg.o;
+                if (typeof cfg.ou === 'string') $('ct-ou').value = cfg.ou;
+                if (cfg.days != null) $('ct-days').value = cfg.days;
+                if (cfg.keyBits != null) $('ct-key-bits').value = cfg.keyBits;
+                if (typeof cfg.digest === 'string') $('ct-digest').value = cfg.digest;
+                if (Array.isArray(cfg.altIps)) { altIps = cfg.altIps.slice(); renderAltList('ip'); }
+                if (Array.isArray(cfg.altDnss)) { altDnss = cfg.altDnss.slice(); renderAltList('dns'); }
+            }
+            function saveConfig() {
+                try {
+                    var payload = {};
+                    payload[CONFIG_KEY] = JSON.stringify(collectConfig());
+                    Api.settings.update(payload).catch(function () { });
+                } catch (e) { }
+            }
+            function loadConfig() {
+                Api.settings.list().then(function (data) {
+                    if (!data || !data.success || !data.settings) return;
+                    var raw = data.settings[CONFIG_KEY];
+                    if (!raw) return;
+                    try {
+                        var cfg = (typeof raw === 'string') ? JSON.parse(raw) : raw;
+                        applyConfig(cfg);
+                        updateGenerateBtn();
+                    } catch (e) { }
+                }).catch(function () { });
+            }
+
+            // 离开页面前保存一次
+            window.addEventListener('beforeunload', saveConfig);
+
+            // ===== 启动 =====
+            document.addEventListener('DOMContentLoaded', function () {
+                renderAltList('ip');
+                renderAltList('dns');
+                loadInfo();
+            });
+        })();
+    </script>
+</body>
+
+</html>

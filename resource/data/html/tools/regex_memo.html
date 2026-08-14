@@ -1,0 +1,273 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正则表达式备忘</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .memo-cats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .memo-cat-btn {
+            padding: 0.375rem 0.875rem;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: var(--surface);
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.8125rem;
+            transition: all 0.15s;
+        }
+        .memo-cat-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .memo-cat-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .memo-section { margin-bottom: 1.5rem; }
+        .memo-section h3 {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: var(--text);
+            margin: 0 0 0.625rem;
+            padding-bottom: 0.375rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .memo-table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+        }
+        .memo-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8125rem;
+            background: var(--surface);
+        }
+        .memo-table thead th {
+            text-align: left;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            background: var(--bg-muted);
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        .memo-table tbody tr { cursor: pointer; transition: background 0.12s; }
+        .memo-table tbody tr:hover { background: var(--primary-light); }
+        .memo-table tbody td {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+            color: var(--text);
+        }
+        .memo-table tbody tr:last-child td { border-bottom: none; }
+        .memo-table .col-syntax { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; color: var(--primary); font-weight: 600; white-space: nowrap; }
+        .memo-table .col-desc { color: var(--text-muted); }
+        .memo-table .col-example { font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--text); white-space: nowrap; }
+        .memo-count { font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+        .memo-empty { padding: 2rem 1rem; text-align: center; color: var(--text-light); font-size: 0.875rem; }
+        @media (max-width: 640px) {
+            .memo-table thead { display: none; }
+            .memo-table, .memo-table tbody, .memo-table tr, .memo-table td { display: block; width: 100%; }
+            .memo-table tbody tr { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
+            .memo-table tbody td { border: none; padding: 0.15rem 0; }
+            .memo-table tbody td::before {
+                content: attr(data-label);
+                display: inline-block;
+                min-width: 3.5rem;
+                color: var(--text-light);
+                font-size: 0.75rem;
+                margin-right: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="tool-page">
+        <div class="tool-card">
+            <div id="banner"></div>
+
+            <div class="tool-toolbar">
+                <input type="text" id="search" class="tool-input" style="flex:1;" placeholder="搜索语法、说明或示例...">
+            </div>
+
+            <div class="memo-cats" id="cats"></div>
+            <div class="memo-count" id="count"></div>
+            <div id="container"></div>
+            <p class="tool-hint">点击任意一行即可复制对应内容到剪贴板</p>
+        </div>
+    </div>
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var $ = Tools.$;
+
+            var SECTIONS = [
+                {
+                    cat: '字符类', items: [
+                        { syntax: '.', desc: '匹配任意单个字符（除换行符）', example: 'a.c → abc' },
+                        { syntax: '\\d', desc: '匹配数字，等价于 [0-9]', example: '\\d+ → 123' },
+                        { syntax: '\\D', desc: '匹配非数字', example: '\\D → abc' },
+                        { syntax: '\\w', desc: '匹配字母、数字、下划线', example: '\\w+ → hello_1' },
+                        { syntax: '\\W', desc: '匹配非字母数字下划线', example: '\\W → @#' },
+                        { syntax: '\\s', desc: '匹配空白字符（空格、制表符等）', example: '\\s → " "' },
+                        { syntax: '\\S', desc: '匹配非空白字符', example: '\\S → a' },
+                        { syntax: '[abc]', desc: '匹配方括号中任意一个字符', example: '[ae] → a' },
+                        { syntax: '[^abc]', desc: '匹配不在方括号中的任意字符', example: '[^ae] → b' },
+                        { syntax: '[a-z]', desc: '匹配 a 到 z 范围内任意字符', example: '[a-z]+ → hello' },
+                        { syntax: '[a-zA-Z0-9]', desc: '匹配字母和数字', example: '[a-z0-9] → a1' }
+                    ]
+                },
+                {
+                    cat: '量词', items: [
+                        { syntax: '*', desc: '匹配前一项 0 次或多次', example: 'ab* → a, abbb' },
+                        { syntax: '+', desc: '匹配前一项 1 次或多次', example: 'ab+ → abbb' },
+                        { syntax: '?', desc: '匹配前一项 0 次或 1 次', example: 'ab? → a, ab' },
+                        { syntax: '{n}', desc: '精确匹配 n 次', example: 'a{3} → aaa' },
+                        { syntax: '{n,}', desc: '至少匹配 n 次', example: 'a{2,} → aa, aaa' },
+                        { syntax: '{n,m}', desc: '匹配 n 到 m 次', example: 'a{2,4} → aaa' },
+                        { syntax: '*?', desc: '惰性匹配，尽可能少匹配', example: 'a.*?b → axb in axbxb' },
+                        { syntax: '+?', desc: '惰性匹配一次或多次', example: 'a.+?b → axb' }
+                    ]
+                },
+                {
+                    cat: '锚点', items: [
+                        { syntax: '^', desc: '匹配字符串开头', example: '^Hello → Hello...' },
+                        { syntax: '$', desc: '匹配字符串结尾', example: 'world$ → ...world' },
+                        { syntax: '\\b', desc: '匹配单词边界', example: '\\bword\\b → word' },
+                        { syntax: '\\B', desc: '匹配非单词边界', example: '\\Bword → aword' },
+                        { syntax: '^$', desc: '匹配空行', example: '^$ → 空行' }
+                    ]
+                },
+                {
+                    cat: '分组', items: [
+                        { syntax: '(abc)', desc: '捕获分组，可反向引用', example: '(ab)+ → abab' },
+                        { syntax: '(?:abc)', desc: '非捕获分组', example: '(?:ab)+ → abab' },
+                        { syntax: '(?<name>abc)', desc: '命名捕获分组', example: '(?<y>\\d{4}) → 2024' },
+                        { syntax: '\\1', desc: '反向引用第 1 个分组', example: '(a)\\1 → aa' },
+                        { syntax: 'a|b', desc: '匹配 a 或 b（ alternation）', example: 'cat|dog → cat' }
+                    ]
+                },
+                {
+                    cat: '断言', items: [
+                        { syntax: '(?=abc)', desc: '正向先行断言，后面是 abc', example: 'a(?=b) → a in ab' },
+                        { syntax: '(?!abc)', desc: '负向先行断言，后面不是 abc', example: 'a(?!b) → a in ac' },
+                        { syntax: '(?<=abc)', desc: '正向后行断言，前面是 abc', example: '(?<=a)b → b in ab' },
+                        { syntax: '(?<!abc)', desc: '负向后行断言，前面不是 abc', example: '(?<!a)b → b in cb' }
+                    ]
+                },
+                {
+                    cat: '修饰符', items: [
+                        { syntax: 'g', desc: '全局匹配，查找所有匹配项', example: '/a/g → all a' },
+                        { syntax: 'i', desc: '忽略大小写', example: '/a/i → A, a' },
+                        { syntax: 'm', desc: '多行模式，^ $ 匹配行首行尾', example: '/^a/m' },
+                        { syntax: 's', desc: '使 . 匹配包括换行符', example: '/./s' },
+                        { syntax: 'u', desc: 'Unicode 模式', example: '/\\u{1F600}/u' },
+                        { syntax: 'y', desc: '粘性匹配，从 lastIndex 开始', example: '/a/y' }
+                    ]
+                },
+                {
+                    cat: '常用示例', items: [
+                        { syntax: '^[\\w.-]+@[\\w.-]+\\.[a-zA-Z]{2,}$', desc: '邮箱地址', example: 'user@example.com' },
+                        { syntax: '^1[3-9]\\d{9}$', desc: '中国大陆手机号', example: '13800138000' },
+                        { syntax: '^https?://[\\w.-]+', desc: 'URL 地址', example: 'https://example.com' },
+                        { syntax: '^(?:\\d{1,3}\\.){3}\\d{1,3}$', desc: 'IPv4 地址', example: '192.168.1.1' },
+                        { syntax: '^\\d{4}-\\d{2}-\\d{2}$', desc: '日期 YYYY-MM-DD', example: '2024-01-01' },
+                        { syntax: '^\\d{6}$', desc: '6 位邮政编码', example: '100000' },
+                        { syntax: '^[1-9]\\d{4,10}$', desc: 'QQ 号', example: '123456' },
+                        { syntax: '^[0-9a-fA-F]{32}$', desc: 'MD5 哈希', example: 'a1b2c3...' },
+                        { syntax: '^[1-9]\\d*(\\.\\d+)?$', desc: '正数', example: '3.14' },
+                        { syntax: '^[A-Za-z0-9]{8,20}$', desc: '8-20 位字母数字', example: 'abc12345' }
+                    ]
+                }
+            ];
+
+            var state = { cat: '全部', search: '' };
+
+            function renderCats() {
+                var cats = $('cats');
+                cats.innerHTML = '';
+                var all = ['全部'].concat(SECTIONS.map(function (s) { return s.cat; }));
+                all.forEach(function (cat) {
+                    cats.appendChild(Tools.el('button', {
+                        class: 'memo-cat-btn' + (state.cat === cat ? ' active' : ''),
+                        type: 'button',
+                        text: cat,
+                        onclick: function () { state.cat = cat; renderCats(); render(); }
+                    }));
+                });
+            }
+
+            function matchItem(item, term) {
+                if (!term) return true;
+                if (item.syntax.toLowerCase().indexOf(term) !== -1) return true;
+                if (item.desc.indexOf(term) !== -1) return true;
+                if (item.example.toLowerCase().indexOf(term) !== -1) return true;
+                return false;
+            }
+
+            function render() {
+                var container = $('container');
+                container.innerHTML = '';
+                var term = state.search.toLowerCase();
+                var total = 0;
+
+                SECTIONS.forEach(function (section) {
+                    if (state.cat !== '全部' && state.cat !== section.cat) return;
+                    var matched = section.items.filter(function (it) { return matchItem(it, term); });
+                    if (matched.length === 0) return;
+                    total += matched.length;
+
+                    var sec = Tools.el('div', { class: 'memo-section' });
+                    sec.appendChild(Tools.el('h3', { text: section.cat + '（' + matched.length + '）' }));
+
+                    var wrap = Tools.el('div', { class: 'memo-table-wrap' });
+                    var table = Tools.el('table', { class: 'memo-table' });
+                    table.appendChild(Tools.el('thead', {}, [
+                        Tools.el('tr', {}, [
+                            Tools.el('th', { text: '语法' }),
+                            Tools.el('th', { text: '说明' }),
+                            Tools.el('th', { text: '示例' })
+                        ])
+                    ]));
+                    var tbody = Tools.el('tbody', {});
+                    matched.forEach(function (item) {
+                        var tr = Tools.el('tr', {}, [
+                            Tools.el('td', { class: 'col-syntax', 'data-label': '语法', text: item.syntax }),
+                            Tools.el('td', { class: 'col-desc', 'data-label': '说明', text: item.desc }),
+                            Tools.el('td', { class: 'col-example', 'data-label': '示例', text: item.example })
+                        ]);
+                        tr.addEventListener('click', function () {
+                            Tools.copyText(item.syntax, tr, '已复制: ' + item.syntax);
+                        });
+                        tbody.appendChild(tr);
+                    });
+                    table.appendChild(tbody);
+                    wrap.appendChild(table);
+                    sec.appendChild(wrap);
+                    container.appendChild(sec);
+                });
+
+                $('count').textContent = '共 ' + total + ' 条结果';
+                if (total === 0) {
+                    container.appendChild(Tools.el('div', { class: 'memo-empty', text: '未找到匹配的内容' }));
+                }
+            }
+
+            $('search').addEventListener('input', function () {
+                state.search = this.value.trim();
+                render();
+            });
+
+            renderCats();
+            render();
+        });
+    </script>
+</body>
+</html>
