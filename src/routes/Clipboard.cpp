@@ -1,17 +1,40 @@
 #include "routes/Clipboard.h"
 #include "core/Server.h"
 
+namespace fs = std::filesystem;
+using json = nlohmann::json;
+
 namespace routes::clipboard {
 
-void registerClipboardRoutes( httplib::Server &svr ) {
-    svr.Get( "/api/clipboard", clipboardList );
-    svr.Post( "/api/clipboard", clipboardCreate );
-    svr.Delete( R"(/api/clipboard/([^/]+))", clipboardDelete );
+json clipboardToJson( const Database::Row &r ) {
+    json createdBy = json::object();
+    createdBy["id"] = r.count( "created_by_id" ) ? r.at( "created_by_id" ) : "";
+    createdBy["email"] = r.count( "u_email" ) ? r.at( "u_email" ) : "";
+    std::string nick = r.count( "u_nickname" ) ? r.at( "u_nickname" ) : "";
+    createdBy["nickname"] = nick.empty() ? json( nullptr ) : json( nick );
 
-    svr.Post( "/api/clipboard/upload", fileUpload );
-    svr.Post( R"(/api/clipboard/([^/]+)/download)", fileRequestDownload );
-    svr.Get( R"(/api/clipboard/download/([^/]+))", fileDownload );
-    LOG_DEBUG << "已注册 6 个剪贴板路由";
+    json item = {
+        { "id", r.count( "id" ) ? r.at( "id" ) : "" },
+        { "teamId", r.count( "team_id" ) ? r.at( "team_id" ) : "" },
+        { "type", r.count( "type" ) ? r.at( "type" ) : "" },
+        { "createdAt", r.count( "created_at" ) ? r.at( "created_at" ) : "" },
+        { "createdBy", createdBy } };
+    auto setIf = [&]( const char *dbCol, const char *jsonKey ) {
+        if ( r.count( dbCol ) && !r.at( dbCol ).empty() )
+            item[jsonKey] = r.at( dbCol );
+        else
+            item[jsonKey] = nullptr;
+    };
+    setIf( "content", "content" );
+    setIf( "html_content", "htmlContent" );
+    setIf( "mime_type", "mimeType" );
+    setIf( "file_url", "fileUrl" );
+    setIf( "file_name", "fileName" );
+    if ( r.count( "file_size" ) && !r.at( "file_size" ).empty() )
+        item["fileSize"] = std::stoi( r.at( "file_size" ) );
+    else
+        item["fileSize"] = nullptr;
+    return item;
 }
 
 void clipboardList( const httplib::Request &req, httplib::Response &res ) {
@@ -294,35 +317,15 @@ void fileDownload( const httplib::Request &req, httplib::Response &res ) {
                     "attachment; filename=\"" + utils::urlEncode( downloadName ) + "\"" );
 }
 
-json clipboardToJson( const Database::Row &r ) {
-    json createdBy = json::object();
-    createdBy["id"] = r.count( "created_by_id" ) ? r.at( "created_by_id" ) : "";
-    createdBy["email"] = r.count( "u_email" ) ? r.at( "u_email" ) : "";
-    std::string nick = r.count( "u_nickname" ) ? r.at( "u_nickname" ) : "";
-    createdBy["nickname"] = nick.empty() ? json( nullptr ) : json( nick );
+void registerClipboardRoutes( httplib::Server &svr ) {
+    svr.Get( "/api/clipboard", clipboardList );
+    svr.Post( "/api/clipboard", clipboardCreate );
+    svr.Delete( R"(/api/clipboard/([^/]+))", clipboardDelete );
 
-    json item = {
-        { "id", r.count( "id" ) ? r.at( "id" ) : "" },
-        { "teamId", r.count( "team_id" ) ? r.at( "team_id" ) : "" },
-        { "type", r.count( "type" ) ? r.at( "type" ) : "" },
-        { "createdAt", r.count( "created_at" ) ? r.at( "created_at" ) : "" },
-        { "createdBy", createdBy } };
-    auto setIf = [&]( const char *dbCol, const char *jsonKey ) {
-        if ( r.count( dbCol ) && !r.at( dbCol ).empty() )
-            item[jsonKey] = r.at( dbCol );
-        else
-            item[jsonKey] = nullptr;
-    };
-    setIf( "content", "content" );
-    setIf( "html_content", "htmlContent" );
-    setIf( "mime_type", "mimeType" );
-    setIf( "file_url", "fileUrl" );
-    setIf( "file_name", "fileName" );
-    if ( r.count( "file_size" ) && !r.at( "file_size" ).empty() )
-        item["fileSize"] = std::stoi( r.at( "file_size" ) );
-    else
-        item["fileSize"] = nullptr;
-    return item;
+    svr.Post( "/api/clipboard/upload", fileUpload );
+    svr.Post( R"(/api/clipboard/([^/]+)/download)", fileRequestDownload );
+    svr.Get( R"(/api/clipboard/download/([^/]+))", fileDownload );
+    LOG_DEBUG << "已注册 6 个剪贴板路由";
 }
 
 } // namespace routes::clipboard

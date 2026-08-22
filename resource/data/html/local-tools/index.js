@@ -30,8 +30,8 @@
         card.innerHTML =
             '<div class="admin-card-icon">' + t.icon + '</div>' +
             '<div class="admin-card-body">' +
-            '<h3>' + Api.escapeHtml(t.name) + '</h3>' +
-            '<p>' + Api.escapeHtml(t.desc) + '</p>' +
+            '<h3>' + App.escapeHtml(t.name) + '</h3>' +
+            '<p>' + App.escapeHtml(t.desc) + '</p>' +
             '</div>';
         grid.appendChild(card);
     });

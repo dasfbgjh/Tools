@@ -50,6 +50,7 @@
             try { localStorage.setItem(THEME_KEY, theme === 'light' ? 'light' : 'dark'); } catch (e) { /* ignore */ }
             applyTheme(theme);
         },
-        apply: applyTheme
+        apply: applyTheme,
+        themeKey: THEME_KEY
     };
 })();

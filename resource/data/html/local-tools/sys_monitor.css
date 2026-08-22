@@ -175,6 +175,7 @@
 #sm-btn-refresh {
     width: 36px;
     height: 36px;
+    background: transparent;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -184,7 +185,7 @@
 }
 
 #sm-btn-refresh.spinning {
-    animation: smSpin 0.8s linear infinite;
+    animation: smSpin 1.0s linear infinite;
     pointer-events: none;
 }
 

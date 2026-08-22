@@ -17,6 +17,10 @@ HttpServerInstance *HttpServerManager::findInstance( const std::string &id ) con
     return it == m_instances.end() ? nullptr : it->second.get();
 }
 
+HttpServerManager::~HttpServerManager() {
+    shutdownAll();
+}
+
 static httplib::Server::Handler createProxyHandler( const std::string &reqPath, const std::string &targetUrl ) {
     return [reqPath, targetUrl]( const httplib::Request &req, httplib::Response &res ) {
         httplib::Client cli( targetUrl );
@@ -36,15 +40,18 @@ static httplib::Server::Handler createProxyHandler( const std::string &reqPath, 
         // 过滤 hop-by-hop 头
         std::vector<std::string> skipHeaders = {
             "Connection", "Keep-Alive", "Proxy-Authenticate", "Proxy-Authorization",
-            "TE", "Trailers", "Transfer-Encoding", "Upgrade", "Host"
-        };
+            "TE", "Trailers", "Transfer-Encoding", "Upgrade", "Host" };
         httplib::Headers fwdHeaders;
         for ( auto &h : req.headers ) {
             bool skip = false;
             for ( auto &s : skipHeaders ) {
-                if ( h.first == s ) { skip = true; break; }
+                if ( h.first == s ) {
+                    skip = true;
+                    break;
+                }
             }
-            if ( !skip ) fwdHeaders.emplace( h.first, h.second );
+            if ( !skip )
+                fwdHeaders.emplace( h.first, h.second );
         }
 
         auto contentTypeIt = req.headers.find( "Content-Type" );
@@ -74,11 +81,16 @@ static httplib::Server::Handler createProxyHandler( const std::string &reqPath, 
             for ( auto &h : cliRes->headers ) {
                 bool skip = false;
                 for ( auto &s : skipHeaders ) {
-                    if ( h.first == s ) { skip = true; break; }
+                    if ( h.first == s ) {
+                        skip = true;
+                        break;
+                    }
                 }
                 // 不透传 Content-Length / Transfer-Encoding（httplib 会自动处理）
-                if ( h.first == "Content-Length" || h.first == "Transfer-Encoding" ) skip = true;
-                if ( !skip ) res.set_header( h.first.c_str(), h.second.c_str() );
+                if ( h.first == "Content-Length" || h.first == "Transfer-Encoding" )
+                    skip = true;
+                if ( !skip )
+                    res.set_header( h.first.c_str(), h.second.c_str() );
             }
             res.body = std::move( cliRes->body );
         } else {
@@ -95,9 +107,11 @@ bool HttpServerManager::start( const std::string &id ) {
 
     // 已运行？幂等
     if ( auto *p = findInstance( id ) ) {
-        if ( p->running ) return true;
+        if ( p->running )
+            return true;
         // 否则清理死实例
-        if ( p->thread.joinable() ) p->thread.join();
+        if ( p->thread.joinable() )
+            p->thread.join();
         m_instances.erase( id );
     }
 
@@ -126,8 +140,10 @@ bool HttpServerManager::start( const std::string &id ) {
     for ( auto &m : mountRows ) {
         std::string path = m["path"];
         std::string source = m["source"];
-        if ( path.empty() ) continue;
-        if ( source.empty() ) continue;
+        if ( path.empty() )
+            continue;
+        if ( source.empty() )
+            continue;
         if ( utils::startsWith( source, "http://" ) || utils::startsWith( source, "https://" ) ) {
             // 代理：捕获所有子路径
             inst->server->Get( path + "(.*)", createProxyHandler( path, source ) );
@@ -151,7 +167,7 @@ bool HttpServerManager::start( const std::string &id ) {
 
     // 请求日志
     inst->server->set_pre_routing_handler( [logTag]( const httplib::Request &req, httplib::Response &res ) {
-        LOG_INFO << logTag << " " << req.method << " " << req.path << " 来自: " << req.remote_addr;
+        LOG_INFO << logTag << req.method << req.path << " 来自: " << req.remote_addr;
         return httplib::Server::HandlerResponse::Unhandled;
     } );
 
@@ -162,8 +178,9 @@ bool HttpServerManager::start( const std::string &id ) {
                 "<html><head><meta charset=\"UTF-8\"><title>404</title></head>"
                 "<body style=\"font-family:Arial,sans-serif;text-align:center;margin-top:80px;\">"
                 "<h1>404 - Not Found</h1>"
-                "<p>" + logTag + " " + req.path + "</p>"
-                                          "</body></html>",
+                "<p>" +
+                    logTag + " " + req.path + "</p>"
+                                              "</body></html>",
                 "text/html; charset=utf-8" );
         }
     } );
@@ -176,7 +193,7 @@ bool HttpServerManager::start( const std::string &id ) {
         running = false;
         if ( !ok ) {
             err = "端口 " + std::to_string( port ) + " 监听失败（可能已被占用）";
-            LOG_ERROR << logTag << " " << err;
+            LOG_ERROR << logTag << err;
         } else {
             LOG_INFO << logTag << " 已停止监听";
         }
@@ -187,13 +204,15 @@ bool HttpServerManager::start( const std::string &id ) {
     auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds( 300 );
     while ( std::chrono::steady_clock::now() < deadline ) {
         std::this_thread::sleep_for( std::chrono::milliseconds( 20 ) );
-        if ( !inst->running ) break; // listen 立即返回 = 失败
+        if ( !inst->running )
+            break; // listen 立即返回 = 失败
     }
 
     if ( !inst->running ) {
         // 启动失败
         std::string err = inst->lastError.empty() ? ( "端口 " + std::to_string( port ) + " 启动失败" ) : inst->lastError;
-        if ( inst->thread.joinable() ) inst->thread.join();
+        if ( inst->thread.joinable() )
+            inst->thread.join();
         // 不放入 m_instances
         // 更新 DB 状态
         try {
@@ -232,8 +251,10 @@ bool HttpServerManager::stop( const std::string &id ) {
         return true;
     }
     LOG_INFO << "HttpServerManager::stop id=" << id;
-    if ( p->server ) p->server->stop();
-    if ( p->thread.joinable() ) p->thread.join();
+    if ( p->server )
+        p->server->stop();
+    if ( p->thread.joinable() )
+        p->thread.join();
     p->running = false;
     {
         std::lock_guard<std::mutex> lock( m_mtx );
@@ -257,8 +278,10 @@ bool HttpServerManager::isRunning( const std::string &id ) const {
 std::string HttpServerManager::status( const std::string &id ) const {
     std::lock_guard<std::mutex> lock( m_mtx );
     auto *p = findInstance( id );
-    if ( !p ) return "stopped";
-    if ( p->running ) return "running";
+    if ( !p )
+        return "stopped";
+    if ( p->running )
+        return "running";
     return "error";
 }
 
@@ -266,7 +289,8 @@ std::vector<int> HttpServerManager::listeningPorts() const {
     std::lock_guard<std::mutex> lock( m_mtx );
     std::vector<int> out;
     for ( auto &kv : m_instances ) {
-        if ( kv.second->running ) out.push_back( kv.second->port );
+        if ( kv.second->running )
+            out.push_back( kv.second->port );
     }
     return out;
 }
@@ -276,5 +300,17 @@ void HttpServerManager::startAutoStart() {
     auto rows = db.query( "SELECT id FROM http_servers WHERE auto_start=1" );
     for ( auto &r : rows ) {
         start( r["id"] );
+    }
+}
+
+void HttpServerManager::shutdownAll() {
+    std::vector<std::string> ids;
+    {
+        std::lock_guard<std::mutex> lock( m_mtx );
+        for ( auto &kv : m_instances )
+            ids.push_back( kv.first );
+    }
+    for ( auto &id : ids ) {
+        stop( id );
     }
 }

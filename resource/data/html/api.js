@@ -1,8 +1,10 @@
-(function (window) {
+(function () {
     'use strict';
 
     const Api = {};
     const PREFIX = '/api';
+
+    Api.PREFIX = PREFIX;
 
     function parseJSON(res) {
         return res.text().then(function (t) {
@@ -157,9 +159,6 @@
         createUser: function (data) { return Api.post('/admin/users', data); },
         updateUser: function (id, data) { return Api.put('/admin/users/' + encodeURIComponent(id), data); },
         deleteUser: function (id) { return Api.delete('/admin/users/' + encodeURIComponent(id)); },
-        browseFs: function (path) {
-            return Api.get('/admin/fs?path=' + encodeURIComponent(path || ''));
-        },
         listShares: function () { return Api.get('/admin/shares'); },
         createShare: function (data) { return Api.post('/admin/shares', data); },
         updateShare: function (id, data) { return Api.put('/admin/shares/' + id, data); },
@@ -183,9 +182,6 @@
         },
         imageConvert: function (formData, opts) {
             return Api.uploadXHR('/tools/image/convert', formData, opts);
-        },
-        imageOcr: function (formData) {
-            return Api.upload('/tools/image/ocr', formData);
         },
         imageOcrModels: function () {
             return Api.get('/tools/image/ocr/models');
@@ -321,23 +317,5 @@
         remove: function (key) { return Api.delete('/settings/' + encodeURIComponent(key)); }
     };
 
-    Api.escapeHtml = function (s) {
-        if (s == null) return '';
-        return String(s)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    };
-
-    // 极简 App shim：仅当主 app.js 未加载时使用，提供 escapeHtml
-    if (!window.App) {
-        window.App = {
-            escapeHtml: Api.escapeHtml
-        };
-    }
-
-    Api.PREFIX = PREFIX;
     window.Api = Api;
-})(window);
+})();

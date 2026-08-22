@@ -62,6 +62,8 @@ std::vector<std::string> getLocalIPs();
 void openBrowser( const std::string &path = "/" );
 void openDirectory( const std::string &path );
 
+bool isValidUtf8( const std::string &str );
+
 std::string utf8ToLocal( const std::string &utf8 );
 
 std::string localToUtf8( const std::string &local );

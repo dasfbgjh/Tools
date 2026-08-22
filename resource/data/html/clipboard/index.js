@@ -2,6 +2,38 @@
 (function () {
     'use strict';
 
+    // ===== Teams state (clipboard self-contained) =====
+    var TEAMS_STORAGE_KEY = 'clipboard-teams-storage';
+    var teams = [];
+    var currentTeam = null;
+
+    function loadTeamsState() {
+        try {
+            var raw = localStorage.getItem(TEAMS_STORAGE_KEY);
+            if (!raw) return;
+            var s = JSON.parse(raw);
+            teams = s.teams || [];
+            currentTeam = s.currentTeam || null;
+        } catch (e) { /* ignore */ }
+    }
+    function saveTeamsState() {
+        localStorage.setItem(TEAMS_STORAGE_KEY, JSON.stringify({
+            teams: teams,
+            currentTeam: currentTeam
+        }));
+    }
+    function setTeams(t) {
+        teams = t || [];
+        saveTeamsState();
+    }
+    function setCurrentTeam(t) {
+        currentTeam = t || null;
+        saveTeamsState();
+        window.dispatchEvent(new CustomEvent('team-changed', { detail: t }));
+    }
+    loadTeamsState();
+
+    // ===== Clipboard items state =====
     var items = [];
     var lastUpdateTime = null;
     var lastItemCount = 0;
@@ -24,14 +56,14 @@
     function escapeHtml(s) { return App.escapeHtml(s); }
 
     function canPaste() {
-        var team = App.state.currentTeam;
+        var team = currentTeam;
         if (!team) return false;
         // 已登录用户不能在默认团队粘贴; 未登录用户只能在默认团队粘贴
         return !App.isAuthenticated() || !team.isDefault;
     }
 
     function updateHint() {
-        var team = App.state.currentTeam;
+        var team = currentTeam;
         var teamEl = document.getElementById('current-team');
         if (!team) {
             hintEl.textContent = '';
@@ -118,7 +150,7 @@
     }
 
     function render() {
-        if (!App.state.currentTeam) {
+        if (!currentTeam) {
             grid.innerHTML = '';
             emptyState.classList.remove('hidden');
             emptyState.innerHTML = '<div><div class="icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg></div><h3>请选择一个团队</h3>' +
@@ -238,7 +270,7 @@
             return;
         }
 
-        var teamId = App.state.currentTeam.id;
+        var teamId = currentTeam.id;
         var handled = false;
 
         function createTextItem(text) {
@@ -356,7 +388,7 @@
             var btn = this;
             btn.disabled = true;
             Api.clipboard.create({
-                teamId: App.state.currentTeam.id,
+                teamId: currentTeam.id,
                 type: 'text', content: text, mimeType: 'text/plain'
             }).then(function (data) {
                 if (data.success) { addItem(data.item); App.closeModal(); }
@@ -374,7 +406,7 @@
         var fd = new FormData();
         fd.append('file', file);
 
-        Api.clipboard.upload(App.state.currentTeam.id, fd).then(function (data) {
+        Api.clipboard.upload(currentTeam.id, fd).then(function (data) {
             if (data.success) addItem(data.item);
             else alert(data.error || '上传失败');
         }).catch(function () { alert('上传失败'); })
@@ -479,19 +511,19 @@
                 App.setUser(me.user);
                 return Api.teams.list().then(function (td) {
                     if (td.success) {
-                        App.setTeams(td.teams);
+                        setTeams(td.teams);
                         var userTeams = td.teams.filter(function (t) { return !t.isDefault; });
                         if (userTeams.length > 0) {
                             // Keep persisted current team if still valid, else use first
-                            var cur = App.state.currentTeam;
+                            var cur = currentTeam;
                             if (!cur || !userTeams.find(function (t) { return t.id === cur.id; })) {
-                                App.setCurrentTeam(userTeams[0]);
+                                setCurrentTeam(userTeams[0]);
                             } else {
                                 // refresh stored team data
-                                App.setCurrentTeam(userTeams.find(function (t) { return t.id === cur.id; }));
+                                setCurrentTeam(userTeams.find(function (t) { return t.id === cur.id; }));
                             }
                         } else {
-                            App.setCurrentTeam(null);
+                            setCurrentTeam(null);
                         }
                     }
                 });
@@ -499,14 +531,14 @@
                 // Anonymous user - load default team only
                 return Api.teams.list(true).then(function (td) {
                     if (td.success && td.teams && td.teams.length) {
-                        App.setTeams(td.teams);
-                        App.setCurrentTeam(td.teams[0]);
+                        setTeams(td.teams);
+                        setCurrentTeam(td.teams[0]);
                     }
                 });
             }
         }).then(function () {
             updateHint();
-            switchToTeam(App.state.currentTeam);
+            switchToTeam(currentTeam);
         });
     }
 
@@ -517,8 +549,8 @@
 
     // ===== Team Management Functions (Modal) =====
     function openTeamModal() {
-        var teams = (App.state.teams || []).filter(function (t) { return !t.isDefault; });
-        var currentTeam = App.state.currentTeam;
+        var modalTeams = (teams || []).filter(function (t) { return !t.isDefault; });
+        var modalCurrentTeam = currentTeam;
 
         var html = '<div class="team-modal-content px-4">' +
             '<div class="grid-2 gap-6 mb-6" style="font-size: 14px;">' +
@@ -539,15 +571,15 @@
             '<div class="mb-6 mt-6">' +
             '<h3 class="text-sm font-medium mb-3">我的团队</h3>' +
             '<div id="modal-teams-list" class="space-y-2 max-h-64 overflow-y-auto">' +
-            (teams.length ? '' : '<div class="text-sm text-muted text-center py-4">还没有加入任何团队</div>') +
+            (modalTeams.length ? '' : '<div class="text-sm text-muted text-center py-4">还没有加入任何团队</div>') +
             '</div>' +
             '</div>' +
             '</div>';
 
         App.openModal('团队管理', html, null, 'modal-lg');
 
-        if (teams.length) {
-            renderModalTeams(teams, currentTeam);
+        if (modalTeams.length) {
+            renderModalTeams(modalTeams, modalCurrentTeam);
         }
 
         // Bind modal buttons
@@ -648,7 +680,7 @@
                 var tid = btn.getAttribute('data-use');
                 var team = teams.find(function (t) { return t.id === tid; });
                 if (team) {
-                    App.setCurrentTeam(team);
+                    setCurrentTeam(team);
                     App.closeModal();
                 }
             });
@@ -722,9 +754,9 @@
     function refreshModalTeams() {
         Api.teams.list().then(function (td) {
             if (td.success) {
-                App.setTeams(td.teams || []);
+                setTeams(td.teams || []);
                 var teams = (td.teams || []).filter(function (t) { return !t.isDefault; });
-                renderModalTeams(teams, App.state.currentTeam);
+                renderModalTeams(teams, currentTeam);
             }
         });
     }

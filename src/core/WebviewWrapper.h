@@ -41,6 +41,7 @@ public:
 private:
     static void initLog( webview::webview &view, std::string &init_js );
     static void initWindow( webview::webview &view );
+    static void bindings( webview::webview &view );
     void initEventQueue( webview::webview &view, std::string &init_js );
     static void setWindowState( webview::webview &view, ShowState type );
 

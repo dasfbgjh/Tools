@@ -902,69 +902,6 @@ static void imageOcrModels( const httplib::Request &req, httplib::Response &res 
     Server::sendJson( res, { { "success", true }, { "models", arr } } );
 }
 
-// 同步接口（保留兼容，httplib 超时本身很大；若被反向代理/浏览器过早断开，前端会尝试异步模式）
-void imageOcr( const httplib::Request &req, httplib::Response &res ) {
-    if ( !req.is_multipart_form_data() )
-        return Server::sendError( res, "需要multipart上传", 400 );
-
-    httplib::FormData file;
-    if ( !findFileFromForm( req.form, &file ) )
-        return Server::sendError( res, "缺少file字段", 400 );
-
-    LOG_DEBUG << "OCR识别(sync) filename=" << file.filename << " size=" << file.content.size();
-    if ( file.content.size() > 20 * 1024 * 1024 )
-        return Server::sendError( res, "图片超过20MB限制", 400 );
-
-    std::string modelId = parseModelIdFromForm( req.form );
-    OCR_PARAM param = parseParamsFromForm( req.form );
-    CropRect crop = parseCropFromForm( req.form );
-
-    std::string err;
-    if ( !OcrEngine::instance().ensureLoaded( modelId, err ) )
-        return Server::sendError( res, "OCR引擎不可用: " + err, 503 );
-
-    std::string tempPath = writeTempFile( file );
-    if ( tempPath.empty() )
-        return Server::sendError( res, "临时文件创建失败", 500 );
-
-    // 裁剪（若指定了选区）
-    std::string usePath = tempPath;
-    std::string croppedPath;
-    CropRect appliedCrop;
-    if ( crop.valid() ) {
-        std::string cropErr;
-        croppedPath = cropImageToTemp( tempPath, crop, cropErr );
-        if ( !croppedPath.empty() ) {
-            usePath = croppedPath;
-            appliedCrop = crop;
-        } else {
-            LOG_WARN << "OCR 裁剪失败（同步），回退为全图识别: " << cropErr;
-        }
-    }
-
-    Server::json result;
-    bool ok = OcrEngine::instance().detect( usePath, param, result, err );
-
-    // 清理临时文件
-    {
-        std::error_code ec;
-        if ( !croppedPath.empty() && fs::exists( croppedPath ) )
-            fs::remove( croppedPath, ec );
-        if ( fs::exists( tempPath ) )
-            fs::remove( tempPath, ec );
-    }
-
-    if ( !ok )
-        return Server::sendError( res, "OCR识别失败: " + err, 500 );
-
-    if ( appliedCrop.valid() ) {
-        applyCropOffsetToResult( result, appliedCrop.x, appliedCrop.y );
-        result["crop"] = { { "x", appliedCrop.x }, { "y", appliedCrop.y }, { "w", appliedCrop.w }, { "h", appliedCrop.h } };
-    }
-
-    Server::sendJson( res, { { "success", true }, { "data", result } } );
-}
-
 // 异步：提交任务 → 返回 taskId
 static void imageOcrSubmit( const httplib::Request &req, httplib::Response &res ) {
     if ( !req.is_multipart_form_data() )
@@ -1015,7 +952,6 @@ static void imageOcrDismiss( const httplib::Request &req, httplib::Response &res
 
 void registerOcrRoutes( httplib::Server &svr ) {
     svr.Get( "/api/tools/image/ocr/models", imageOcrModels );
-    svr.Post( "/api/tools/image/ocr", imageOcr );
     svr.Post( "/api/tools/image/ocr/submit", imageOcrSubmit );
     svr.Get( "/api/tools/image/ocr/status/:id", imageOcrStatus );
     svr.Delete( "/api/tools/image/ocr/status/:id", imageOcrDismiss );

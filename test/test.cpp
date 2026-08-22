@@ -24,7 +24,5 @@ int main() {
     // controller->get_CoreWebView2( &webview );
     // webview->Navigate( L"https://example.com" );
 
-
-
     return 0;
 }

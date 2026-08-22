@@ -13,7 +13,7 @@
         window.AdminUsers.loadUsers();
 
         var params = new URLSearchParams(window.location.search);
-        var shareId = params.get('share');
+        var shareId = params.get('shareId');
         if (shareId) {
             window.AdminCommon.activateTab('shares', true);
             Api.admin.parameterPaths(shareId).then(function (data) {

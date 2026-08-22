@@ -101,29 +101,9 @@
         </div>
     </div>
 
-    <!-- 目录浏览对话框 -->
-    <div class="br-modal" id="docs-browse-modal" style="display:none">
-        <div class="br-modal-mask"></div>
-        <div class="br-modal-panel" style="max-width:680px">
-            <div class="br-modal-header">
-                <span>选择本机目录</span>
-                <button class="br-modal-close" data-close>×</button>
-            </div>
-            <div class="br-modal-body">
-                <div class="br-input-group" style="margin-bottom:0.5rem">
-                    <input type="text" class="br-input" id="docs-browse-path" placeholder="路径…">
-                    <button class="btn btn-outline btn-sm" id="docs-browse-up" title="上一级">↑</button>
-                </div>
-                <div id="docs-browse-list" class="br-list" style="height:280px;overflow:auto"></div>
-            </div>
-            <div class="br-modal-footer">
-                <button class="btn" data-close>取消</button>
-                <button class="btn btn-primary" id="docs-browse-pick">使用此目录</button>
-            </div>
-        </div>
-    </div>
-
+    <script src="../app.js"></script>
     <script src="../api.js"></script>
+    <script src="../fs_browser.js"></script>
     <script src="./docs.js"></script>
 </body>
 

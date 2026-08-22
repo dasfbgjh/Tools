@@ -3,45 +3,6 @@
 
 namespace routes::teams {
 
-void registerTeamRoutes( httplib::Server &svr ) {
-    // GET /api/teams  (list user teams, or default team if defaultOnly=true)
-    svr.Get( "/api/teams", teamsList );
-
-    // POST /api/teams  (create team)
-    svr.Post( "/api/teams", teamsCreate );
-
-    // GET /api/teams/invite/:code  (validate invite code)
-    svr.Get( R"(/api/teams/invite/([^/]+))", teamsInviteValidate );
-
-    // POST /api/teams/join  (join via code)
-    svr.Post( "/api/teams/join", teamsJoin );
-
-    // POST /api/teams/invite  (generate invite code)
-    svr.Post( "/api/teams/invite", teamsInviteCreate );
-
-    // PUT /api/teams/invite  (refresh invite code expiry)
-    svr.Put( "/api/teams/invite", teamsInviteRefresh );
-
-    // DELETE /api/teams/invite  (invalidate invite code)
-    svr.Delete( "/api/teams/invite", teamsInviteInvalidate );
-
-    // GET /api/teams/:id  (team detail with members)
-    svr.Get( R"(/api/teams/([^/]+))", teamsDetail );
-
-    // DELETE /api/teams/:id  (disband team)
-    svr.Delete( R"(/api/teams/([^/]+))", teamsDelete );
-
-    // DELETE /api/teams/:id/leave  (leave team)
-    svr.Delete( R"(/api/teams/([^/]+)/leave)", teamsLeave );
-
-    // GET /api/teams/:id/members  (list team members)
-    svr.Get( R"(/api/teams/([^/]+)/members)", teamsMembers );
-
-    // DELETE /api/teams/:id/members/:userId  (remove member)
-    svr.Delete( R"(/api/teams/([^/]+)/members/([^/]+))", teamsRemoveMember );
-    LOG_DEBUG << "已注册 13 个团队路由";
-}
-
 void teamsList( const httplib::Request &req, httplib::Response &res ) {
     bool defaultOnly = Server::queryParam( req, "defaultOnly" ) == "true";
     LOG_DEBUG << "查询团队列表 defaultOnly=" << ( defaultOnly ? "true" : "false" );
@@ -313,18 +274,17 @@ void teamsMembers( const httplib::Request &req, httplib::Response &res ) {
         "SELECT u.id, u.email, u.nickname, tm.role, tm.joined_at "
         "FROM clipboard_team_members tm "
         "JOIN users u ON tm.user_id=u.id "
-        "WHERE tm.team_id='" + Database::sqlEscape( teamId ) + "' ORDER BY tm.joined_at" );
+        "WHERE tm.team_id='" +
+        Database::sqlEscape( teamId ) + "' ORDER BY tm.joined_at" );
 
     Server::json members = Server::json::array();
     for ( auto &r : rows ) {
         std::string nick = r["nickname"];
-        members.push_back( {
-            { "id", r["id"] },
-            { "email", r["email"] },
-            { "nickname", nick.empty() ? Server::json( nullptr ) : Server::json( nick ) },
-            { "role", r["role"] },
-            { "joinedAt", r["joined_at"] }
-        } );
+        members.push_back( { { "id", r["id"] },
+                             { "email", r["email"] },
+                             { "nickname", nick.empty() ? Server::json( nullptr ) : Server::json( nick ) },
+                             { "role", r["role"] },
+                             { "joinedAt", r["joined_at"] } } );
     }
     LOG_DEBUG << "团队成员列表 team_id=" << teamId << " 数量=" << members.size();
 
@@ -400,4 +360,44 @@ void teamsRemoveMember( const httplib::Request &req, httplib::Response &res ) {
     LOG_INFO << "成员已移除 team_id=" << id << " target_user_id=" << userId;
     Server::sendJson( res, { { "success", true }, { "message", "成员已移除" } } );
 }
+
+void registerTeamRoutes( httplib::Server &svr ) {
+    // GET /api/teams  (list user teams, or default team if defaultOnly=true)
+    svr.Get( "/api/teams", teamsList );
+
+    // POST /api/teams  (create team)
+    svr.Post( "/api/teams", teamsCreate );
+
+    // GET /api/teams/invite/:code  (validate invite code)
+    svr.Get( R"(/api/teams/invite/([^/]+))", teamsInviteValidate );
+
+    // POST /api/teams/join  (join via code)
+    svr.Post( "/api/teams/join", teamsJoin );
+
+    // POST /api/teams/invite  (generate invite code)
+    svr.Post( "/api/teams/invite", teamsInviteCreate );
+
+    // PUT /api/teams/invite  (refresh invite code expiry)
+    svr.Put( "/api/teams/invite", teamsInviteRefresh );
+
+    // DELETE /api/teams/invite  (invalidate invite code)
+    svr.Delete( "/api/teams/invite", teamsInviteInvalidate );
+
+    // GET /api/teams/:id  (team detail with members)
+    svr.Get( R"(/api/teams/([^/]+))", teamsDetail );
+
+    // DELETE /api/teams/:id  (disband team)
+    svr.Delete( R"(/api/teams/([^/]+))", teamsDelete );
+
+    // DELETE /api/teams/:id/leave  (leave team)
+    svr.Delete( R"(/api/teams/([^/]+)/leave)", teamsLeave );
+
+    // GET /api/teams/:id/members  (list team members)
+    svr.Get( R"(/api/teams/([^/]+)/members)", teamsMembers );
+
+    // DELETE /api/teams/:id/members/:userId  (remove member)
+    svr.Delete( R"(/api/teams/([^/]+)/members/([^/]+))", teamsRemoveMember );
+    LOG_DEBUG << "已注册 13 个团队路由";
+}
+
 } // namespace routes::teams

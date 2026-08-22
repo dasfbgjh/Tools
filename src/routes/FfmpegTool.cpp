@@ -303,167 +303,16 @@ std::vector<std::string> FfmpegManager::buildArgs( FfmpegTask *task, const std::
         args.push_back( std::to_string( task->extraThreads ) );
     }
 
+    // ===== download 模式：用于从 URL 拉流/录制（含 m3u8 -> mp4、http(s) 下载、rtmp/rtsp 录制等）=====
+    // 与转换/压缩走完全不同的参数集，单独处理。
+    if ( task->operation == "download" )
+        return buildDownloadArgs( task, ffmpegPath, displayArgs, args );
+
     // 操作开关（options 中读取）
     const auto &opts = task->options;
     bool enableTrim = opts.value( "enableTrim", false );
     bool enableConvert = opts.value( "enableConvert", false );
     bool enableCompress = opts.value( "enableCompress", false );
-
-    // ===== download 模式：用于从 URL 拉流/录制（含 m3u8 -> mp4、http(s) 下载、rtmp/rtsp 录制等）=====
-    // 与转换/压缩走完全不同的参数集，单独处理。
-    if ( task->operation == "download" ) {
-        // 网络 IO 超时（毫秒）；默认 30 秒
-        int64_t timeoutMs = 30000;
-        if ( opts.contains( "timeoutMs" ) && opts["timeoutMs"].is_number_integer() ) {
-            timeoutMs = opts["timeoutMs"].get<int64_t>();
-            if ( timeoutMs < 1000 )
-                timeoutMs = 1000;
-        }
-
-        // 仅对 http(s)/rtmp/rtsp 等网络协议做重连配置
-        bool isHttp = task->inputPath.rfind( "http://", 0 ) == 0 || task->inputPath.rfind( "https://", 0 ) == 0;
-        bool isNetwork = isHttp ||
-                         task->inputPath.rfind( "rtmp://", 0 ) == 0 ||
-                         task->inputPath.rfind( "rtsp://", 0 ) == 0 ||
-                         task->inputPath.rfind( "tcp://", 0 ) == 0 ||
-                         task->inputPath.rfind( "udp://", 0 ) == 0;
-        // http(s) 默认开启重连；其他网络协议可选项
-        bool allowReconnect = isHttp;
-        if ( opts.contains( "reconnect" ) && opts["reconnect"].is_boolean() ) {
-            allowReconnect = opts["reconnect"].get<bool>();
-        }
-        if ( allowReconnect && isNetwork ) {
-            args.push_back( "-reconnect" );
-            args.push_back( "1" );
-            args.push_back( "-reconnect_streamed" );
-            args.push_back( "1" );
-            args.push_back( "-reconnect_delay_max" );
-            args.push_back( "5" );
-        }
-
-        // -timeout 单位是微秒
-        args.push_back( "-timeout" );
-        args.push_back( std::to_string( timeoutMs * 1000 ) );
-
-        // 用户自定义 header（http 头），如 "User-Agent: ..."、Referer: ...
-        if ( opts.contains( "headers" ) && opts["headers"].is_array() ) {
-            for ( const auto &h : opts["headers"] ) {
-                if ( h.is_string() ) {
-                    std::string s = h.get<std::string>();
-                    if ( !s.empty() ) {
-                        args.push_back( "-headers" );
-                        args.push_back( s );
-                    }
-                }
-            }
-        }
-        // 用户代理
-        if ( opts.contains( "userAgent" ) && opts["userAgent"].is_string() ) {
-            std::string ua = opts["userAgent"].get<std::string>();
-            if ( !ua.empty() ) {
-                args.push_back( "-user_agent" );
-                args.push_back( ua );
-            }
-        }
-        // m3u8/HLS 选项
-        if ( opts.contains( "hlsAllowExtensions" ) && opts["hlsAllowExtensions"].is_boolean() ) {
-            // ffmpeg 用 -protocol_whitelist 与 -allowed_extensions
-            if ( opts["hlsAllowExtensions"].get<bool>() ) {
-                args.push_back( "-allowed_extensions" );
-                args.push_back( "ALL" );
-            }
-        }
-
-        args.push_back( "-i" );
-        args.push_back( task->inputPath );
-
-        // 录制时长（仅用于直播/有边界的源）；0 表示源结束即结束
-        if ( opts.contains( "recordDurationSec" ) ) {
-            double t = 0;
-            const auto &dv = opts["recordDurationSec"];
-            if ( dv.is_string() )
-                t = parseTimeToSec( dv.get<std::string>() );
-            else if ( dv.is_number() )
-                t = dv.get<double>();
-            if ( t > 0 ) {
-                char buf[32];
-                std::snprintf( buf, sizeof( buf ), "%.3f", t );
-                args.push_back( "-t" );
-                args.push_back( buf );
-            }
-        }
-
-        // 是否允许重新编码（默认 false：stream copy，最快且无损）
-        bool reEncode = false;
-        if ( opts.contains( "reEncode" ) && opts["reEncode"].is_boolean() ) {
-            reEncode = opts["reEncode"].get<bool>();
-        }
-        // 兼容 convert/compress 模式：开了就重新编码
-        reEncode = reEncode || enableConvert || enableCompress;
-
-        if ( reEncode ) {
-            // 用 libx264/aac 安全重编码
-            args.push_back( "-c:v" );
-            args.push_back( "libx264" );
-            args.push_back( "-preset" );
-            args.push_back( "veryfast" );
-            args.push_back( "-c:a" );
-            args.push_back( "aac" );
-            args.push_back( "-b:a" );
-            args.push_back( "128k" );
-            // m3u8 -> mp4：开启 faststart
-            if ( task->outputPath.size() >= 4 &&
-                 task->outputPath.substr( task->outputPath.size() - 4 ) == ".mp4" ) {
-                args.push_back( "-movflags" );
-                args.push_back( "+faststart" );
-            }
-        } else {
-            // 流复制：m3u8 -> mp4 时需要对 AAC 加 ADTS 头
-            args.push_back( "-c" );
-            args.push_back( "copy" );
-            if ( task->outputPath.size() >= 4 &&
-                 task->outputPath.substr( task->outputPath.size() - 4 ) == ".mp4" ) {
-                args.push_back( "-bsf:a" );
-                args.push_back( "aac_adtstoasc" );
-                args.push_back( "-movflags" );
-                args.push_back( "+faststart" );
-            }
-        }
-
-        // 自定义参数
-        if ( opts.contains( "extraArgs" ) && opts["extraArgs"].is_array() ) {
-            for ( const auto &a : opts["extraArgs"] ) {
-                if ( a.is_string() ) {
-                    std::string s = a.get<std::string>();
-                    if ( !s.empty() )
-                        args.push_back( s );
-                }
-            }
-        }
-
-        // 进度输出
-        args.push_back( "-progress" );
-        args.push_back( "pipe:2" );
-        args.push_back( "-loglevel" );
-        args.push_back( "info" );
-
-        args.push_back( task->outputPath );
-
-        {
-            std::ostringstream ss;
-            for ( size_t i = 0; i < args.size(); ++i ) {
-                if ( i > 0 )
-                    ss << ' ';
-                const std::string &a = args[i];
-                if ( a.find( ' ' ) != std::string::npos )
-                    ss << '"' << a << '"';
-                else
-                    ss << a;
-            }
-            displayArgs = ss.str();
-        }
-        return args;
-    }
 
     // ===== trim =====
     double trimStartSec = 0; // 解析后的开始时间（秒），供 endTime/tail 复用
@@ -717,6 +566,164 @@ std::vector<std::string> FfmpegManager::buildArgs( FfmpegTask *task, const std::
     return args;
 }
 
+std::vector<std::string> FfmpegManager::buildDownloadArgs( FfmpegTask *task, const std::string &ffmpegPath, std::string &displayArgs, std::vector<std::string> &args ) const {
+    const auto &opts = task->options;
+
+    // 网络 IO 超时（毫秒）；默认 30 秒
+    int64_t timeoutMs = 30000;
+    if ( opts.contains( "timeoutMs" ) && opts["timeoutMs"].is_number_integer() ) {
+        timeoutMs = opts["timeoutMs"].get<int64_t>();
+        if ( timeoutMs < 1000 )
+            timeoutMs = 1000;
+    }
+
+    // 仅对 http(s)/rtmp/rtsp 等网络协议做重连配置
+    bool isHttp = task->inputPath.rfind( "http://", 0 ) == 0 || task->inputPath.rfind( "https://", 0 ) == 0;
+    bool isNetwork = isHttp ||
+                     task->inputPath.rfind( "rtmp://", 0 ) == 0 ||
+                     task->inputPath.rfind( "rtsp://", 0 ) == 0 ||
+                     task->inputPath.rfind( "tcp://", 0 ) == 0 ||
+                     task->inputPath.rfind( "udp://", 0 ) == 0;
+    // http(s) 默认开启重连；其他网络协议可选项
+    bool allowReconnect = isHttp;
+    if ( opts.contains( "reconnect" ) && opts["reconnect"].is_boolean() ) {
+        allowReconnect = opts["reconnect"].get<bool>();
+    }
+    if ( allowReconnect && isNetwork ) {
+        args.push_back( "-reconnect" );
+        args.push_back( "1" );
+        args.push_back( "-reconnect_streamed" );
+        args.push_back( "1" );
+        args.push_back( "-reconnect_delay_max" );
+        args.push_back( "5" );
+    }
+
+    // -timeout 单位是微秒
+    args.push_back( "-timeout" );
+    args.push_back( std::to_string( timeoutMs * 1000 ) );
+
+    // 用户自定义 header（http 头），如 "User-Agent: ..."、Referer: ...
+    if ( opts.contains( "headers" ) && opts["headers"].is_array() ) {
+        for ( const auto &h : opts["headers"] ) {
+            if ( h.is_string() ) {
+                std::string s = h.get<std::string>();
+                if ( !s.empty() ) {
+                    args.push_back( "-headers" );
+                    args.push_back( s );
+                }
+            }
+        }
+    }
+    // 用户代理
+    if ( opts.contains( "userAgent" ) && opts["userAgent"].is_string() ) {
+        std::string ua = opts["userAgent"].get<std::string>();
+        if ( !ua.empty() ) {
+            args.push_back( "-user_agent" );
+            args.push_back( ua );
+        }
+    }
+    // m3u8/HLS 选项
+    if ( opts.contains( "hlsAllowExtensions" ) && opts["hlsAllowExtensions"].is_boolean() ) {
+        // ffmpeg 用 -protocol_whitelist 与 -allowed_extensions
+        if ( opts["hlsAllowExtensions"].get<bool>() ) {
+            args.push_back( "-allowed_extensions" );
+            args.push_back( "ALL" );
+        }
+    }
+
+    args.push_back( "-i" );
+    args.push_back( task->inputPath );
+
+    // 录制时长（仅用于直播/有边界的源）；0 表示源结束即结束
+    if ( opts.contains( "recordDurationSec" ) ) {
+        double t = 0;
+        const auto &dv = opts["recordDurationSec"];
+        if ( dv.is_string() )
+            t = parseTimeToSec( dv.get<std::string>() );
+        else if ( dv.is_number() )
+            t = dv.get<double>();
+        if ( t > 0 ) {
+            char buf[32];
+            std::snprintf( buf, sizeof( buf ), "%.3f", t );
+            args.push_back( "-t" );
+            args.push_back( buf );
+        }
+    }
+
+    // 是否允许重新编码（默认 false：stream copy，最快且无损）
+    bool reEncode = false;
+    if ( opts.contains( "reEncode" ) && opts["reEncode"].is_boolean() ) {
+        reEncode = opts["reEncode"].get<bool>();
+    }
+    // 兼容 convert/compress 模式：开了就重新编码
+    bool enableConvert = opts.value( "enableConvert", false );
+    bool enableCompress = opts.value( "enableCompress", false );
+    reEncode = reEncode || enableConvert || enableCompress;
+
+    if ( reEncode ) {
+        // 用 libx264/aac 安全重编码
+        args.push_back( "-c:v" );
+        args.push_back( "libx264" );
+        args.push_back( "-preset" );
+        args.push_back( "veryfast" );
+        args.push_back( "-c:a" );
+        args.push_back( "aac" );
+        args.push_back( "-b:a" );
+        args.push_back( "128k" );
+        // m3u8 -> mp4：开启 faststart
+        if ( task->outputPath.size() >= 4 &&
+             task->outputPath.substr( task->outputPath.size() - 4 ) == ".mp4" ) {
+            args.push_back( "-movflags" );
+            args.push_back( "+faststart" );
+        }
+    } else {
+        // 流复制：m3u8 -> mp4 时需要对 AAC 加 ADTS 头
+        args.push_back( "-c" );
+        args.push_back( "copy" );
+        if ( task->outputPath.size() >= 4 &&
+             task->outputPath.substr( task->outputPath.size() - 4 ) == ".mp4" ) {
+            args.push_back( "-bsf:a" );
+            args.push_back( "aac_adtstoasc" );
+            args.push_back( "-movflags" );
+            args.push_back( "+faststart" );
+        }
+    }
+
+    // 自定义参数
+    if ( opts.contains( "extraArgs" ) && opts["extraArgs"].is_array() ) {
+        for ( const auto &a : opts["extraArgs"] ) {
+            if ( a.is_string() ) {
+                std::string s = a.get<std::string>();
+                if ( !s.empty() )
+                    args.push_back( s );
+            }
+        }
+    }
+
+    // 进度输出
+    args.push_back( "-progress" );
+    args.push_back( "pipe:2" );
+    args.push_back( "-loglevel" );
+    args.push_back( "info" );
+
+    args.push_back( task->outputPath );
+
+    {
+        std::ostringstream ss;
+        for ( size_t i = 0; i < args.size(); ++i ) {
+            if ( i > 0 )
+                ss << ' ';
+            const std::string &a = args[i];
+            if ( a.find( ' ' ) != std::string::npos )
+                ss << '"' << a << '"';
+            else
+                ss << a;
+        }
+        displayArgs = ss.str();
+    }
+    return args;
+}
+
 double FfmpegManager::probeDuration( const std::string &ffmpegPath, const std::string &inputPath ) const {
     auto result = EventLoop::runProcessSync(
         { ffmpegPath, "-i", inputPath }, fs::current_path() );
@@ -863,6 +870,10 @@ void FfmpegManager::parseFfmpegOut( FfmpegTask *task, std::string &outPending ) 
                 task->durationSec = h * 3600 + mi * 60 + sc;
             }
         }
+        if ( utils::toLower( line ).find( "error" ) != std::string::npos ) {
+            task->error = line;
+            LOG_ERROR << "ffmpeg error: " << line;
+        }
     }
 }
 
@@ -915,6 +926,7 @@ void FfmpegManager::startTask( FfmpegTask *task ) {
     std::string displayArgs;
     std::vector<std::string> argv = buildArgs( task, ffmpegPath, displayArgs );
     task->commandLine = displayArgs;
+    LOG_DEBUG << "ffmpeg task:" << displayArgs;
 
     // 启动进程
     task->impl = std::make_unique<FfmpegTask::Impl>();

@@ -125,27 +125,9 @@
         </div>
     </div>
 
-    <!-- 目录浏览器弹窗（复用 ffmpeg 风格） -->
-    <div class="br-fs" id="fd-fs" hidden>
-        <div class="br-fs-head">
-            <input type="text" class="br-input" id="fd-fs-path" placeholder="输入路径跳转 (例如 D:\downloads)" style="flex:1;">
-            <button class="btn btn-sm" id="fd-fs-go">跳转</button>
-            <button class="btn btn-outline btn-sm" id="fd-fs-up" title="上一级">↑</button>
-        </div>
-        <div class="br-fs-bc" id="fd-fs-bc"></div>
-        <div class="br-fs-list-bar">
-            <span class="br-fs-list-hint">点击目录进入；点"选择"使用当前目录作为输出目录</span>
-        </div>
-        <div class="br-fs-list" id="fd-fs-list">加载中...</div>
-        <div class="br-fs-foot">
-            <span class="br-fs-list-hint" id="fd-fs-current">当前：-</span>
-            <span class="br-spacer"></span>
-            <button class="btn btn-outline" id="fd-fs-cancel">取消</button>
-            <button class="btn" id="fd-fs-ok">选择此目录</button>
-        </div>
-    </div>
-
+    <script src="../app.js"></script>
     <script src="../api.js"></script>
+    <script src="../fs_browser.js"></script>
     <script src="./ffmpeg_download.js"></script>
 </body>
 

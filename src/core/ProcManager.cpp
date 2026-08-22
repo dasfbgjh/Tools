@@ -26,6 +26,10 @@ ProcManager &ProcManager::instance() {
     return inst;
 }
 
+ProcManager::~ProcManager() {
+    shutdownAll();
+}
+
 std::map<std::string, std::string> ProcManager::buildEnv(
     bool envInherit,
     const std::map<std::string, std::string> &userEnv ) {
@@ -100,7 +104,7 @@ void ProcInstance::appendLog( const std::string &line, int stream ) {
     };
     ProcLogLine l;
     l.seq = nextSeq++;
-    l.text = trim( line );
+    l.text = utils::isValidUtf8( line ) ? trim( line ) : trim( utils::localToUtf8( line ) );
     l.stream = stream;
     l.tsMs = nowMs();
     logs.push_back( std::move( l ) );
@@ -199,12 +203,12 @@ bool ProcManager::start( const std::string &id ) {
     inst->process = std::make_unique<AsyncProcess>();
     inst->startTimeMs = nowMs();
 
-    if ( !inst->process->start( argv, cwdPath, finalEnv ) ) {
-        std::string err = "启动进程失败";
-        LOG_ERROR << "ProcManager::start 启动失败 id=" << id << " cmd=" << command << " err=" << err;
+    std::string errorMsg;
+    if ( !inst->process->start( argv, cwdPath, finalEnv, &errorMsg ) ) {
+        LOG_ERROR << "ProcManager::start failed id =" << id << " cmd =" << command;
         try {
             db.execParams( "UPDATE proc_configs SET status=?, error_msg=?, pid=0, exit_code=0, updated_at=? WHERE id=?",
-                           { { 1, "error" }, { 2, err }, { 3, utils::nowIso() }, { 4, id } } );
+                           { { 1, "error" }, { 2, errorMsg }, { 3, utils::nowIso() }, { 4, id } } );
         } catch ( ... ) {
         }
         return false;
@@ -225,7 +229,7 @@ bool ProcManager::start( const std::string &id ) {
                        { { 1, "running" }, { 2, utils::nowIso() }, { 3, id } } );
     } catch ( ... ) {
     }
-    LOG_INFO << "ProcManager::start 成功 name=" << name << " pid=" << savedPid;
+    LOG_INFO << "ProcManager::start name =" << name << " pid =" << savedPid;
     return true;
 }
 
@@ -239,7 +243,7 @@ void ProcManager::waitProcess( ProcInstance *instPtr, const std::string &name, c
 
     EventLoop::readPipe( outPipe, outBuf,
                          [instPtr, &outPending, this]( EventLoop::error_code ec, EventLoop::buffer_ptr buf, std::size_t s ) -> bool {
-                             if ( ec || s == 0 )
+                             if ( ec || s == 0 || !instPtr->running.load() )
                                  return false;
                              outPending.append( buf->data(), s );
                              handleProcessOutput( outPending, instPtr, 0 );
@@ -247,7 +251,7 @@ void ProcManager::waitProcess( ProcInstance *instPtr, const std::string &name, c
                          } );
     EventLoop::readPipe( errPipe, errBuf,
                          [instPtr, &errPending, this]( EventLoop::error_code ec, EventLoop::buffer_ptr buf, std::size_t s ) -> bool {
-                             if ( ec || s == 0 )
+                             if ( ec || s == 0 || !instPtr->running.load() )
                                  return false;
                              errPending.append( buf->data(), s );
                              handleProcessOutput( errPending, instPtr, 1 );
@@ -285,7 +289,7 @@ void ProcManager::waitProcess( ProcInstance *instPtr, const std::string &name, c
             { { 1, "stopped" }, { 2, std::to_string( exitCode ) }, { 3, utils::nowIso() }, { 4, id } } );
     } catch ( ... ) {
     }
-    LOG_INFO << "ProcManager 进程退出 name=" << name << " exit=" << exitCode;
+    LOG_INFO << "ProcManager::exit name =" << name << " exit =" << exitCode;
 }
 
 bool ProcManager::stop( const std::string &id, bool force ) {
@@ -303,7 +307,9 @@ bool ProcManager::stop( const std::string &id, bool force ) {
         }
         return true;
     }
-    LOG_INFO << "ProcManager::stop name=" << p->name << " force=" << force;
+    LOG_INFO << "ProcManager::stop name =" << p->name << " force =" << force;
+    // 注意：AsyncProcess::terminate/kill 内部在 Windows 下已经处理整个进程树（含孙进程，
+    // 例如 cmd /c ping -t 的 ping.exe），不用在此处单独写平台代码。
     if ( p->process && p->process->started() ) {
         try {
             if ( force )
@@ -313,10 +319,12 @@ bool ProcManager::stop( const std::string &id, bool force ) {
         } catch ( ... ) {
         }
     }
+
     // waiter 线程会负责清理和 join
     // 但我们还需要更新 DB 状态
     if ( p->waiterThread.joinable() )
         p->waiterThread.join();
+
     return true;
 }
 
@@ -327,13 +335,27 @@ bool ProcManager::isRunning( const std::string &id ) const {
 }
 
 std::string ProcManager::status( const std::string &id ) const {
-    std::lock_guard<std::mutex> lock( m_instancesMtx );
-    auto *p = findInstanceNoLock( id );
-    if ( !p )
-        return "stopped";
-    if ( p->running.load() )
-        return "running";
-    return "error";
+    {
+        std::lock_guard<std::mutex> lock( m_instancesMtx );
+        auto *p = findInstanceNoLock( id );
+        if ( p && p->running.load() )
+            return "running";
+    }
+    // 进程未运行时，从数据库读取真实状态：
+    // - waitProcess 正常结束 / stop 成功 -> DB status = "stopped"
+    // - start() 启动失败 -> DB status = "error"
+    // 避免死实例残留 map 时把"stopped"错当成"error"
+    try {
+        auto rows = App::getInstance()->getDatabase().query(
+            "SELECT status FROM proc_configs WHERE id='" + Database::sqlEscape( id ) + "'" );
+        if ( !rows.empty() ) {
+            std::string s = rows[0]["status"];
+            if ( !s.empty() )
+                return s;
+        }
+    } catch ( ... ) {
+    }
+    return "stopped";
 }
 
 ProcManager::LogPage ProcManager::getLogs( const std::string &id, int64_t sinceSeq, int limit ) {

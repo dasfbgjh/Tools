@@ -78,7 +78,7 @@
             var cmdLine = p.command + argsDisplay;
 
             var autoTag = p.autoStart ? '<span class="hs-auto-tag">自启</span>' : '';
-            var inheritTag = '<span class="proc-env-tag">' + (p.envInherit ? '继承系统' : '不继承') + '</span>';
+            var inheritTag = '<span class="proc-env-tag">' + (p.envInherit ? '继承系统环境变量' : '不继承系统环境变量') + '</span>';
 
             var actions = '';
             if (p.status === 'running') {
@@ -93,7 +93,7 @@
 
             var metaParts = [];
             if (p.status === 'running' && p.pid) metaParts.push('PID ' + p.pid);
-            if (p.workingDir) metaParts.push('cwd: ' + p.workingDir);
+            if (p.workingDir) metaParts.push('工作目录: ' + p.workingDir);
             metaParts.push((p.envVars || []).length + ' 个环境变量');
             var meta = metaParts.join(' · ');
 
@@ -159,7 +159,14 @@
         });
     }
     function doStop(id, force) {
-        if (!force && !confirm('确认停止该进程？')) return;
+        if (force) {
+            if (!confirm('确认强制停止该进程？'))
+                return;
+        } else {
+            if (!confirm('停止该进程？\n\n如果存在嵌套子进程可能无法停止, 需要使用强制杀进程功能'))
+                return;
+        }
+
         Api.localTools.procs.stop(id, force).then(function (data) {
             if (!data.success) { showBanner('error', data.error || '停止失败'); loadAll(); return; }
             showBanner('success', '已停止');

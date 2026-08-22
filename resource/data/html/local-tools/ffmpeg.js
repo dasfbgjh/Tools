@@ -10,28 +10,20 @@
         else if (type === 'success') cls = 'ok';
         var el = document.getElementById('banner');
         if (!el) return;
-        el.innerHTML = '<div class="banner banner-' + cls + '">' + Api.escapeHtml(msg) + '</div>';
+        el.innerHTML = '<div class="banner banner-' + cls + '">' + window.App.escapeHtml(msg) + '</div>';
         if (type === 'success') setTimeout(clearBanner, 3000);
     }
     function clearBanner() { var el = document.getElementById('banner'); if (el) el.innerHTML = ''; }
 
     // ===== 状态 =====
-    var selectedFiles = [];   // { path, name, size }
+    var selectedFiles = [];   // { path, name, size, isDir, modified }
     var ffmpegInfo = null;
-    var browseMode = null;    // 'input' | 'output' | null
-    var browsePath = '';
     var pollTimer = null;
 
     // ===== DOM =====
     function $(id) { return document.getElementById(id); }
     var inputList = $('input-list');
     var outputDirInput = $('output-dir');
-    var fsPanel = $('ff-fs');
-    var fsPathInput = $('ff-fs-path');
-    var fsBc = $('ff-fs-bc');
-    var fsList = $('ff-fs-list');
-    var fsCurrent = $('ff-fs-current');
-    var fsHint = $('ff-fs-hint');
     var taskList = $('task-list');
     var compressPct = $('compress-pct');
     var compressPctVal = $('compress-pct-val');
@@ -112,7 +104,7 @@
             if (!data || data.success === false) {
                 var info = $('ff-info');
                 info.innerHTML = '<span class="pill err">FFmpeg 不可用</span>' +
-                    '<span class="pill">' + Api.escapeHtml((data && data.error) || '未知错误') + '</span>';
+                    '<span class="pill">' + window.App.escapeHtml((data && data.error) || '未知错误') + '</span>';
                 // 即使 ffmpeg 不可用，也尝试加载页面配置
                 loadConfig();
                 return;
@@ -138,11 +130,11 @@
         var html = '';
         if (ffmpegInfo.available) {
             html += '<span class="pill ok">✓ 可用</span>';
-            if (ffmpegInfo.version) html += '<span class="pill">' + Api.escapeHtml(ffmpegInfo.version) + '</span>';
-            if (ffmpegInfo.ffmpegPath) html += '<span class="pill" title="' + Api.escapeHtml(ffmpegInfo.ffmpegPath) + '">' + Api.escapeHtml(ffmpegInfo.ffmpegPath) + '</span>';
+            if (ffmpegInfo.version) html += '<span class="pill">' + window.App.escapeHtml(ffmpegInfo.version) + '</span>';
+            if (ffmpegInfo.ffmpegPath) html += '<span class="pill" title="' + window.App.escapeHtml(ffmpegInfo.ffmpegPath) + '">' + window.App.escapeHtml(ffmpegInfo.ffmpegPath) + '</span>';
         } else {
             html += '<span class="pill err">不可用</span>';
-            if (ffmpegInfo.error) html += '<span class="pill">' + Api.escapeHtml(ffmpegInfo.error) + '</span>';
+            if (ffmpegInfo.error) html += '<span class="pill">' + window.App.escapeHtml(ffmpegInfo.error) + '</span>';
         }
         info.innerHTML = html;
     }
@@ -208,274 +200,50 @@
         btn.disabled = !selectedFiles.length || !ffmpegInfo || !ffmpegInfo.available;
     }
 
-    // ===== 文件浏览器（弹窗） =====
-    var fsSelAll = $('ff-fs-sel-all');
-    var fsSelBar = $('ff-fs-sel-bar');
-    // 暂存当前目录的选中状态（input 模式）: path -> { path, name, size, isDir, modified }
-    var fsChecked = {};
-    // 跨目录累积的已选文件（最终"选择"时合入 selectedFiles）
-    var fsAccumulated = {};
-
+    // ===== 文件浏览器（使用公共模块 FsBrowser） =====
     function openBrowser(mode) {
-        browseMode = mode;
-        browsePath = '';
-        fsPathInput.value = '';
-        fsPanel.hidden = false;
-        if (mode === 'input') {
-            fsSelBar.hidden = false;
-            fsHint.textContent = '勾选文件后点"选择"加入（可跨目录多次勾选）';
-            // 已加入的保留为已勾选状态
-            fsAccumulated = {};
-            selectedFiles.forEach(function (f) {
-                fsAccumulated[f.path] = f;
+        if (mode === 'output') {
+            window.FsBrowser.open({
+                mode: 'dir',
+                api: 'local',
+                title: '选择输出目录',
+                initialPath: outputDirInput.value.trim() || '',
+                onConfirm: function (p) {
+                    outputDirInput.value = p;
+                }
             });
-        } else {
-            fsSelBar.hidden = true;
-            fsHint.textContent = '点击文件夹进入；点"选择"使用当前目录作为输出目录';
-        }
-        fsChecked = {};
-        fsSelAll.checked = false;
-        fsSelAll.indeterminate = false;
-        loadFs('');
-    }
-    function closeBrowser() {
-        browseMode = null;
-        fsPanel.hidden = true;
-    }
-
-    // 解析父级路径
-    function parentPath(p) {
-        if (!p) return '';
-        var sep = p.indexOf('\\') >= 0 ? '\\' : '/';
-        while (p.length > 1 && (p.charAt(p.length - 1) === sep)) p = p.substring(0, p.length - 1);
-        var idx = p.lastIndexOf(sep);
-        if (idx < 0) return '';
-        if (idx === 2 && p.charAt(1) === ':') return '';
-        return p.substring(0, idx);
-    }
-
-    // 面包屑
-    function renderBc(p) {
-        if (!p) {
-            fsBc.innerHTML = '<span class="br-fs-bc-root">本机</span>';
             return;
         }
-        var sep = p.indexOf('\\') >= 0 ? '\\' : '/';
-        var html = '<a class="br-fs-bc-root" data-idx="-1">本机</a>';
-        var parts = p.split(/[\\/]/);
-        var lastIdx = parts.length - 1;
-        parts.forEach(function (part, i) {
-            if (!part) return;
-            if (i === lastIdx) {
-                html += '<span class="sep">›</span><span>' + Api.escapeHtml(part) + '</span>';
-            } else {
-                html += '<span class="sep">›</span><a data-idx="' + i + '">' + Api.escapeHtml(part) + '</a>';
-            }
-        });
-        fsBc.innerHTML = html;
-        Array.prototype.forEach.call(fsBc.querySelectorAll('a'), function (a) {
-            a.onclick = function () {
-                var idx = parseInt(a.getAttribute('data-idx'), 10);
-                if (idx < 0) return loadFs('');
-                var target = parts.slice(0, idx + 1).join(sep);
-                if (sep === '\\' && !/^[A-Z]:/.test(target)) target = target.replace(/^\\+/, '');
-                loadFs(target);
-            };
-        });
-    }
-
-    function updateOkBtn() {
-        var n = Object.keys(fsAccumulated).length;
-        var btn = $('ff-fs-ok');
-        if (browseMode === 'output') {
-            btn.textContent = '选择此目录';
-        } else {
-            btn.textContent = '选择 (' + n + ')';
-        }
-    }
-
-    function updateSelectAll() {
-        var cbs = fsList.querySelectorAll('input[data-sel]');
-        if (!cbs.length) { fsSelAll.checked = false; fsSelAll.indeterminate = false; return; }
-        var n = 0;
-        Array.prototype.forEach.call(cbs, function (c) { if (c.checked) n++; });
-        fsSelAll.checked = n === cbs.length;
-        fsSelAll.indeterminate = n > 0 && n < cbs.length;
-    }
-
-    function loadFs(path) {
-        fsList.innerHTML = '<div class="br-fs-list-empty">加载中...</div>';
-        Api.localTools.browse(path).then(function (data) {
-            if (!data || data.success === false) {
-                fsList.innerHTML = '<div class="br-fs-list-empty">浏览失败: ' + Api.escapeHtml((data && data.error) || '未知') + '</div>';
-                return;
-            }
-            browsePath = data.path || path || '';
-            renderBc(browsePath);
-            fsPathInput.value = browsePath;
-            fsCurrent.textContent = '当前：' + (browsePath || '本机根');
-            var entries = data.entries || [];
-            fsList.innerHTML = '';
-            if (!entries.length) {
-                fsList.innerHTML = '<div class="br-fs-list-empty">空目录</div>';
-                updateSelectAll();
-                return;
-            }
-            entries.sort(function (a, b) {
-                if (a.isDir && !b.isDir) return -1;
-                if (!a.isDir && b.isDir) return 1;
-                return a.name.localeCompare(b.name, 'zh-CN');
-            });
-            // 在文件名前显示 ↩ 返回上级（仅当不是根）
-            if (browsePath) {
-                var upRow = document.createElement('div');
-                upRow.className = 'br-fs-entry';
-                upRow.innerHTML = '<span class="icon">↩</span><span class="br-fs-name">..</span><span class="br-fs-size"></span>';
-                upRow.onclick = function () { loadFs(parentPath(browsePath)); };
-                fsList.appendChild(upRow);
-            }
-            entries.forEach(function (e) {
-                var row = document.createElement('div');
-                row.className = 'br-fs-entry';
-                row.setAttribute('data-path', e.fullPath);
-                row.setAttribute('data-isdir', e.isDir ? '1' : '0');
-                row.setAttribute('data-size', e.size || 0);
-                row.setAttribute('data-mod', e.modified || 0);
-
-                var isFile = !e.isDir;
-                // checkbox 仅在 input 模式 + 文件时可勾选
-                var showCheck = (browseMode === 'input');
-                if (showCheck) {
-                    var lbl = document.createElement('label');
-                    lbl.className = 'br-fs-check';
-                    lbl.title = isFile ? '选中' : '不可选中（请用".."或双击进入）';
-                    var cb = document.createElement('input');
-                    cb.type = 'checkbox';
-                    cb.setAttribute('data-sel', '');
-                    if (!isFile) cb.disabled = true;
-                    var already = fsAccumulated[e.fullPath] || fsChecked[e.fullPath];
-                    if (already) cb.checked = true;
-                    lbl.appendChild(cb);
-                    row.appendChild(lbl);
-                }
-
-                var icon = document.createElement('span');
-                icon.className = 'icon';
-                icon.innerHTML = FileIcons.getIcon(e.name, !!e.isDir);
-                var name = document.createElement('span');
-                name.className = 'br-fs-name';
-                name.textContent = e.name;
-                name.title = e.fullPath;
-                if (e.isDir) name.style.cursor = 'pointer';
-                var size = document.createElement('span');
-                size.className = 'br-fs-size';
-                size.textContent = e.isDir ? '' : formatSize(e.size);
-                row.appendChild(icon);
-                row.appendChild(name);
-                row.appendChild(size);
-
-                // 单击：目录 → 进入；空白处 → 切换 checkbox
-                row.onclick = function (ev) {
-                    if (ev.target.tagName === 'INPUT') return; // checkbox 自带
-                    if (e.isDir) {
-                        loadFs(e.fullPath);
-                    } else if (browseMode === 'input') {
-                        var c = row.querySelector('input[data-sel]');
-                        if (c) c.checked = !c.checked;
-                        handleRowCheck(c, e, row);
+        // input 模式：多选文件
+        window.FsBrowser.open({
+            mode: 'multi',
+            api: 'local',
+            title: '选择输入文件',
+            hint: '勾选文件后点"选择"加入（可跨目录多次勾选）',
+            multiFilter: function (e) { return !e.isDir; },  // 仅文件可勾选
+            onConfirm: function (entries) {
+                // 合并去重：把新选的并入 selectedFiles
+                var merged = {};
+                selectedFiles.forEach(function (f) { merged[f.path] = f; });
+                entries.forEach(function (e) {
+                    if (!merged[e.fullPath]) {
+                        merged[e.fullPath] = {
+                            path: e.fullPath,
+                            name: e.name,
+                            size: e.size,
+                            isDir: e.isDir,
+                            modified: e.modified || 0
+                        };
                     }
-                };
-                // 双击：目录 → 进入；文件 → 立即确认
-                row.ondblclick = function (ev) {
-                    if (ev.target.tagName === 'INPUT') return;
-                    if (e.isDir) {
-                        loadFs(e.fullPath);
-                    } else if (browseMode === 'input') {
-                        // 确保勾选
-                        if (!fsAccumulated[e.fullPath] && !fsChecked[e.fullPath]) {
-                            fsAccumulated[e.fullPath] = { path: e.fullPath, name: e.name, size: e.size, isDir: false, modified: e.modified || 0 };
-                        }
-                        $('ff-fs-ok').click();
-                    }
-                };
-                // checkbox change
-                if (showCheck) {
-                    var cbEl = row.querySelector('input[data-sel]');
-                    cbEl.addEventListener('change', function (ev) {
-                        ev.stopPropagation();
-                        handleRowCheck(cbEl, e, row);
-                    });
-                }
-                fsList.appendChild(row);
-            });
-            updateSelectAll();
-        }).catch(function (err) {
-            fsList.innerHTML = '<div class="br-fs-list-empty">浏览失败: ' + Api.escapeHtml(String(err)) + '</div>';
-        });
-    }
-
-    function handleRowCheck(cb, e, row) {
-        if (!cb) return;
-        if (cb.checked) {
-            fsChecked[e.fullPath] = { path: e.fullPath, name: e.name, size: e.size, isDir: e.isDir, modified: e.modified || 0 };
-        } else {
-            delete fsChecked[e.fullPath];
-        }
-        updateSelectAll();
-    }
-
-    // 全选复选框：严格二态切换（全选 ↔ 全不选）
-    fsSelAll.addEventListener('click', function (ev) {
-        ev.preventDefault();
-        if (browseMode !== 'input') return;
-        var cbs = fsList.querySelectorAll('input[data-sel]');
-        if (!cbs.length) return;
-        var n = 0;
-        Array.prototype.forEach.call(cbs, function (c) { if (c.checked && !c.disabled) n++; });
-        var total = Array.prototype.filter.call(cbs, function (c) { return !c.disabled; }).length;
-        var target = !(n === total && total > 0);
-        Array.prototype.forEach.call(cbs, function (c) {
-            if (c.disabled) return;
-            c.checked = target;
-            var p = c.closest('.br-fs-entry').getAttribute('data-path');
-            var isDir = c.closest('.br-fs-entry').getAttribute('data-isdir') === '1';
-            var name = c.closest('.br-fs-entry').querySelector('.br-fs-name').textContent;
-            var sz = parseInt(c.closest('.br-fs-entry').getAttribute('data-size') || '0', 10);
-            var mod = parseInt(c.closest('.br-fs-entry').getAttribute('data-mod') || '0', 10);
-            if (target) {
-                fsChecked[p] = { path: p, name: name, size: sz, isDir: isDir, modified: mod };
-            } else {
-                delete fsChecked[p];
+                });
+                selectedFiles = Object.keys(merged).map(function (k) { return merged[k]; });
+                renderInputList();
             }
         });
-        updateSelectAll();
-    });
+    }
 
     $('btn-browse-input').onclick = function () { openBrowser('input'); };
     $('btn-browse-output').onclick = function () { openBrowser('output'); };
-    $('ff-fs-up').onclick = function () { loadFs(parentPath(browsePath)); };
-    $('ff-fs-cancel').onclick = closeBrowser;
-    $('ff-fs-ok').onclick = function () {
-        if (browseMode === 'output') {
-            outputDirInput.value = browsePath;
-            closeBrowser();
-            return;
-        }
-        // 合并本次目录勾选 + 之前累计 → selectedFiles（去重）
-        var merged = {};
-        selectedFiles.forEach(function (f) { merged[f.path] = f; });
-        Object.keys(fsChecked).forEach(function (p) {
-            if (!merged[p]) merged[p] = fsChecked[p];
-        });
-        selectedFiles = Object.values(merged);
-        renderInputList();
-        closeBrowser();
-    };
-    $('ff-fs-go').onclick = function () { loadFs(fsPathInput.value.trim()); };
-    fsPathInput.addEventListener('keydown', function (ev) {
-        if (ev.key === 'Enter') { ev.preventDefault(); loadFs(fsPathInput.value.trim()); }
-    });
-    updateOkBtn();
 
     $('btn-clear-input').onclick = function () {
         selectedFiles = [];
@@ -744,7 +512,7 @@
 
     function metaItem(label, val) {
         var el = document.createElement('span');
-        el.innerHTML = '<span>' + Api.escapeHtml(label) + ': </span><span class="v">' + Api.escapeHtml(val) + '</span>';
+        el.innerHTML = '<span>' + window.App.escapeHtml(label) + ': </span><span class="v">' + window.App.escapeHtml(val) + '</span>';
         return el;
     }
 

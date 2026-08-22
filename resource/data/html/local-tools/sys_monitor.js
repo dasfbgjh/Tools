@@ -37,7 +37,7 @@
         else if (type === 'success') cls = 'ok';
         var el = $('sm-banner');
         if (!el) return;
-        el.innerHTML = '<div class="banner banner-' + cls + '">' + Api.escapeHtml(msg) + '</div>';
+        el.innerHTML = '<div class="banner banner-' + cls + '">' + window.App.escapeHtml(msg) + '</div>';
         if (type === 'success') setTimeout(clearBanner, 3000);
     }
     function clearBanner() { var el = $('sm-banner'); if (el) el.innerHTML = ''; }
@@ -49,8 +49,8 @@
             if (it == null) return;
             var k = it[0], v = it[1];
             if (v == null || v === '') return;
-            html += '<div class="k">' + Api.escapeHtml(k) + '</div>' +
-                '<div class="v">' + (typeof v === 'string' ? Api.escapeHtml(v) : v) + '</div>';
+            html += '<div class="k">' + window.App.escapeHtml(k) + '</div>' +
+                '<div class="v">' + (typeof v === 'string' ? window.App.escapeHtml(v) : v) + '</div>';
         });
         return html + '</div>';
     }
@@ -82,12 +82,12 @@
             var flags = (c.flags || []).slice(0, 8).join(' ');
             if ((c.flags || []).length > 8) flags += ' …';
             html += '<div class="sm-list-item">' +
-                '<div class="sm-list-item-title">CPU ' + (i + 1) + ' · ' + Api.escapeHtml(c.modelName || '-') + '</div>' +
+                '<div class="sm-list-item-title">CPU ' + (i + 1) + ' · ' + window.App.escapeHtml(c.modelName || '-') + '</div>' +
                 '<div class="sm-list-item-meta">' +
-                '厂商: ' + Api.escapeHtml(c.vendor || '-') + '<br>' +
+                '厂商: ' + window.App.escapeHtml(c.vendor || '-') + '<br>' +
                 '核心: ' + (c.numPhysicalCores || 0) + 'P / ' + (c.numLogicalCores || 0) + 'L<br>' +
                 '频率: ' + formatHz(c.regularFrequencyHz) + ' ~ ' + formatHz(c.maxFrequencyHz) +
-                (flags ? '<br>指令集: ' + Api.escapeHtml(flags) : '') +
+                (flags ? '<br>指令集: ' + window.App.escapeHtml(flags) : '') +
                 '</div></div>';
         });
         return html + '</div>';
@@ -97,15 +97,15 @@
         var total = m.totalHuman || formatBytes(m.totalBytes);
         var mods = m.modules || [];
         if (!mods.length) return wrapKv([['总容量', total]]);
-        var html = '<div class="sm-kv" style="margin-bottom:0.375rem;"><div class="k">总容量</div><div class="v">' + Api.escapeHtml(total) + '</div></div>';
+        var html = '<div class="sm-kv" style="margin-bottom:0.375rem;"><div class="k">总容量</div><div class="v">' + window.App.escapeHtml(total) + '</div></div>';
         html += '<div class="sm-list">';
         mods.forEach(function (md, i) {
             html += '<div class="sm-list-item">' +
-                '<div class="sm-list-item-title">DIMM ' + (i + 1) + ' · ' + Api.escapeHtml(md.sizeHuman || formatBytes(md.sizeBytes)) + '</div>' +
+                '<div class="sm-list-item-title">DIMM ' + (i + 1) + ' · ' + window.App.escapeHtml(md.sizeHuman || formatBytes(md.sizeBytes)) + '</div>' +
                 '<div class="sm-list-item-meta">' +
-                Api.escapeHtml(md.vendor || '-') + ' · ' + Api.escapeHtml(md.model || '-') + '<br>' +
+                window.App.escapeHtml(md.vendor || '-') + ' · ' + window.App.escapeHtml(md.model || '-') + '<br>' +
                 '频率: ' + formatHz(md.frequencyHz) + '<br>' +
-                'SN: ' + Api.escapeHtml(md.serial || '-') +
+                'SN: ' + window.App.escapeHtml(md.serial || '-') +
                 '</div></div>';
         });
         return html + '</div>';
@@ -116,11 +116,11 @@
         disks.forEach(function (d) {
             var mps = (d.mountPoints || []).join(', ') || '(无挂载点)';
             html += '<div class="sm-list-item">' +
-                '<div class="sm-list-item-title">' + Api.escapeHtml(d.model || '-') + '</div>' +
+                '<div class="sm-list-item-title">' + window.App.escapeHtml(d.model || '-') + '</div>' +
                 '<div class="sm-list-item-meta">' +
-                Api.escapeHtml(d.vendor || '-') + ' · ' + Api.escapeHtml(d.interface || '-') + ' · ' + Api.escapeHtml(d.sizeHuman || formatBytes(d.sizeBytes)) + '<br>' +
-                '挂载: ' + Api.escapeHtml(mps) + '<br>' +
-                'SN: ' + Api.escapeHtml(d.serial || '-') +
+                window.App.escapeHtml(d.vendor || '-') + ' · ' + window.App.escapeHtml(d.interface || '-') + ' · ' + window.App.escapeHtml(d.sizeHuman || formatBytes(d.sizeBytes)) + '<br>' +
+                '挂载: ' + window.App.escapeHtml(mps) + '<br>' +
+                'SN: ' + window.App.escapeHtml(d.serial || '-') +
                 '</div></div>';
         });
         return html + '</div>';
@@ -130,11 +130,11 @@
         var html = '<div class="sm-list">';
         gpus.forEach(function (g, i) {
             html += '<div class="sm-list-item">' +
-                '<div class="sm-list-item-title">GPU ' + (i + 1) + ' · ' + Api.escapeHtml(g.name || '-') + '</div>' +
+                '<div class="sm-list-item-title">GPU ' + (i + 1) + ' · ' + window.App.escapeHtml(g.name || '-') + '</div>' +
                 '<div class="sm-list-item-meta">' +
-                Api.escapeHtml(g.vendor || '-') + ' · 驱动 ' + Api.escapeHtml(g.driverVersion || '-') + '<br>' +
-                '显存: 专 ' + Api.escapeHtml(g.dedicatedMemoryHuman || formatBytes(g.dedicatedMemoryBytes)) +
-                ' / 共 ' + Api.escapeHtml(g.sharedMemoryHuman || formatBytes(g.sharedMemoryBytes)) + '<br>' +
+                window.App.escapeHtml(g.vendor || '-') + ' · 驱动 ' + window.App.escapeHtml(g.driverVersion || '-') + '<br>' +
+                '显存: 专 ' + window.App.escapeHtml(g.dedicatedMemoryHuman || formatBytes(g.dedicatedMemoryBytes)) +
+                ' / 共 ' + window.App.escapeHtml(g.sharedMemoryHuman || formatBytes(g.sharedMemoryBytes)) + '<br>' +
                 '频率: ' + formatHz(g.frequencyHz) + ' · 核心: ' + (g.numCores || 0) +
                 '</div></div>';
         });
@@ -145,11 +145,11 @@
         var html = '<div class="sm-list">';
         nets.forEach(function (n, i) {
             html += '<div class="sm-list-item">' +
-                '<div class="sm-list-item-title">' + Api.escapeHtml(n.description || ('Adapter ' + (i + 1))) + '</div>' +
+                '<div class="sm-list-item-title">' + window.App.escapeHtml(n.description || ('Adapter ' + (i + 1))) + '</div>' +
                 '<div class="sm-list-item-meta">' +
-                'IPv4: ' + Api.escapeHtml(n.ip4 || '-') + '<br>' +
-                'IPv6: ' + Api.escapeHtml(n.ip6 || '-') + '<br>' +
-                'MAC: ' + Api.escapeHtml(n.mac || '-') +
+                'IPv4: ' + window.App.escapeHtml(n.ip4 || '-') + '<br>' +
+                'IPv6: ' + window.App.escapeHtml(n.ip6 || '-') + '<br>' +
+                'MAC: ' + window.App.escapeHtml(n.mac || '-') +
                 '</div></div>';
         });
         return html + '</div>';
@@ -160,10 +160,10 @@
         bats.forEach(function (b, i) {
             var cap = (b.capacity != null) ? (b.capacity * 100).toFixed(0) + '%' : '-';
             html += '<div class="sm-list-item">' +
-                '<div class="sm-list-item-title">电池 ' + (i + 1) + ' · ' + Api.escapeHtml(b.model || '-') + '</div>' +
+                '<div class="sm-list-item-title">电池 ' + (i + 1) + ' · ' + window.App.escapeHtml(b.model || '-') + '</div>' +
                 '<div class="sm-list-item-meta">' +
-                Api.escapeHtml(b.vendor || '-') + ' · ' + Api.escapeHtml(b.technology || '-') + '<br>' +
-                '状态: ' + Api.escapeHtml(b.state || '-') + ' · 容量: ' + cap + '<br>' +
+                window.App.escapeHtml(b.vendor || '-') + ' · ' + window.App.escapeHtml(b.technology || '-') + '<br>' +
+                '状态: ' + window.App.escapeHtml(b.state || '-') + ' · 容量: ' + cap + '<br>' +
                 '能量: ' + (b.energyNow || 0) + ' / ' + (b.energyFull || 0) +
                 '</div></div>';
         });
@@ -251,9 +251,9 @@
         bar.style.width = (ratio * 100).toFixed(1) + '%';
         bar.className = 'sm-bar-fill' + (ratio >= 0.9 ? ' danger' : (ratio >= 0.75 ? ' warn' : ''));
         $('sm-ram-meta').innerHTML =
-            '已用 <b>' + Api.escapeHtml(data.usedHuman || '-') + '</b> · ' +
-            '空闲 ' + Api.escapeHtml(data.freeHuman || '-') + ' · ' +
-            '可用 ' + Api.escapeHtml(data.availableHuman || '-');
+            '已用 <b>' + window.App.escapeHtml(data.usedHuman || '-') + '</b> · ' +
+            '空闲 ' + window.App.escapeHtml(data.freeHuman || '-') + ' · ' +
+            '可用 ' + window.App.escapeHtml(data.availableHuman || '-');
     }
 
     // ===== 磁盘实时 =====
@@ -273,9 +273,9 @@
                 node.className = 'sm-disk';
                 node.innerHTML =
                     '<div class="sm-disk-head">' +
-                    '<span class="sm-disk-name">' + Api.escapeHtml(d.model || '-') + '</span>' +
-                    '<span class="sm-disk-tag">' + Api.escapeHtml(d.interface || '-') + '</span>' +
-                    '<span class="sm-disk-tag muted">' + Api.escapeHtml(d.sizeHuman || '-') + '</span>' +
+                    '<span class="sm-disk-name">' + window.App.escapeHtml(d.model || '-') + '</span>' +
+                    '<span class="sm-disk-tag">' + window.App.escapeHtml(d.interface || '-') + '</span>' +
+                    '<span class="sm-disk-tag muted">' + window.App.escapeHtml(d.sizeHuman || '-') + '</span>' +
                     '</div>' +
                     '<div class="sm-disk-mounts" data-mounts></div>';
                 host.appendChild(node);
@@ -294,7 +294,7 @@
                     var row = document.createElement('div');
                     row.className = 'sm-disk-mount';
                     row.innerHTML =
-                        '<div class="sm-disk-mount-name">' + Api.escapeHtml(mp.mountPoint) + '</div>' +
+                        '<div class="sm-disk-mount-name">' + window.App.escapeHtml(mp.mountPoint) + '</div>' +
                         '<div class="sm-disk-mount-bar">' +
                         '<div class="sm-bar"><div class="sm-bar-fill" style="width:0%"></div></div>' +
                         '<div class="sm-disk-mount-meta">--</div>' +

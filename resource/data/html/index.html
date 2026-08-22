@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 
 <head>
@@ -6,29 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Tools</title>
     <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./index.css" />
     <script src="./theme.js"></script>
-    <style>
-        html,
-        body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-        }
-
-        #shell {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-
-        #content-frame {
-            flex: 1;
-            border: none;
-            width: 100%;
-            background: var(--bg);
-        }
-    </style>
 </head>
 
 <body>
@@ -36,11 +15,9 @@
         <div id="app-header"></div>
         <iframe id="content-frame"></iframe>
     </div>
-    <script src="./api.js"></script>
     <script src="./app.js"></script>
-    <script>
-        App.initShell();
-    </script>
+    <script src="./api.js"></script>
+    <script src="./index.js"></script>
 </body>
 
 </html>

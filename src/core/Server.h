@@ -40,7 +40,7 @@ public:
     static json parseBody( const httplib::Request &req );
     static std::string queryParam( const httplib::Request &req, const std::string &name );
     static std::string contentType( const std::filesystem::path &path );
-    static std::string staticResource( const std::string &resName );
+    static std::string staticResource( const std::string &resName, const std::string &prefix = "/html" );
     static bool isLocalhost( const httplib::Request &req );
     static bool guardLocalhost( const httplib::Request &req, httplib::Response &res );
 };

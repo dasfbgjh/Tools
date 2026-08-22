@@ -31,7 +31,7 @@ void Server::registerhRoutes( httplib::Server &server ) {
     //  - 默认 payload 最大仅 100MB，200MB+ 上传会直接断连 (ERR_CONNECTION_RESET)
     //  - 默认 read/write 超时仅 5 秒，大文件慢网卡死会被超时断开
 
-    server.set_payload_max_length( 1024UL * 1024 * 1024 * 2 ); // 2GB 最大上传文件大小
+    server.set_payload_max_length( 1024UL * 1024 * 1024 * 4 ); // 4GB 最大上传文件大小
     server.set_read_timeout( 600, 0 );                         // 10 分钟
     server.set_write_timeout( 600, 0 );
     server.set_keep_alive_timeout( 60 );
@@ -59,6 +59,35 @@ void Server::registerhRoutes( httplib::Server &server ) {
     LOG_DEBUG << "注册用户设置路由...";
     routes::settings::registerSettingsRoutes( server ); // 注册用户设置路由
 
+    server.Get( "/webview", [this]( const httplib::Request &req, httplib::Response &res ) {
+        res.set_content( R"(<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Webview</title>
+    </head>
+    <body>
+        <script>
+             __windowPage().then((page) => {
+                document.write(page.content);
+            });
+        </script>
+    </body>
+</html>)",
+                         "text/html" );
+    } );
+
+    server.Get( "/.well-known/appspecific/com.chrome.devtools.json", [this]( const httplib::Request &req, httplib::Response &res ) {
+        sendJson( res, { {
+                           "workspace",
+                           {
+                               //    { "root", "" },
+                               { "uuid", utils::randomHex( 32 ) },
+                           },
+                       } } );
+    } );
+
     // 服务静态文件路由  (catch-all, must be last)
     server.Get( R"(/(.*))", [this]( const httplib::Request &req, httplib::Response &res ) {
         serveStatic( req, res, "/" + std::string( req.matches[1] ) );
@@ -67,14 +96,14 @@ void Server::registerhRoutes( httplib::Server &server ) {
     server.set_pre_routing_handler( []( const httplib::Request &req, httplib::Response &res )
                                         -> httplib::Server::HandlerResponse {
         if ( req.params.empty() ) {
-            LOG_INFO << req.method
-                     << req.path
-                     << "(来自:" << req.remote_addr << ")";
+            LOG_DEBUG << req.method
+                      << req.path
+                      << "(来自:" << req.remote_addr << ")";
         } else {
-            LOG_INFO << req.method
-                     << req.path
-                     << "(来自:" << req.remote_addr << ")"
-                     << "参数:" << req.params;
+            LOG_DEBUG << req.method
+                      << req.path
+                      << "(来自:" << req.remote_addr << ")"
+                      << "参数:" << req.params;
         }
         return httplib::Server::HandlerResponse::Unhandled;
     } );
@@ -173,14 +202,19 @@ bool Server::serveResource( httplib::Response &res, const std::string &resName )
 }
 
 void Server::redirectPage( httplib::Response &res, const std::string &path ) {
-    std::string html = "<html> <head> <title>重定向</title> </head> <body> <script>";
-    html += "window.location.href = '" + path + "'; </script> </body> </html>";
+    std::string html = "<html>"
+                       "<head> <title>重定向页</title> </head>"
+                       "<body> <script>";
+    html += "var params = window.location.search; window.location.href = '" + path + "' + params;";
+    html += "</script> </body>"
+            "</html>";
     res.set_content( html, "text/html; charset=utf-8" );
 };
 
 void Server::serveStatic( const httplib::Request &req, httplib::Response &res, const std::string &path ) {
     if ( ( utils::startsWith( path, "/admin" ) || utils::startsWith( path, "/local-tools" ) ) && !isLocalhost( req ) ) {
         LOG_WARN << "非本机访问敏感页面" << req.remote_addr;
+        res.status = 403;
         res.set_content( "<html> <head> <title>403 Forbidden</title> </head> <body> "
                          "<h1>403 Forbidden</h1> <p>您没有权限访问此页面。</p> "
                          "</body> </html>",
@@ -208,7 +242,8 @@ void Server::serveStatic( const httplib::Request &req, httplib::Response &res, c
         }
     }
     LOG_WARN << "静态文件404: " << fullPath;
-    sendJson( res, { { "success", false }, { "error", "Not found" } }, 404 );
+    res.status = 404;
+    serveResource( res, resourcePrefix + std::string( "/404.html" ) );
 }
 
 /*-------------------------------------------------------*/
@@ -300,13 +335,21 @@ std::string Server::contentType( const std::filesystem::path &path ) {
     return "application/octet-stream";
 }
 
-std::string Server::staticResource( const std::string &resName ) {
-    const std::string name = resourcePrefix + resName;
+std::string Server::staticResource( const std::string &resName, const std::string &prefix ) {
+#ifdef RESOURCE_PATH
+    std::string fullPath = RESOURCE_PATH + prefix + resName;
+    std::string content;
+    if ( utils::fs::readFile( fullPath, content ) )
+        return content;
+    return "";
+#else
+    const std::string name = prefix + resName;
     const unsigned char *data = nullptr;
     int size = resource_get( name.c_str(), &data );
     if ( size < 0 || !data )
         return "";
     return std::string( data, data + size );
+#endif
 }
 
 bool Server::isLocalhost( const httplib::Request &req ) {

@@ -16,8 +16,13 @@
     };
 
     // ============ 工具 ============
-    function esc(s) { return Api.escapeHtml ? Api.escapeHtml(s || '') : (window.Utils ? Utils.escapeHtml(s || '') : String(s || '').replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; })); }
-    function notify(msg) { alert(msg); }
+    function esc(s) {
+        return window.App.escapeHtml(s || '');
+    }
+
+    function notify(msg) {
+        alert(msg);
+    }
 
     // 根据文件扩展名选择图标
     function iconForFile(name) {
@@ -222,10 +227,16 @@
         Api.localTools.docs.createSource({ name: name, path: path }).then(function (r) {
             if (r && r.success) {
                 document.getElementById('docs-source-modal').style.display = 'none';
+                var newId = r.id || r.sourceId;
                 var wasCurrent = state.currentSourceId;
                 loadSources(function () {
-                    if (wasCurrent) selectSource(wasCurrent);
-                    else renderToolbar();
+                    if (wasCurrent) {
+                        selectSource(wasCurrent);
+                    } else if (newId) {
+                        selectSource(newId);
+                    } else {
+                        renderToolbar();
+                    }
                 });
             } else {
                 notify((r && r.error) || '保存失败', 'error');
@@ -250,37 +261,6 @@
                 notify((r && r.error) || '删除失败', 'error');
             }
         });
-    }
-
-    // ============ 目录浏览对话框 ============
-    var browsePath = '';
-    function openBrowseModal(initial) {
-        browsePath = initial || '';
-        document.getElementById('docs-browse-modal').style.display = 'flex';
-        loadBrowse(browsePath);
-    }
-    function loadBrowse(path) {
-        browsePath = path || '';
-        document.getElementById('docs-browse-path').value = browsePath;
-        Api.localTools.browse(browsePath).then(function (r) {
-            var list = document.getElementById('docs-browse-list');
-            if (!r || !r.success) { list.innerHTML = '<div class="admin-empty">' + esc((r && r.error) || '读取失败') + '</div>'; return; }
-            var arr = (r.entries || []).filter(function (e) { return e.isDir; });
-            var seen = {};
-            arr = arr.filter(function (e) { if (seen[e.fullPath]) return false; seen[e.fullPath] = true; return true; });
-            if (arr.length === 0) { list.innerHTML = '<div class="docs-tree-empty">没有子目录</div>'; return; }
-            list.innerHTML = arr.map(function (e) {
-                return '<div class="br-list-item" data-path="' + esc(e.fullPath) + '">📁 ' + esc(e.name) + '</div>';
-            }).join('');
-            var items = list.querySelectorAll('.br-list-item');
-            items.forEach(function (it) {
-                it.onclick = function () { loadBrowse(it.getAttribute('data-path')); };
-            });
-        });
-    }
-    function pickBrowsePath() {
-        document.getElementById('docs-source-path').value = browsePath;
-        document.getElementById('docs-browse-modal').style.display = 'none';
     }
 
     // ============ 目录树(按需加载) ============
@@ -332,10 +312,10 @@
                 chevronHtml = '<span class="tree-chevron loading" data-action="noop"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>';
             } else if (node._error) {
                 chevronHtml = '<span class="tree-chevron" data-action="retry" title="加载失败，点击重试"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>';
-            } else if (node.hasChildren || (node._loaded && node.children && node.children.length > 0)) {
-                chevronHtml = '<span class="tree-chevron' + (expanded ? ' expanded' : '') + '" data-action="toggle"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>';
-            } else {
+            } else if (node._loaded && node.children && node.children.length === 0) {
                 chevronHtml = '<span class="tree-chevron empty" data-action="noop"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>';
+            } else {
+                chevronHtml = '<span class="tree-chevron' + (expanded ? ' expanded' : '') + '" data-action="toggle"><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></span>';
             }
         } else {
             chevronHtml = '<span class="tree-chevron empty" data-action="noop"></span>';
@@ -352,7 +332,7 @@
             '</div>';
 
         if (isDir) {
-            if (!node.hasChildren && (!node.children || node.children.length === 0)) {
+            if (node._loaded && node.children && node.children.length === 0) {
                 return '';
             }
             var childrenHtml = '';
@@ -434,6 +414,7 @@
             var t = r.tree;
             node.children = (t.children || []).map(function (c) { return normalizeNode(c); });
             node._loaded = true;
+            node.hasChildren = node.children && node.children.length > 0;
             if (cb) cb();
         }).catch(function (e) {
             node._loading = false;
@@ -453,7 +434,7 @@
             _loading: false,
             _error: null
         };
-        if (n.isDir && n.children) {
+        if (n.isDir && n.children && n.children.length > 0) {
             node.children = n.children.map(normalizeNode);
             node._loaded = true;
         }
@@ -506,35 +487,20 @@
         var saveBtn = document.getElementById('docs-source-save');
         if (saveBtn) saveBtn.onclick = saveSource;
         var browseBtn = document.getElementById('docs-source-browse');
-        if (browseBtn) browseBtn.onclick = function () { openBrowseModal(document.getElementById('docs-source-path').value.trim()); };
-
-        var upBtn = document.getElementById('docs-browse-up');
-        if (upBtn) upBtn.onclick = function () {
-            var p = document.getElementById('docs-browse-path').value;
-            if (!p) return;
-            var sep = p.indexOf('\\') >= 0 ? '\\' : '/';
-            var lastSep = p.lastIndexOf(sep);
-            if (lastSep <= 2) {
-                if (p.length > 3) loadBrowse(p.substring(0, 3));
-                return;
-            }
-            var prevSep = p.lastIndexOf(sep, lastSep - 1);
-            if (prevSep <= 2) {
-                if (lastSep > 3) loadBrowse(p.substring(0, lastSep));
-                return;
-            }
-            var parent = p.substring(0, prevSep);
-            loadBrowse(parent);
+        if (browseBtn) browseBtn.onclick = function () {
+            window.FsBrowser.open({
+                mode: 'dir',
+                api: 'local',
+                title: '选择文档源根目录',
+                initialPath: document.getElementById('docs-source-path').value.trim() || '',
+                onConfirm: function (p) {
+                    document.getElementById('docs-source-path').value = p;
+                }
+            });
         };
-        var browsePathInput = document.getElementById('docs-browse-path');
-        if (browsePathInput) browsePathInput.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') loadBrowse(this.value.trim());
-        });
-        var pickBtn = document.getElementById('docs-browse-pick');
-        if (pickBtn) pickBtn.onclick = pickBrowsePath;
 
         // 关闭按钮
-        document.querySelectorAll('#docs-source-modal [data-close], #docs-browse-modal [data-close]').forEach(function (b) {
+        document.querySelectorAll('#docs-source-modal [data-close]').forEach(function (b) {
             b.onclick = function () {
                 document.getElementById(b.closest('.br-modal').id).style.display = 'none';
             };

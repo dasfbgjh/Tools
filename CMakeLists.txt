@@ -13,12 +13,26 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 # 导入应用信息
 include(${CMAKE_CURRENT_SOURCE_DIR}/appInfo/AppInfo.cmake)
 
+# 导入 OpenSSL 库
+find_package(OpenSSL REQUIRED COMPONENTS SSL Crypto)
+
 # 导入 httplib 库
-include(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/httplib/http.cmake)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/httplib)
 
-# 导入 webview2 库
-include(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/webview2/webview2.cmake)
+if(OPENSSL_FOUND)
+    message(STATUS "OpenSSL support enabled")
+    add_compile_definitions(-DCPPHTTPLIB_OPENSSL_SUPPORT)
+    link_libraries(ssl crypto)
+endif()
 
+if(WIN32)
+    add_compile_definitions(-D_WIN32_WINNT=0x0A00)
+endif()
+
+# 导入 boost 库
+find_package(Boost REQUIRED CONFIG COMPONENTS process filesystem)
+
+# 导入 hwinfo 库
 set(HWINFO_SHARED OFF)
 set(HWINFO_STATIC ON)
 add_subdirectory(3rdparty/hwinfo)
@@ -64,14 +78,30 @@ add_executable(${PROJECT_NAME} ${WIN_GUI}
 )
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+
+    # cli11
     ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/cli11
+
+    # qrcodegen
     ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/qrcodegen
+
+    # tray
     ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/tray/include
+
+    # stb_image
     ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/stb
+
+    # webview2
+    ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/webview/core/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/webview2/include
 )
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     -DTRAY_WINAPI=1 # 启用系统托盘
     -DCMAKE_SOURCE_DIR="${CMAKE_SOURCE_DIR}" # 用于日志中转换文件路径到相对路径
+)
+
+target_link_options(${PROJECT_NAME} PRIVATE
+    -static-libstdc++ -static-libgcc -static
 )
 
 # Debug 模式下，直接读取资源从系统目录
@@ -83,14 +113,13 @@ endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     ${RESOURCE_NAME_PREIFX}_resource
-    libsqlite3.a
-    iphlpapi
+
+    # SQLite3
+    sqlite3
 
     # boost
-    libboost_process-mt.a
-    libboost_filesystem-mt.a
-    ntdll
-    bcrypt
+    Boost::process
+    Boost::filesystem
 
     # hwinfo
     hwinfo_cpu
@@ -103,6 +132,17 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     hwinfo_network
 )
 
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        iphlpapi
+        crypt32
+        ws2_32
+
+        # webview2
+        advapi32 ole32 shell32 shlwapi user32 version
+    )
+endif()
+
 # ----------------------------------------------------------------
 add_executable(test ${APPINFO_SRC}
     test/test.cpp
@@ -114,11 +154,6 @@ target_compile_definitions(test PRIVATE
     -DCMAKE_SOURCE_DIR="${CMAKE_SOURCE_DIR}"
 )
 target_link_libraries(test PRIVATE
-    libboost_process-mt.a
-    libboost_filesystem-mt.a
-    ntdll
-    bcrypt
-    ws2_32
-    libssl.a
-    libcrypto.a
+    Boost::process
+    Boost::filesystem
 )

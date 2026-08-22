@@ -129,64 +129,6 @@
     cursor: pointer;
 }
 
-.fs-path-input {
-    display: flex;
-    gap: 8px;
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--border);
-    align-items: center;
-}
-
-.fs-path-input .input {
-    flex: 1;
-    min-width: 0;
-}
-
-.fs-browser {
-    flex: 1;
-    overflow-y: auto;
-    min-height: 0;
-}
-
-.fs-entry {
-    display: flex;
-    align-items: center;
-    padding: 8px 12px;
-    cursor: pointer;
-    border-radius: 4px;
-}
-
-.fs-entry:hover {
-    background: var(--bg-muted);
-}
-
-.fs-entry .icon {
-    margin-right: 8px;
-}
-
-.fs-entry-file {
-    cursor: pointer;
-}
-
-.fs-entry-file:hover {
-    background: var(--primary-light, rgba(59, 130, 246, 0.1));
-}
-
-.fs-breadcrumb {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    flex-wrap: wrap;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 8px;
-}
-
-.fs-breadcrumb a {
-    color: var(--primary);
-    cursor: pointer;
-}
-
 .user-picker {
     display: flex;
     gap: 6px;

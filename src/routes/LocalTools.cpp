@@ -30,7 +30,7 @@ void localIp( const httplib::Request &req, httplib::Response &res ) {
     Server::sendJson( res, { { "success", true }, { "ips", ips } } );
 }
 
-// 列出目录内容（与 adminFsBrowse 类似但作为本机工具入口）
+// 列出本机目录内容（本机统一文件浏览入口；本机 fs_browser 与 share/settings 等均复用）
 static void localFsBrowse( const httplib::Request &req, httplib::Response &res ) {
     if ( Server::guardLocalhost( req, res ) )
         return;

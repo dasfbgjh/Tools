@@ -152,10 +152,10 @@
                 renderList();
                 renderView();
             } else {
-                dom.listItems.innerHTML = '<div class="memo-empty">加载失败: ' + Api.escapeHtml((data && data.error) || '未知') + '</div>';
+                dom.listItems.innerHTML = '<div class="memo-empty">加载失败: ' + window.App.escapeHtml((data && data.error) || '未知') + '</div>';
             }
         }).catch(function (err) {
-            dom.listItems.innerHTML = '<div class="memo-empty">加载失败: ' + Api.escapeHtml(String(err)) + '</div>';
+            dom.listItems.innerHTML = '<div class="memo-empty">加载失败: ' + window.App.escapeHtml(String(err)) + '</div>';
         });
     }
     function renderList() {
@@ -175,11 +175,11 @@
             var preview = (m.content || '').replace(/^#+\s*/gm, '').replace(/[*`>]/g, '').replace(/\n+/g, ' ').trim();
             if (preview.length > 80) preview = preview.substring(0, 80) + '…';
             var updated = formatTime(m.updated_at);
-            html += '<div class="memo-item' + (m.id === state.currentId ? ' active' : '') + '" data-id="' + Api.escapeHtml(m.id) + '">';
+            html += '<div class="memo-item' + (m.id === state.currentId ? ' active' : '') + '" data-id="' + window.App.escapeHtml(m.id) + '">';
             html += '  <div class="memo-item-body" data-act="open">';
-            html += '    <div class="memo-item-title' + (m.title ? '' : ' untitled') + '">' + Api.escapeHtml(title) + '</div>';
-            if (preview) html += '    <div class="memo-item-preview">' + Api.escapeHtml(preview) + '</div>';
-            html += '    <div class="memo-item-meta">' + Api.escapeHtml(updated) + '</div>';
+            html += '    <div class="memo-item-title' + (m.title ? '' : ' untitled') + '">' + window.App.escapeHtml(title) + '</div>';
+            if (preview) html += '    <div class="memo-item-preview">' + window.App.escapeHtml(preview) + '</div>';
+            html += '    <div class="memo-item-meta">' + window.App.escapeHtml(updated) + '</div>';
             html += '  </div>';
             html += '  <div class="memo-item-actions">';
             html += '    <button class="memo-item-btn" data-act="edit" title="编辑"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>';
@@ -257,8 +257,8 @@
         var updated = formatTime(m.updated_at);
         dom.view.innerHTML = [
             '<div class="memo-view-head">',
-            '  <h2 class="memo-view-title">' + Api.escapeHtml(titleVal) + '</h2>',
-            '  <span class="memo-view-meta">更新于 ' + Api.escapeHtml(updated) + '</span>',
+            '  <h2 class="memo-view-title">' + window.App.escapeHtml(titleVal) + '</h2>',
+            '  <span class="memo-view-meta">更新于 ' + window.App.escapeHtml(updated) + '</span>',
             '</div>',
             '<div class="memo-preview-scroll">',
             '  <div class="memo-preview memo-preview-rendered" id="memo-preview"></div>',
@@ -278,7 +278,7 @@
         dom.view.innerHTML = [
             '<div class="memo-view-head">',
             '  <input type="text" class="br-input memo-title-input" id="memo-title-input" placeholder="标题（留空显示为 无标题）" value="' + escapeAttr(titleVal) + '">',
-            '  <span class="memo-view-meta">更新于 ' + Api.escapeHtml(updated) + '</span>',
+            '  <span class="memo-view-meta">更新于 ' + window.App.escapeHtml(updated) + '</span>',
             '  <span class="memo-toast" id="memo-toast" hidden></span>',
             '  <div class="memo-view-actions">',
             '    <button class="btn btn-outline" id="memo-back">返回</button>',

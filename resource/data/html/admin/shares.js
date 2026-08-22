@@ -2,6 +2,10 @@
     'use strict';
     var App = window.App;
 
+    function getFileIcon(name, isDir) {
+        return window.FsBrowser.FileIcons.getIcon(name, isDir);
+    }
+
     function loadShares() {
         Api.admin.listShares().then(function (data) {
             if (!data.success) {
@@ -36,7 +40,7 @@
                     '<button class="btn btn-sm" data-act="open" title="跳到文件服务器对应目录">打开</button>' : '';
                 row.innerHTML =
                     '<div class="col-name">' +
-                    '<span class="icon">' + (window.FileIcons ? window.FileIcons.getIcon(s.realPath || s.name, s.isDirectory) : (s.isDirectory ? '📁' : '📄')) + '</span>' +
+                    '<span class="icon">' + getFileIcon(s.realPath || s.name, s.isDirectory) + '</span>' +
                     '<span class="name" data-act="open-name" style="cursor:pointer;">' + App.escapeHtml(s.name) + '</span>' +
                     '</div>' +
                     '<div class="col-path"><span class="path">' + App.escapeHtml(s.realPath) + '</span></div>' +

@@ -7,7 +7,6 @@
     <title>批量重命名</title>
     <link rel="stylesheet" href="../style.css">
     <script src="./../theme.js"></script>
-    <link rel="stylesheet" href="../fileicons.css">
     <link rel="stylesheet" href="./common.css">
     <link rel="stylesheet" href="./batch_rename.css">
 </head>
@@ -190,31 +189,9 @@
         </div>
     </div>
 
-    <!-- 文件浏览器弹窗 -->
-    <div class="br-fs" id="br-fs" hidden>
-        <div class="br-fs-head">
-            <input type="text" class="br-input" id="br-fs-path" placeholder="输入路径跳转 (例如 D:\Downloads)">
-            <button class="btn btn-sm" id="br-fs-go">跳转</button>
-        </div>
-        <div class="br-fs-bc" id="br-fs-bc"></div>
-        <div class="br-fs-list-bar">
-            <label class="br-fs-selectall" title="全选/取消全选">
-                <input type="checkbox" id="br-fs-sel-all"> 全选
-            </label>
-            <span class="br-spacer"></span>
-            <span class="br-fs-list-hint">点击文件夹进入，勾选后点"完成"加入</span>
-        </div>
-        <div class="br-fs-list" id="br-fs-list">加载中...</div>
-        <div class="br-fs-foot">
-            <span id="br-fs-count">已选 0 项</span>
-            <span class="br-spacer"></span>
-            <button class="btn btn-outline" id="br-fs-cancel">取消</button>
-            <button class="btn" id="br-fs-done">完成</button>
-        </div>
-    </div>
-
+    <script src="../app.js"></script>
     <script src="../api.js"></script>
-    <script src="../fileicons.js"></script>
+    <script src="../fs_browser.js"></script>
     <script src="./batch_rename.js"></script>
 </body>
 

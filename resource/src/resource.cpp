@@ -15,7 +15,7 @@ const RES_Resource RES_Data[RES_DataSize] = {};
 #endif
 
 int resource_count() {
-    return RES_DataSize; 
+    return RES_DataSize;
 }
 
 int resource_index( const char *name ) {

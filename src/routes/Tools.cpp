@@ -9,17 +9,137 @@
 #include "stb_image_resize2.h"
 
 namespace routes::tools {
+struct ParsedUrl {
+    std::string scheme;
+    std::string host;
+    int port;
+    std::string path;
+};
+
+struct IpCacheEntry {
+    Server::json data;
+    std::time_t ts;
+    std::string source;
+};
+
+struct IpApiSource {
+    const char *name;
+    const char *urlTpl;
+};
 
 static std::map<std::string, IpCacheEntry> g_ipCache;
 static std::mutex g_ipCacheMutex;
 
-void registerToolRoutes( httplib::Server &svr ) {
-    svr.Get( "/api/tools/ip", ipLookup );
-    svr.Post( "/api/tools/proxy", httpProxy );
-    svr.Get( "/api/tools/qrcode", qrcode );
-    svr.Post( "/api/tools/image/convert", imageConvert );
-    LOG_DEBUG << "已注册 4 个工具路由";
+namespace ico {
+
+struct DibImage {
+    int width;
+    int height;
+    std::vector<unsigned char> data;
+};
+
+static void writeU32LE( std::vector<unsigned char> &buf, size_t offset, uint32_t val ) {
+    buf[offset] = static_cast<unsigned char>( val & 0xFF );
+    buf[offset + 1] = static_cast<unsigned char>( ( val >> 8 ) & 0xFF );
+    buf[offset + 2] = static_cast<unsigned char>( ( val >> 16 ) & 0xFF );
+    buf[offset + 3] = static_cast<unsigned char>( ( val >> 24 ) & 0xFF );
 }
+
+static void writeU16LE( std::vector<unsigned char> &buf, size_t offset, uint16_t val ) {
+    buf[offset] = static_cast<unsigned char>( val & 0xFF );
+    buf[offset + 1] = static_cast<unsigned char>( ( val >> 8 ) & 0xFF );
+}
+
+std::vector<DibImage> createDibImages( const unsigned char *srcPixels,
+                                       int srcWidth, int srcHeight,
+                                       const std::vector<int> &sizes ) {
+    std::vector<DibImage> result;
+    for ( int sz : sizes ) {
+        if ( sz <= 0 || sz > 256 )
+            sz = 256;
+        std::vector<unsigned char> scaledBuf( sz * sz * 4 );
+        unsigned char *scaled = stbir_resize_uint8_linear(
+            srcPixels, srcWidth, srcHeight, srcWidth * 4,
+            scaledBuf.data(), sz, sz, sz * 4,
+            STBIR_RGBA );
+        if ( !scaled )
+            continue;
+
+        // ICO DIB: BITMAPINFOHEADER(40) + 颜色数据(BGRA, 自下而上) + AND掩码(1bpp, 每行按4字节对齐)
+        size_t andMaskRowSize = ( ( sz + 31 ) / 32 ) * 4;
+        size_t andMaskSize = andMaskRowSize * sz;
+        size_t colorSize = static_cast<size_t>( sz ) * sz * 4;
+        size_t dibSize = 40 + colorSize + andMaskSize;
+        std::vector<unsigned char> dib( dibSize );
+        memset( dib.data(), 0, dibSize );
+
+        writeU32LE( dib, 0, 40 );
+        writeU32LE( dib, 4, static_cast<uint32_t>( sz ) );
+        writeU32LE( dib, 8, static_cast<uint32_t>( sz * 2 ) ); // biHeight翻倍: XOR掩码 + AND掩码
+        writeU16LE( dib, 12, 1 );
+        writeU16LE( dib, 14, 32 );
+        writeU32LE( dib, 20, static_cast<uint32_t>( colorSize + andMaskSize ) );
+
+        unsigned char *pixels = dib.data() + 40;
+        for ( int y = 0; y < sz; ++y ) {
+            unsigned char *dstRow = pixels + ( sz - 1 - y ) * sz * 4;
+            const unsigned char *srcRow = scaledBuf.data() + y * sz * 4;
+            for ( int x = 0; x < sz; ++x ) {
+                dstRow[x * 4 + 0] = srcRow[x * 4 + 2];
+                dstRow[x * 4 + 1] = srcRow[x * 4 + 1];
+                dstRow[x * 4 + 2] = srcRow[x * 4 + 0];
+                dstRow[x * 4 + 3] = srcRow[x * 4 + 3];
+            }
+        }
+        result.push_back( { sz, sz, std::move( dib ) } );
+    }
+    return result;
+}
+
+std::vector<unsigned char> buildIcoFile( const std::vector<DibImage> &images ) {
+    if ( images.empty() )
+        return {};
+
+    size_t headerSize = 6 + images.size() * 16;
+    size_t totalSize = headerSize;
+    for ( const auto &img : images ) {
+        totalSize += img.data.size();
+    }
+
+    std::vector<unsigned char> ico;
+    ico.reserve( totalSize );
+    ico.resize( headerSize );
+
+    size_t offset = headerSize;
+
+    writeU16LE( ico, 0, 0 );
+    writeU16LE( ico, 2, 1 );
+    writeU16LE( ico, 4, static_cast<uint16_t>( images.size() ) );
+
+    for ( size_t i = 0; i < images.size(); ++i ) {
+        const auto &img = images[i];
+        size_t entryOffset = 6 + i * 16;
+
+        ico[entryOffset + 0] = ( img.width >= 256 ) ? 0 : static_cast<unsigned char>( img.width );
+        ico[entryOffset + 1] = ( img.height >= 256 ) ? 0 : static_cast<unsigned char>( img.height );
+        ico[entryOffset + 2] = 0;
+        ico[entryOffset + 3] = 0;
+        writeU16LE( ico, entryOffset + 4, 1 );
+        writeU16LE( ico, entryOffset + 6, 32 );
+        writeU32LE( ico, entryOffset + 8, static_cast<uint32_t>( img.data.size() ) );
+        writeU32LE( ico, entryOffset + 12, static_cast<uint32_t>( offset ) );
+
+        offset += img.data.size();
+    }
+
+    for ( const auto &img : images ) {
+        ico.insert( ico.end(), img.data.begin(), img.data.end() );
+    }
+
+    return ico;
+}
+
+} // namespace ico
 
 bool parseUrl( const std::string &url, ParsedUrl &out ) {
     static const std::regex re( R"(^([a-zA-Z][a-zA-Z0-9+.-]*)://([^/:]+)(?::(\d+))?(/.*)?$)" );
@@ -637,109 +757,12 @@ void imageConvert( const httplib::Request &req, httplib::Response &res ) {
     res.set_header( "Content-Disposition", "attachment; filename=\"" + newFilename + "\"" );
 }
 
-namespace ico {
-
-static void writeU32LE( std::vector<unsigned char> &buf, size_t offset, uint32_t val ) {
-    buf[offset] = static_cast<unsigned char>( val & 0xFF );
-    buf[offset + 1] = static_cast<unsigned char>( ( val >> 8 ) & 0xFF );
-    buf[offset + 2] = static_cast<unsigned char>( ( val >> 16 ) & 0xFF );
-    buf[offset + 3] = static_cast<unsigned char>( ( val >> 24 ) & 0xFF );
+void registerToolRoutes( httplib::Server &svr ) {
+    svr.Get( "/api/tools/ip", ipLookup );
+    svr.Post( "/api/tools/proxy", httpProxy );
+    svr.Get( "/api/tools/qrcode", qrcode );
+    svr.Post( "/api/tools/image/convert", imageConvert );
+    LOG_DEBUG << "已注册 4 个工具路由";
 }
-
-static void writeU16LE( std::vector<unsigned char> &buf, size_t offset, uint16_t val ) {
-    buf[offset] = static_cast<unsigned char>( val & 0xFF );
-    buf[offset + 1] = static_cast<unsigned char>( ( val >> 8 ) & 0xFF );
-}
-
-std::vector<DibImage> createDibImages( const unsigned char *srcPixels,
-                                       int srcWidth, int srcHeight,
-                                       const std::vector<int> &sizes ) {
-    std::vector<DibImage> result;
-    for ( int sz : sizes ) {
-        if ( sz <= 0 || sz > 256 )
-            sz = 256;
-        std::vector<unsigned char> scaledBuf( sz * sz * 4 );
-        unsigned char *scaled = stbir_resize_uint8_linear(
-            srcPixels, srcWidth, srcHeight, srcWidth * 4,
-            scaledBuf.data(), sz, sz, sz * 4,
-            STBIR_RGBA );
-        if ( !scaled )
-            continue;
-
-        // ICO DIB: BITMAPINFOHEADER(40) + 颜色数据(BGRA, 自下而上) + AND掩码(1bpp, 每行按4字节对齐)
-        size_t andMaskRowSize = ( ( sz + 31 ) / 32 ) * 4;
-        size_t andMaskSize = andMaskRowSize * sz;
-        size_t colorSize = static_cast<size_t>( sz ) * sz * 4;
-        size_t dibSize = 40 + colorSize + andMaskSize;
-        std::vector<unsigned char> dib( dibSize );
-        memset( dib.data(), 0, dibSize );
-
-        writeU32LE( dib, 0, 40 );
-        writeU32LE( dib, 4, static_cast<uint32_t>( sz ) );
-        writeU32LE( dib, 8, static_cast<uint32_t>( sz * 2 ) ); // biHeight翻倍: XOR掩码 + AND掩码
-        writeU16LE( dib, 12, 1 );
-        writeU16LE( dib, 14, 32 );
-        writeU32LE( dib, 20, static_cast<uint32_t>( colorSize + andMaskSize ) );
-
-        unsigned char *pixels = dib.data() + 40;
-        for ( int y = 0; y < sz; ++y ) {
-            unsigned char *dstRow = pixels + ( sz - 1 - y ) * sz * 4;
-            const unsigned char *srcRow = scaledBuf.data() + y * sz * 4;
-            for ( int x = 0; x < sz; ++x ) {
-                dstRow[x * 4 + 0] = srcRow[x * 4 + 2];
-                dstRow[x * 4 + 1] = srcRow[x * 4 + 1];
-                dstRow[x * 4 + 2] = srcRow[x * 4 + 0];
-                dstRow[x * 4 + 3] = srcRow[x * 4 + 3];
-            }
-        }
-        result.push_back( { sz, sz, std::move( dib ) } );
-    }
-    return result;
-}
-
-std::vector<unsigned char> buildIcoFile( const std::vector<DibImage> &images ) {
-    if ( images.empty() )
-        return {};
-
-    size_t headerSize = 6 + images.size() * 16;
-    size_t totalSize = headerSize;
-    for ( const auto &img : images ) {
-        totalSize += img.data.size();
-    }
-
-    std::vector<unsigned char> ico;
-    ico.reserve( totalSize );
-    ico.resize( headerSize );
-
-    size_t offset = headerSize;
-
-    writeU16LE( ico, 0, 0 );
-    writeU16LE( ico, 2, 1 );
-    writeU16LE( ico, 4, static_cast<uint16_t>( images.size() ) );
-
-    for ( size_t i = 0; i < images.size(); ++i ) {
-        const auto &img = images[i];
-        size_t entryOffset = 6 + i * 16;
-
-        ico[entryOffset + 0] = ( img.width >= 256 ) ? 0 : static_cast<unsigned char>( img.width );
-        ico[entryOffset + 1] = ( img.height >= 256 ) ? 0 : static_cast<unsigned char>( img.height );
-        ico[entryOffset + 2] = 0;
-        ico[entryOffset + 3] = 0;
-        writeU16LE( ico, entryOffset + 4, 1 );
-        writeU16LE( ico, entryOffset + 6, 32 );
-        writeU32LE( ico, entryOffset + 8, static_cast<uint32_t>( img.data.size() ) );
-        writeU32LE( ico, entryOffset + 12, static_cast<uint32_t>( offset ) );
-
-        offset += img.data.size();
-    }
-
-    for ( const auto &img : images ) {
-        ico.insert( ico.end(), img.data.begin(), img.data.end() );
-    }
-
-    return ico;
-}
-
-} // namespace ico
 
 } // namespace routes::tools

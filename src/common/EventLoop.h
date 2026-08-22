@@ -68,7 +68,8 @@ public:
         const std::filesystem::path &workDir = std::filesystem::current_path(),
         const std::map<std::string, std::string> &env = currentEnv(),
         const std::shared_ptr<pipe_read> &out = nullptr,
-        const std::shared_ptr<pipe_read> &err = nullptr );
+        const std::shared_ptr<pipe_read> &err = nullptr,
+        std::string *errorMsg = nullptr );
 
     // 同步运行一个进程，阻塞等待结束并返回捕获的 stdout/stderr 与退出码
     static ProcessResult runProcessSync(
@@ -104,7 +105,8 @@ public:
     bool start(
         const std::vector<std::string> &cmd,
         const std::filesystem::path &workDir = std::filesystem::current_path(),
-        const std::map<std::string, std::string> &env = EventLoop::currentEnv() );
+        const std::map<std::string, std::string> &env = EventLoop::currentEnv(),
+        std::string *errorMsg = nullptr );
 
     // 是否成功启动
     bool started() const {

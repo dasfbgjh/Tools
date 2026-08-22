@@ -41,7 +41,7 @@ void settingsPut( const httplib::Request &req, httplib::Response &res ) {
         db.setUserSetting( uid, it.key(), value );
         ++count;
     }
-    LOG_INFO << "用户设置保存成功 user_id=" << uid << " 键数=" << count;
+    LOG_DEBUG << "用户设置保存成功 user_id=" << uid << " 键数=" << count;
     Server::sendJson( res, { { "success", true } } );
 }
 

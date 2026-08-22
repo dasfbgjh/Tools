@@ -182,6 +182,10 @@ void Config::configJson( json::array_t &config, char flag ) {
     TransformConfig( pdfToolPath, file, "pdf工具路径", "pdf处理工具调用的处理程序", false, json() );
     TransformConfig( ffmpegPath, file, "ffmpeg路径", "ffmpeg调用的处理程序", false, json() );
     TransformConfig( opensslPath, file, "openssl路径", "openssl调用的处理程序", false, json() );
+    TransformConfig( inviteCodeDurationSEC, number, "邀请码过期时间", "剪切板团队邀请码最大刷新间隔", false,
+                     json( {
+                         { "unit", "秒" },
+                     } ) );
 
     TransformConfig( maxUploadFileSize, dataSize, "最大上传文件大小", "剪切板最大上传文件大小", false,
                      json( {
@@ -196,15 +200,16 @@ void Config::configJson( json::array_t &config, char flag ) {
 
     json logLevelOpts = json::array();
     logLevelOpts.push_back( { { "value", 0 }, { "label", "0 - DEBUG" } } );
-    logLevelOpts.push_back( { { "value", 1 }, { "label", "1 - INFO" } } );
-    logLevelOpts.push_back( { { "value", 2 }, { "label", "2 - WARN" } } );
-    logLevelOpts.push_back( { { "value", 3 }, { "label", "3 - ERROR" } } );
+    logLevelOpts.push_back( { { "value", 1 }, { "label", "1 - LOG" } } );
+    logLevelOpts.push_back( { { "value", 2 }, { "label", "2 - INFO" } } );
+    logLevelOpts.push_back( { { "value", 3 }, { "label", "3 - WARN" } } );
+    logLevelOpts.push_back( { { "value", 4 }, { "label", "4 - ERROR" } } );
 
     json logFileModeOpts = json::array();
     logFileModeOpts.push_back( { { "value", 0 }, { "label", "0 - 关闭（不输出到文件）" } } );
     logFileModeOpts.push_back( { { "value", 1 }, { "label", "1 - 单文件追加" } } );
     logFileModeOpts.push_back( { { "value", 2 }, { "label", "2 - 按日期切分" } } );
-    TransformConfig( inviteCodeDurationSEC, number, "邀请码过期时间", "剪切板团队邀请码最大刷新间隔", false,
+    TransformConfig( logLevel, number, "日志级别", "日志级别", false,
                      json( {
                          { "options", logLevelOpts },
                      } ) );

@@ -3,37 +3,6 @@
 #include "common/App.h"
 #include "AppInfo.h"
 
-inline const char *initPage() {
-    return R"(<!DOCTYPE html>
-<html lang="zh-CN">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Window</title>
-    <style>
-        button {
-            position: absolute;
-            top: 50%;
-            right: 50%;
-            transform: translate(-50%, -50%);
-            padding: 5px 10px;
-        }
-    </style>
-</head>
-
-<body>
-    <button id="close-btn">关闭</button>
-    <script>
-        document.getElementById("close-btn").addEventListener("click", function () {
-            window.__close();
-        });
-    </script>
-</body>
-
-</html>)";
-}
-
 WebviewWrapper::WebviewWrapper() : m_thread( nullptr ) {
 }
 
@@ -51,10 +20,11 @@ bool WebviewWrapper::start() {
         std::string init_js;
         initLog( view, init_js );
         initEventQueue( view, init_js );
+        bindings( view );
         initWindow( view );
         view.init( init_js );
 
-        view.set_html( initPage() );
+        view.set_html( Server::staticResource( "/webview/index.html", "" ) );
         view.set_size( 1200, 800, WEBVIEW_HINT_NONE );
         view.run();
     } );
@@ -260,18 +230,30 @@ void WebviewWrapper::initWindow( webview::webview &view ) {
 
     view.bind( "__updateWindowPos", [&view]( std::string msg ) -> std::string {
 #ifdef _WIN32
+        HWND hwnd = (HWND)view.window().value();
+        if ( IsZoomed( hwnd ) )
+            return "{}";
         auto json = nlohmann::json::parse( msg );
         auto obj = json[0].get<nlohmann::json::object_t>();
         int dx = obj["dx"];
         int dy = obj["dy"];
         dy = dy < 0 ? dy - 2 : dy;
-        HWND hwnd = (HWND)view.window().value();
+
         RECT rc;
         GetWindowRect( hwnd, &rc );
         SetWindowPos( hwnd, NULL, rc.left + dx, rc.top + dy,
                       rc.right - rc.left, rc.bottom - rc.top, SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOSIZE );
 #endif
         return "{}";
+    } );
+}
+
+void WebviewWrapper::bindings( webview::webview &view ) {
+    view.bind( "__windowPage", []( std::string msg ) -> std::string {
+        const unsigned char *data = nullptr;
+        std::string content = Server::staticResource( "/webview/window.html", "" );
+        nlohmann::json res( { { "content", content } } );
+        return res.dump();
     } );
 }
 

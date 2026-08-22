@@ -3,17 +3,17 @@
 #include <algorithm>
 #include <chrono>
 
+namespace fs = std::filesystem;
+
 namespace routes::fileService {
-void registerFileServiceRoutes( httplib::Server &svr ) {
-    svr.Get( "/api/fileservice", fileServiceList );
-    svr.Get( R"(/api/fileservice/([^/]+)/list)", fileServiceListDir );
-    svr.Get( R"(/api/fileservice/([^/]+)/search)", fileServiceSearch );
-    svr.Get( R"(/api/fileservice/([^/]+)/download)", fileServiceDownload );
-    svr.Post( R"(/api/fileservice/([^/]+)/upload)", fileServiceUpload );
-    svr.Delete( R"(/api/fileservice/([^/]+)/delete)", fileServiceDelete );
-    svr.Put( R"(/api/fileservice/([^/]+)/rename)", fileServiceRename );
-    LOG_DEBUG << "已注册 8 个文件服务路由";
-}
+
+struct SharePerms {
+    bool canAccess = false;
+    bool canDownload = false;
+    bool canUpload = false;
+    bool canDelete = false;
+    bool canRename = false;
+};
 
 SharePerms computeEffectivePerms( const std::string &shareId,
                                   const std::optional<core::auth::UserInfo> &user ) {
@@ -222,59 +222,67 @@ void fileServiceDownload( const httplib::Request &req, httplib::Response &res ) 
     std::string mimeType = Server::contentType( fileName );
     std::string urlName = utils::urlEncode( fileName );
 
-    LOG_INFO << "文件下载（流式）filename=" << fileName << " size=" << fsize << " bytes 远端=" << req.remote_addr;
-
-    // 打开 native 编码路径下的文件（fopen 不能直接处理 GBK，需要 wide 路径）
-    FILE *fp = nullptr;
-#ifdef _WIN32
-    try {
-        std::wstring wpath = std::filesystem::path( full ).wstring();
-        fp = _wfopen( wpath.c_str(), L"rb" );
-    } catch ( ... ) {
-        fp = nullptr;
+    int64_t contentLength = fsize;
+    int64_t rangeStart = 0;
+    if ( !req.ranges.empty() ) {
+        auto &r = req.ranges[0];
+        int64_t first = r.first;
+        int64_t last = r.second;
+        if ( first == -1 && last == -1 ) {
+            first = 0;
+            last = fsize - 1;
+        } else if ( first == -1 ) {
+            first = fsize - last;
+            last = fsize - 1;
+        } else if ( last == -1 || last >= fsize ) {
+            last = fsize - 1;
+        }
+        rangeStart = first;
+        contentLength = last - first + 1;
     }
-#else
-    fp = std::fopen( full.c_str(), "rb" );
-#endif
+
+    LOG_INFO << "文件下载"
+             << "filename=" << fileName << " size=" << fsize
+             << " bytes rangeStart=" << rangeStart
+             << " contentLength=" << contentLength
+             << " 远端=" << req.remote_addr;
+
+    std::string file = utils::utf8ToLocal( full );
+    FILE *fp = std::fopen( file.c_str(), "rb" );
     if ( !fp )
         return Server::sendError( res, "打开文件失败", 500 );
 
     res.set_header( "Content-Disposition", "attachment; filename=\"" + urlName + "\"" );
-    res.set_header( "Content-Length", std::to_string( fsize ) );
+    res.set_header( "Accept-Ranges", "bytes" );
 
     // 注册到传输跟踪器
-    std::string tid = TransferTracker::instance().start(
-        "download", fileName, req.remote_addr, fsize );
-    std::shared_ptr<int64_t> sent = std::make_shared<int64_t>( 0 );
-    std::shared_ptr<bool> ended = std::make_shared<bool>( false );
-    auto endTransfer = [tid, ended]( const std::string &status, const std::string &err ) {
-        if ( *ended )
-            return;
-        *ended = true;
-        TransferTracker::instance().end( tid, status, err );
-    };
-
-    const size_t CHUNK = 64 * 1024;
-    res.set_chunked_content_provider(
-        mimeType,
-        [fp, CHUNK, sent, tid]( size_t offset, httplib::DataSink &sink ) -> bool {
-            (void)offset;
-            char buf[64 * 1024];
-            size_t n = std::fread( buf, 1, CHUNK, fp );
+    std::string tid = TransferTracker::instance().start( "download", fileName, req.remote_addr, contentLength );
+    res.set_content_provider(
+        fsize, mimeType,
+        [fp, tid, rangeStart]( size_t offset, size_t length, httplib::DataSink &sink ) -> bool {
+            constexpr size_t CHUNK = 1024 * 1024;
+            char buf[CHUNK];
+            size_t toRead = std::min( CHUNK, length );
+            if ( toRead == 0 ) {
+                sink.done();
+                return true;
+            }
+            // httplib 传入的 offset 已是相对于文件开头的绝对偏移，直接定位即可
+            fseeko( fp, offset, SEEK_SET );
+            size_t n = std::fread( buf, 1, toRead, fp );
             if ( n > 0 ) {
                 sink.write( buf, n );
-                *sent += (int64_t)n;
-                TransferTracker::instance().update( tid, *sent );
+                TransferTracker::instance().update( tid, offset + n - rangeStart );
             } else {
                 sink.done();
             }
-            return true;
-        },
-        [fp, endTransfer]( bool success ) {
+            return true; },
+        [fp, tid]( bool success ) {
             if ( fp )
                 std::fclose( fp );
-            endTransfer( success ? "completed" : "error",
-                         success ? "" : "客户端中止" );
+            TransferTracker::instance().end(
+                tid, success ? "completed" : "error",
+                success ? "" : "客户端中止" );
         } );
 }
 
@@ -363,21 +371,9 @@ void fileServiceUpload( const httplib::Request &req, httplib::Response &res,
                 errStatus = 400;
                 return false;
             }
-#ifdef _WIN32
-            std::wstring wpath;
-            try {
-                wpath = std::filesystem::path( cur.outPath.string() ).wstring();
-            } catch ( ... ) {
-            }
-            if ( wpath.empty() ) {
-                errMsg = "输出路径非法";
-                errStatus = 500;
-                return false;
-            }
-            cur.fp = _wfopen( wpath.c_str(), L"wb" );
-#else
-            cur.fp = std::fopen( cur.outPath.string().c_str(), "wb" );
-#endif
+
+            std::string file = utils::utf8ToLocal( cur.outPath.string() );
+            cur.fp = std::fopen( file.c_str(), "wb" );
             if ( !cur.fp ) {
                 errMsg = "打开输出文件失败";
                 errStatus = 500;
@@ -542,6 +538,17 @@ void fileServiceRename( const httplib::Request &req, httplib::Response &res ) {
 
     LOG_INFO << "重命名成功 " << oldFull << " -> " << newFullStr;
     Server::sendJson( res, { { "success", true }, { "newPath", newRelPath }, { "newName", newName } } );
+}
+
+void registerFileServiceRoutes( httplib::Server &svr ) {
+    svr.Get( "/api/fileservice", fileServiceList );
+    svr.Get( R"(/api/fileservice/([^/]+)/list)", fileServiceListDir );
+    svr.Get( R"(/api/fileservice/([^/]+)/search)", fileServiceSearch );
+    svr.Get( R"(/api/fileservice/([^/]+)/download)", fileServiceDownload );
+    svr.Post( R"(/api/fileservice/([^/]+)/upload)", fileServiceUpload );
+    svr.Delete( R"(/api/fileservice/([^/]+)/delete)", fileServiceDelete );
+    svr.Put( R"(/api/fileservice/([^/]+)/rename)", fileServiceRename );
+    LOG_DEBUG << "已注册 8 个文件服务路由";
 }
 
 } // namespace routes::fileService

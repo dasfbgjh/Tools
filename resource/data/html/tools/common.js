@@ -170,7 +170,13 @@
 
     // ===== Utility: escape HTML =====
     Tools.escapeHtml = function (s) {
-        return window.Api.escapeHtml(s);
+        if (s == null) return '';
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     };
 
     // ===== Utility: download text/blob =====

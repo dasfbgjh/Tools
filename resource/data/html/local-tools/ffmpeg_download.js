@@ -1,7 +1,6 @@
 (function () {
     'use strict';
     var Api = window.Api;
-    var browsePath = '';
 
     function $(id) { return document.getElementById(id); }
     function showBanner(type, msg) {
@@ -11,7 +10,7 @@
         else if (type === 'success') cls = 'ok';
         var el = $('fd-banner');
         if (!el) return;
-        el.innerHTML = '<div class="banner banner-' + cls + '">' + Api.escapeHtml(msg) + '</div>';
+        el.innerHTML = '<div class="banner banner-' + cls + '">' + window.App.escapeHtml(msg) + '</div>';
         if (type === 'success') setTimeout(clearBanner, 4000);
     }
     function clearBanner() { var el = $('fd-banner'); if (el) el.innerHTML = ''; }
@@ -85,11 +84,11 @@
             var info = $('fd-info');
             if (!data || data.available === false) {
                 info.innerHTML = '<span class="pill err">FFmpeg 不可用</span>' +
-                    '<span class="pill">' + Api.escapeHtml((data && data.error) || '未知错误') + '</span>';
+                    '<span class="pill">' + window.App.escapeHtml((data && data.error) || '未知错误') + '</span>';
             } else {
                 var html = '<span class="pill ok">✓ 可用</span>';
-                if (data.version) html += '<span class="pill">' + Api.escapeHtml(data.version) + '</span>';
-                if (data.ffmpegPath) html += '<span class="pill" title="' + Api.escapeHtml(data.ffmpegPath) + '">' + Api.escapeHtml(data.ffmpegPath) + '</span>';
+                if (data.version) html += '<span class="pill">' + window.App.escapeHtml(data.version) + '</span>';
+                if (data.ffmpegPath) html += '<span class="pill" title="' + window.App.escapeHtml(data.ffmpegPath) + '">' + window.App.escapeHtml(data.ffmpegPath) + '</span>';
                 info.innerHTML = html;
             }
             loadConfig();
@@ -137,115 +136,23 @@
         $(id).addEventListener('input', updateAddBtn);
     });
 
-    // ===== 目录浏览器 =====
-    var fsPanel = $('fd-fs');
-    var fsList = $('fd-fs-list');
-    var fsBc = $('fd-fs-bc');
-    var fsPathInput = $('fd-fs-path');
-    var fsCurrent = $('fd-fs-current');
+    // ===== 目录浏览器（使用公共模块 FsBrowser） =====
     var outputDirInput = $('fd-output-dir');
 
-    function parentPath(p) {
-        if (!p) return '';
-        var sep = p.indexOf('\\') >= 0 ? '\\' : '/';
-        while (p.length > 1 && p.charAt(p.length - 1) === sep) p = p.substring(0, p.length - 1);
-        var idx = p.lastIndexOf(sep);
-        if (idx < 0) return '';
-        if (idx === 2 && p.charAt(1) === ':') return '';
-        return p.substring(0, idx);
-    }
-    function renderBc(p) {
-        if (!p) {
-            fsBc.innerHTML = '<span class="br-fs-bc-root">本机</span>';
-            return;
-        }
-        var sep = p.indexOf('\\') >= 0 ? '\\' : '/';
-        var html = '<a class="br-fs-bc-root" data-idx="-1">本机</a>';
-        var parts = p.split(/[\\/]/);
-        parts.forEach(function (part, i) {
-            if (!part) return;
-            if (i === parts.length - 1) {
-                html += '<span class="sep">›</span><span>' + Api.escapeHtml(part) + '</span>';
-            } else {
-                html += '<span class="sep">›</span><a data-idx="' + i + '">' + Api.escapeHtml(part) + '</a>';
-            }
-        });
-        fsBc.innerHTML = html;
-        Array.prototype.forEach.call(fsBc.querySelectorAll('a'), function (a) {
-            a.onclick = function () {
-                var idx = parseInt(a.getAttribute('data-idx'), 10);
-                if (idx < 0) return loadFs('');
-                var target = parts.slice(0, idx + 1).join(sep);
-                if (sep === '\\' && !/^[A-Z]:/.test(target)) target = target.replace(/^\\+/, '');
-                loadFs(target);
-            };
-        });
-    }
-
     function openBrowser() {
-        fsPanel.hidden = false;
-        loadFs(outputDirInput.value.trim() || '');
-    }
-    function closeBrowser() { fsPanel.hidden = true; }
-
-    function loadFs(path) {
-        fsList.innerHTML = '<div class="br-fs-list-empty">加载中...</div>';
-        Api.localTools.browse(path).then(function (data) {
-            if (!data || data.success === false) {
-                fsList.innerHTML = '<div class="br-fs-list-empty">浏览失败: ' + Api.escapeHtml((data && data.error) || '未知') + '</div>';
-                return;
+        window.FsBrowser.open({
+            mode: 'dir',
+            api: 'local',
+            title: '选择输出目录',
+            initialPath: outputDirInput.value.trim() || '',
+            onConfirm: function (p) {
+                outputDirInput.value = p;
+                updateAddBtn();
             }
-            browsePath = data.path || path || '';
-            renderBc(browsePath);
-            fsPathInput.value = browsePath;
-            fsCurrent.textContent = '当前：' + (browsePath || '本机根');
-            var entries = data.entries || [];
-            fsList.innerHTML = '';
-            if (!entries.length) {
-                fsList.innerHTML = '<div class="br-fs-list-empty">空目录</div>';
-                return;
-            }
-            entries.sort(function (a, b) {
-                if (a.isDir && !b.isDir) return -1;
-                if (!a.isDir && b.isDir) return 1;
-                return a.name.localeCompare(b.name, 'zh-CN');
-            });
-            if (browsePath) {
-                var upRow = document.createElement('div');
-                upRow.className = 'br-fs-entry';
-                upRow.innerHTML = '<span class="icon">↩</span><span class="br-fs-name">..</span><span class="br-fs-size"></span>';
-                upRow.onclick = function () { loadFs(parentPath(browsePath)); };
-                fsList.appendChild(upRow);
-            }
-            entries.forEach(function (e) {
-                var row = document.createElement('div');
-                row.className = 'br-fs-entry';
-                row.innerHTML = '<span class="icon">' + (e.isDir ? '📁' : '📄') + '</span>' +
-                    '<span class="br-fs-name" title="' + Api.escapeHtml(e.fullPath) + '">' + Api.escapeHtml(e.name) + '</span>' +
-                    '<span class="br-fs-size">' + (e.isDir ? '' : formatSize(e.size)) + '</span>';
-                if (e.isDir) {
-                    row.style.cursor = 'pointer';
-                    row.onclick = function () { loadFs(e.fullPath); };
-                }
-                fsList.appendChild(row);
-            });
-        }).catch(function (err) {
-            fsList.innerHTML = '<div class="br-fs-list-empty">浏览失败: ' + Api.escapeHtml(String(err)) + '</div>';
         });
     }
 
     $('fd-btn-pick-dir').onclick = openBrowser;
-    $('fd-fs-cancel').onclick = closeBrowser;
-    $('fd-fs-up').onclick = function () { loadFs(parentPath(browsePath)); };
-    $('fd-fs-go').onclick = function () { loadFs(fsPathInput.value.trim()); };
-    $('fd-fs-ok').onclick = function () {
-        outputDirInput.value = browsePath;
-        closeBrowser();
-        updateAddBtn();
-    };
-    fsPathInput.addEventListener('keydown', function (ev) {
-        if (ev.key === 'Enter') { ev.preventDefault(); loadFs(fsPathInput.value.trim()); }
-    });
 
     // ===== 提交下载/录制 =====
     function submit() {
@@ -343,7 +250,7 @@
                 el.onclick = function () { onTaskAction(act, id); };
             });
         }).catch(function (err) {
-            $('fd-task-list').innerHTML = '<div class="fd-empty">加载任务失败: ' + Api.escapeHtml(String(err)) + '</div>';
+            $('fd-task-list').innerHTML = '<div class="fd-empty">加载任务失败: ' + window.App.escapeHtml(String(err)) + '</div>';
         });
     }
 
@@ -364,23 +271,23 @@
 
         var actions = '';
         if (t.status === 'pending' || t.status === 'running') {
-            actions += '<button class="btn btn-ghost btn-sm" data-act="cancel" data-id="' + Api.escapeHtml(t.id) + '">取消</button>';
+            actions += '<button class="btn btn-ghost btn-sm" data-act="cancel" data-id="' + window.App.escapeHtml(t.id) + '">取消</button>';
         }
-        actions += '<button class="btn btn-ghost btn-sm" data-act="remove" data-id="' + Api.escapeHtml(t.id) + '">移除</button>';
+        actions += '<button class="btn btn-ghost btn-sm" data-act="remove" data-id="' + window.App.escapeHtml(t.id) + '">移除</button>';
 
         var errHtml = '';
         if (t.error) {
-            errHtml = '<div class="fd-task-meta" style="color:#dc2626;">错误: ' + Api.escapeHtml(t.error) + '</div>';
+            errHtml = '<div class="fd-task-meta" style="color:#dc2626;">错误: ' + window.App.escapeHtml(t.error) + '</div>';
         }
         var outHtml = '';
         if (t.outputPath && t.status === 'completed') {
-            outHtml = '<div class="fd-task-meta">输出: <span title="' + Api.escapeHtml(t.outputPath) + '">' + Api.escapeHtml(t.outputPath) + '</span></div>';
+            outHtml = '<div class="fd-task-meta">输出: <span title="' + window.App.escapeHtml(t.outputPath) + '">' + window.App.escapeHtml(t.outputPath) + '</span></div>';
         }
 
         return '' +
             '<div class="fd-task">' +
             '<div class="fd-task-head">' +
-            '<span class="fd-task-name" title="' + Api.escapeHtml(t.inputPath) + '">' + Api.escapeHtml(t.inputPath) + '</span>' +
+            '<span class="fd-task-name" title="' + window.App.escapeHtml(t.inputPath) + '">' + window.App.escapeHtml(t.inputPath) + '</span>' +
             '<span class="fd-status ' + t.status + '">' + t.status + '</span>' +
             '</div>' +
             progHtml +

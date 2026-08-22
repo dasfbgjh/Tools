@@ -46,7 +46,7 @@ struct FfmpegTask {
     std::string id;
     std::string inputPath;
     std::string outputPath;
-    std::string operation; // "trim" | "convert" | "compress" | "custom"
+    std::string operation; // "trim" | "convert" | "compress" | "custom" | "download"
     utils::json options;   // 操作相关参数
     std::string encoder;   // "auto" | "h264_nvenc" | "hevc_nvenc" | "h264_qsv" | "h264_amf" | "libx264"
     int extraThreads = 0;  // ffmpeg -threads 值，0 表示不指定
@@ -143,7 +143,16 @@ private:
     void parseFfmpegOut( FfmpegTask *task, std::string &outPending );
 
     // 构造 ffmpeg 命令行
-    std::vector<std::string> buildArgs( FfmpegTask *task, const std::string &ffmpegPath, std::string &displayArgs ) const;
+    std::vector<std::string> buildArgs(
+        FfmpegTask *task,
+        const std::string &ffmpegPath,
+        std::string &displayArgs ) const;
+
+    std::vector<std::string> buildDownloadArgs(
+        FfmpegTask *task,
+        const std::string &ffmpegPath,
+        std::string &displayArgs,
+        std::vector<std::string> &args ) const;
 
     // 推导默认输出路径（当用户未指定时）
     std::string deriveOutputPath( const FfmpegTask *task ) const;

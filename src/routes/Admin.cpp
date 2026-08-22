@@ -1,28 +1,9 @@
 #include "admin.h"
 #include "core/TransferTracker.h"
 
+namespace fs = std::filesystem;
+
 namespace routes::admin {
-
-void registerAdminRoutes( httplib::Server &svr ) {
-    svr.Get( "/api/admin/fs", adminFsBrowse );
-    svr.Get( "/api/admin/shares", adminSharesList );
-    svr.Post( "/api/admin/shares", adminSharesCreate );
-    svr.Put( R"(/api/admin/shares/([^/]+))", adminSharesUpdate );
-    svr.Delete( R"(/api/admin/shares/([^/]+))", adminSharesDelete );
-    svr.Get( "/api/admin/shares/parameter/paths", adminParameterPaths );
-
-    svr.Get( "/api/admin/users", adminUsers );
-    svr.Post( "/api/admin/users", adminUserCreate );
-    svr.Put( R"(/api/admin/users/([^/]+))", adminUserUpdate );
-    svr.Delete( R"(/api/admin/users/([^/]+))", adminUserDelete );
-
-    svr.Get( "/api/admin/transfers", adminTransfers );
-
-    svr.Get( "/api/admin/config", adminConfigGet );
-    svr.Put( "/api/admin/config", adminConfigPut );
-
-    LOG_DEBUG << "已注册 13 个管理员路由";
-}
 
 Server::json shareToJson( const Database::Row &r ) {
     Server::json share = {
@@ -59,43 +40,6 @@ void adminUsers( const httplib::Request &req, httplib::Response &res ) {
     }
     LOG_DEBUG << "adminUsers 返回用户数: " << arr.size();
     Server::sendJson( res, { { "success", true }, { "users", arr } } );
-}
-
-void adminFsBrowse( const httplib::Request &req, httplib::Response &res ) {
-    if ( Server::guardLocalhost( req, res ) )
-        return;
-    std::string path = Server::queryParam( req, "path" );
-    LOG_DEBUG << "文件浏览 path=" << path;
-
-    Server::json entries = Server::json::array();
-    if ( path.empty() ) {
-        auto roots = utils::fs::listRoots();
-        for ( auto &r : roots ) {
-            // r 形如 "C:\\"，同时作为 name 和 fullPath
-            std::string display = r;
-            // 去掉尾部反斜杠用于显示（C: 而非 C:\）
-            if ( !display.empty() && display.back() == '\\' )
-                display.pop_back();
-            entries.push_back( { { "name", display }, { "fullPath", r }, { "isDir", true }, { "size", 0 }, { "modified", "" } } );
-        }
-        LOG_DEBUG << "返回根目录列表,数量: " << roots.size();
-        return Server::sendJson( res, { { "success", true }, { "path", "" }, { "entries", entries } } );
-    }
-
-    std::string native = utils::fs::toNative( path );
-    std::string err;
-    auto items = utils::fs::listDir( native, &err );
-    if ( !err.empty() )
-        return Server::sendError( res, err, 400 );
-    for ( auto &e : items ) {
-        // 拼接 native 父路径 + 子项名，得到完整 Windows 路径
-        std::string full = native;
-        if ( !full.empty() && full.back() != '\\' && full.back() != '/' )
-            full += '\\';
-        full += e.name;
-        entries.push_back( { { "name", e.name }, { "fullPath", full }, { "isDir", e.isDir }, { "size", e.size }, { "modified", e.modified } } );
-    }
-    Server::sendJson( res, { { "success", true }, { "path", path }, { "entries", entries } } );
 }
 
 void adminSharesList( const httplib::Request &req, httplib::Response &res ) {
@@ -372,4 +316,25 @@ void adminTransfers( const httplib::Request &req, httplib::Response &res ) {
         TransferTracker::instance().snapshotJson(),
         "application/json; charset=utf-8" );
 }
+
+void registerAdminRoutes( httplib::Server &svr ) {
+    svr.Get( "/api/admin/shares", adminSharesList );
+    svr.Post( "/api/admin/shares", adminSharesCreate );
+    svr.Put( R"(/api/admin/shares/([^/]+))", adminSharesUpdate );
+    svr.Delete( R"(/api/admin/shares/([^/]+))", adminSharesDelete );
+    svr.Get( "/api/admin/shares/parameter/paths", adminParameterPaths );
+
+    svr.Get( "/api/admin/users", adminUsers );
+    svr.Post( "/api/admin/users", adminUserCreate );
+    svr.Put( R"(/api/admin/users/([^/]+))", adminUserUpdate );
+    svr.Delete( R"(/api/admin/users/([^/]+))", adminUserDelete );
+
+    svr.Get( "/api/admin/transfers", adminTransfers );
+
+    svr.Get( "/api/admin/config", adminConfigGet );
+    svr.Put( "/api/admin/config", adminConfigPut );
+
+    LOG_DEBUG << "已注册 12 个管理员路由";
+}
+
 } // namespace routes::admin

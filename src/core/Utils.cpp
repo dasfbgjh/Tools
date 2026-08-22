@@ -319,6 +319,42 @@ void openDirectory( const std::string &path ) {
 #endif
 }
 
+bool isValidUtf8( const std::string &str ) {
+    int i = 0;
+    while ( i < str.size() ) {
+        if ( ( str[i] & 0x80 ) == 0 ) {
+            i++;
+        } else if ( ( str[i] & 0xE0 ) == 0xC0 ) {
+            if ( i + 1 >= str.size() )
+                return false;
+            if ( ( str[i + 1] & 0xC0 ) != 0x80 )
+                return false;
+            i += 2;
+        } else if ( ( str[i] & 0xF0 ) == 0xE0 ) {
+            if ( i + 2 >= str.size() )
+                return false;
+            if ( ( str[i + 1] & 0xC0 ) != 0x80 )
+                return false;
+            if ( ( str[i + 2] & 0xC0 ) != 0x80 )
+                return false;
+            i += 3;
+        } else if ( ( str[i] & 0xF8 ) == 0xF0 ) {
+            if ( i + 3 >= str.size() )
+                return false;
+            if ( ( str[i + 1] & 0xC0 ) != 0x80 )
+                return false;
+            if ( ( str[i + 2] & 0xC0 ) != 0x80 )
+                return false;
+            if ( ( str[i + 3] & 0xC0 ) != 0x80 )
+                return false;
+            i += 4;
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
+
 std::string utf8ToLocal( const std::string &utf8 ) {
 #ifdef _WIN32
     if ( utf8.empty() )

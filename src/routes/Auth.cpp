@@ -3,15 +3,6 @@
 
 namespace routes::auth {
 
-void registerAuthRoutes( httplib::Server &svr ) {
-    svr.Post( "/api/auth/register", authRegister );
-    svr.Post( "/api/auth/login", authLogin );
-    svr.Post( "/api/auth/logout", authLogout );
-    svr.Get( "/api/auth/me", authMe );
-    svr.Put( "/api/auth/me", authUpdateMe );
-    LOG_DEBUG << "已注册 5 个授权路由";
-}
-
 void authRegister( const httplib::Request &req, httplib::Response &res ) {
     auto body = Server::parseBody( req );
     if ( body.is_null() )
@@ -124,4 +115,14 @@ void authUpdateMe( const httplib::Request &req, httplib::Response &res ) {
                              { "user", core::auth::userToJson( { rows[0]["id"], rows[0]["email"],
                                                                  rows[0]["nickname"], rows[0]["created_at"] } ) } } );
 }
+
+void registerAuthRoutes( httplib::Server &svr ) {
+    svr.Post( "/api/auth/register", authRegister );
+    svr.Post( "/api/auth/login", authLogin );
+    svr.Post( "/api/auth/logout", authLogout );
+    svr.Get( "/api/auth/me", authMe );
+    svr.Put( "/api/auth/me", authUpdateMe );
+    LOG_DEBUG << "已注册 5 个授权路由";
+}
+
 } // namespace routes::auth

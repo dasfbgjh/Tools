@@ -3,7 +3,14 @@
 #include "common/EventLoop.h"
 #include "core/Server.h"
 
+namespace fs = std::filesystem;
+
 namespace routes::pdfTools {
+
+struct TempSession {
+    fs::path dir;
+    std::time_t createdAt;
+};
 
 static std::map<std::string, TempSession> g_tempSessions;
 static std::mutex g_tempMutex;
@@ -98,17 +105,6 @@ std::string registerTempSession( const fs::path &dir ) {
     std::lock_guard<std::mutex> lk( g_tempMutex );
     g_tempSessions[token] = { dir, std::time( nullptr ) };
     return token;
-}
-
-void registerPdfRoutes( httplib::Server &svr ) {
-    svr.Get( R"(/api/pdf/temp/([^/]+)/([^/]+))", pdfTempServe );
-    svr.Post( "/api/pdf/compress", pdfCompress );
-    svr.Post( "/api/pdf/merge", pdfMerge );
-    svr.Post( "/api/pdf/split", pdfSplit );
-    svr.Post( "/api/pdf/extract", pdfExtract );
-    svr.Post( "/api/pdf/rotate", pdfRotate );
-    svr.Post( "/api/pdf/watermark", pdfWatermark );
-    LOG_DEBUG << "已注册 7 个PDF工具路由";
 }
 
 void pdfTempServe( const httplib::Request &req, httplib::Response &res ) {
@@ -436,4 +432,16 @@ void pdfWatermark( const httplib::Request &req, httplib::Response &res ) {
     res.set_header( "Content-Disposition",
                     "attachment; filename=\"watermarked.pdf\"" );
 }
+
+void registerPdfRoutes( httplib::Server &svr ) {
+    svr.Get( R"(/api/pdf/temp/([^/]+)/([^/]+))", pdfTempServe );
+    svr.Post( "/api/pdf/compress", pdfCompress );
+    svr.Post( "/api/pdf/merge", pdfMerge );
+    svr.Post( "/api/pdf/split", pdfSplit );
+    svr.Post( "/api/pdf/extract", pdfExtract );
+    svr.Post( "/api/pdf/rotate", pdfRotate );
+    svr.Post( "/api/pdf/watermark", pdfWatermark );
+    LOG_DEBUG << "已注册 7 个PDF工具路由";
+}
+
 } // namespace routes::pdfTools

@@ -230,7 +230,7 @@
 }
 
 /* ===== 文件图标类型配色 ===== */
-/* 共享的 .fi-* 颜色规则在 ../fileicons.css */
+/* 共享的 .fi-* 颜色规则在 style.css */
 
 .file-name {
     display: flex;

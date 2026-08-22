@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Webview</title>
+    <title>window</title>
 
     <style>
         :root {
@@ -80,6 +80,58 @@
         .titlebar-buttons {
             display: flex;
             gap: 6px;
+            align-items: center;
+        }
+
+        .zoom-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-right: 12px;
+            padding: 0 12px;
+            border-right: 1px solid var(--border);
+        }
+
+        .zoom-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            min-width: 45px;
+            text-align: center;
+        }
+
+        .zoom-slider {
+            width: 100px;
+            height: 4px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: var(--border);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .zoom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+
+        .zoom-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .zoom-slider::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            border: none;
         }
 
         .titlebar-btn {
@@ -126,7 +178,7 @@
             border: none;
         }
 
-        .drag-overlay {
+        .drag-capture {
             position: fixed;
             top: 0;
             left: 0;
@@ -134,6 +186,7 @@
             height: 100vh;
             z-index: 9999;
             display: none;
+            cursor: move;
         }
     </style>
 
@@ -143,8 +196,12 @@
 <body>
     <div class="window" id="window">
         <div class="titlebar" id="titlebar">
-            <span class="titlebar-title">🔨🌏🏞️</span>
+            <span class="titlebar-title"></span>
             <div class="titlebar-buttons">
+                <div class="zoom-control">
+                    <span class="zoom-label" id="zoom-label">100%</span>
+                    <input type="range" class="zoom-slider" id="zoom-slider" min="50" max="200" value="100" step="5">
+                </div>
                 <button class="titlebar-btn btn-power" id="btn-power" title="退出">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
@@ -179,7 +236,7 @@
             <iframe id="iframe" src="about:blank"></iframe>
         </div>
     </div>
-    <div class="drag-overlay" id="drag-overlay"></div>
+    <div class="drag-capture" id="drag-capture"></div>
 
     <script>
         (function () {
@@ -197,12 +254,12 @@
                 dragStartScreenX = e.screenX;
                 dragStartScreenY = e.screenY;
                 isDragging = true;
-                dragOverlay.style.display = 'block';
+                dragCapture.style.display = 'block';
             }
 
             function endMove() {
                 isDragging = false;
-                dragOverlay.style.display = 'none';
+                dragCapture.style.display = 'none';
             }
 
             function move(e) {
@@ -219,11 +276,10 @@
                 });
             }
 
-            const dragOverlay = document.getElementById('drag-overlay');
-            dragOverlay.addEventListener('mousedown', startMove);
-            dragOverlay.addEventListener('mousemove', move);
-            dragOverlay.addEventListener('mouseup', endMove);
-            dragOverlay.addEventListener('mouseout', endMove);
+            const dragCapture = document.getElementById('drag-capture');
+            dragCapture.addEventListener('mousemove', move);
+            dragCapture.addEventListener('mouseup', endMove);
+            dragCapture.addEventListener('mouseleave', endMove);
 
             document.getElementById('btn-minimize').addEventListener('click', () => {
                 window.__minimize();
@@ -249,7 +305,7 @@
             });
 
             document.getElementById('titlebar').addEventListener('mousedown', (e) => {
-                dragOverlay.style.cursor = 'move';
+                if (e.target.closest('.zoom-control')) return;
                 startMove(e);
             });
             document.getElementById('titlebar').addEventListener('mouseenter', endMove);
@@ -260,6 +316,26 @@
             };
 
             const iframe = document.getElementById('iframe');
+            const zoomSlider = document.getElementById('zoom-slider');
+            const zoomLabel = document.getElementById('zoom-label');
+            let currentZoom = 100;
+
+            function setIframeZoom(zoom) {
+                currentZoom = zoom;
+                iframe.style.transform = 'scale(' + (zoom / 100) + ')';
+                iframe.style.transformOrigin = 'top left';
+                var width = 100 / (zoom / 100);
+                var height = 100 / (zoom / 100);
+                iframe.style.width = width + 'vw';
+                iframe.style.height = height + 'vh';
+                zoomLabel.textContent = zoom + '%';
+                zoomSlider.value = zoom;
+            }
+
+            zoomSlider.addEventListener('input', function () {
+                setIframeZoom(parseInt(this.value));
+            });
+
             iframe.src = './index.html';
             document.getElementById('btn-refresh').addEventListener('click', () => {
                 iframe.contentWindow.location.reload();

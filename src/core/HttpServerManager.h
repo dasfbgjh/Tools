@@ -33,6 +33,9 @@ public:
     // 启动所有 auto_start=1 的服务器
     void startAutoStart();
 
+    // 停止所有服务器
+    void shutdownAll();
+
     // 是否在运行
     bool isRunning( const std::string &id ) const;
 
@@ -46,6 +49,7 @@ private:
     HttpServerManager() = default;
     HttpServerManager( const HttpServerManager & ) = delete;
     HttpServerManager &operator=( const HttpServerManager & ) = delete;
+    ~HttpServerManager();
 
     HttpServerInstance *findInstance( const std::string &id ) const;
 

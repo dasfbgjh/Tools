@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 
 <head>
@@ -6,6 +6,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>登录</title>
     <link rel="stylesheet" href="./../style.css" />
+    <style>
+        .auth-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: linear-gradient(135deg, #f9fafb 0%, #eef2ff 50%, #f9fafb 100%);
+        }
+
+        .auth-card {
+            width: 100%;
+            max-width: 28rem;
+        }
+    </style>
     <script src="./../theme.js"></script>
 </head>
 
@@ -70,14 +85,7 @@
                     .then(function (data) {
                         if (data.success) {
                             App.setUser(data.user);
-                            return Api.teams.list().then(function (td) {
-                                if (td.success && td.teams && td.teams.length) {
-                                    App.setTeams(td.teams);
-                                    var def = td.teams.find(function (t) { return t.isDefault; }) || td.teams[0];
-                                    App.setCurrentTeam(def);
-                                }
-                                window.location.href = '/';
-                            });
+                            window.location.href = '/index.html';
                         } else {
                             showError(data.error || '登录失败');
                         }

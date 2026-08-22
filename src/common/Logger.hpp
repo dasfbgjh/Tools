@@ -17,6 +17,7 @@
 #include <thread>
 
 #define LOG_DEBUG Logger::OStream( Logger::Level::DEBUG, __LINE__, __FILE__, __func__ )
+#define LOG_LOG Logger::OStream( Logger::Level::LOG, __LINE__, __FILE__, __func__ )
 #define LOG_INFO Logger::OStream( Logger::Level::INFO, __LINE__, __FILE__, __func__ )
 #define LOG_WARN Logger::OStream( Logger::Level::WARN, __LINE__, __FILE__, __func__ )
 #define LOG_ERROR Logger::OStream( Logger::Level::ERR, __LINE__, __FILE__, __func__ )
@@ -26,6 +27,7 @@ public:
     class OStream;
     enum class Level {
         DEBUG,
+        LOG,
         INFO,
         WARN,
         ERR
@@ -102,6 +104,8 @@ private:
         switch ( level ) {
         case Level::DEBUG:
             return " [D]:";
+        case Level::LOG:
+            return " [L]:";
         case Level::INFO:
             return " [I]:";
         case Level::WARN:
@@ -148,6 +152,9 @@ private:
             switch ( level ) {
             case Level::DEBUG:
                 std::cout << consoleColor( message, 32 );
+                break;
+            case Level::LOG:
+                std::cout << consoleColor( message, 36 );
                 break;
             case Level::INFO:
                 std::cout << consoleColor( message, 34 );

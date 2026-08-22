@@ -192,11 +192,11 @@ void App::trayMenuCallback( struct tray_menu *item, int id ) {
     case EnableContextMenu: {
         bool current = Config::getEnableContextmenu();
         bool target = !current;
-        LOG_INFO << "切换右键菜单状态:" << ( current ? "启用" : "未启用" ) << " -> " << ( target ? "启用" : "未启用" );
+        LOG_DEBUG << "切换右键菜单状态:" << ( current ? "启用" : "未启用" ) << " -> " << ( target ? "启用" : "未启用" );
         if ( Config::setEnableContextmenu( target ) ) {
             item->checked = target;
             m_systemTray->update();
-            LOG_INFO << "右键菜单状态切换成功";
+            LOG_DEBUG << "右键菜单状态切换成功";
         } else {
             LOG_ERROR << "右键菜单状态切换失败";
         }
@@ -205,11 +205,11 @@ void App::trayMenuCallback( struct tray_menu *item, int id ) {
     case AutoBoot: {
         bool current = Config::getEnableAutoBoot();
         bool target = !current;
-        LOG_INFO << "切换开机自启状态:" << ( current ? "启用" : "未启用" ) << " -> " << ( target ? "启用" : "未启用" );
+        LOG_DEBUG << "切换开机自启状态:" << ( current ? "启用" : "未启用" ) << " -> " << ( target ? "启用" : "未启用" );
         if ( Config::setEnableAutoBoot( target ) ) {
             item->checked = target;
             m_systemTray->update();
-            LOG_INFO << "开机自启状态切换成功";
+            LOG_DEBUG << "开机自启状态切换成功";
         } else {
             LOG_ERROR << "开机自启状态切换失败";
         }
@@ -220,8 +220,10 @@ void App::trayMenuCallback( struct tray_menu *item, int id ) {
         break;
     case OpenWebview:
         LOG_DEBUG << "打开Webview";
-        if ( webview.start() )
-            webview.navigate( "http://127.0.0.1:" + std::to_string( Config::getHttpServerPort() ) + "/webview.html" );
+        if ( webview.start() ) {
+            webview.navigate( "http://127.0.0.1:" + std::to_string( Config::getHttpServerPort() ) + "/webview" );
+            webview.showMaximized();
+        }
         break;
     default:
         LOG_WARN << "未处理的菜单ID:" << id;
@@ -396,5 +398,5 @@ void App::handleBoot( const std::vector<std::string> &args ) {
         return;
     }
     LOG_INFO << "生成分享ID: " << id << ",打开管理页面";
-    utils::openBrowser( "/?page=/admin/&share=" + utils::urlEncode( id ) );
+    utils::openBrowser( "/index.html?page=./admin/&shareId=" + utils::urlEncode( id ) );
 }

@@ -16,16 +16,10 @@
     var SORT_KEY = 'fileservice-sort';
     var DIR_TYPE_LABEL = '文件夹';
 
-    // ======================================================
-    // 文件图标：统一使用共享的 FileIcons（见 ../fileicons.js）
-    // ======================================================
     function getFileIcon(name, isDir) {
-        return window.FileIcons.getIcon(name, isDir);
+        return window.FsBrowser.FileIcons.getIcon(name, isDir);
     }
 
-    // ======================================================
-    // 格式化工具
-    // ======================================================
     function formatSize(bytes) {
         if (!bytes || bytes <= 0) return '-';
         if (bytes < 1024) return bytes + ' B';
