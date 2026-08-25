@@ -1,4 +1,5 @@
 #include "App.h"
+#include "AppInfo.h"
 #include "resource.h"
 #include "common/Logger.hpp"
 #include "common/Config.h"
@@ -16,6 +17,8 @@ App::App() {
     g_instance = this;
     m_running = false;
     m_exitCode = 0;
+    m_reboot = false;
+
     m_db = nullptr;
 
     m_systemTray = std::make_unique<SystemTray>( std::bind( &App::trayMenuCallback, this, std::placeholders::_1, std::placeholders::_2 ) );
@@ -130,6 +133,15 @@ void App::exit( int exitCode ) {
     m_systemTray->exit();
 }
 
+void App::reboot() {
+    m_reboot = true;
+    exit( 0 );
+}
+
+bool App::isReboot() {
+    return m_reboot;
+}
+
 bool App::isRunning() {
     return m_running;
 }
@@ -181,13 +193,12 @@ void App::handleEventHandlers() {
 void App::trayMenuCallback( struct tray_menu *item, int id ) {
     LOG_INFO << "系统托盘菜单被点击,菜单ID:" << id;
     switch ( id ) {
-    case OpenHome:
-        LOG_DEBUG << "打开主页";
-        utils::openBrowser();
-        break;
     case Exit:
         LOG_INFO << "用户选择退出程序";
         exit( 0 );
+        break;
+    case Reboot:
+        reboot();
         break;
     case EnableContextMenu: {
         bool current = Config::getEnableContextmenu();
@@ -218,8 +229,15 @@ void App::trayMenuCallback( struct tray_menu *item, int id ) {
     case Settings:
         LOG_DEBUG << "展开子菜单 (仅UI操作)";
         break;
+    case OpenAbout:
+        utils::openBrowser( APP_WEB_URL );
+        break;
+    case OpenBrowser:
+        LOG_DEBUG << "浏览器打开";
+        utils::openHome();
+        break;
     case OpenWebview:
-        LOG_DEBUG << "打开Webview";
+        LOG_DEBUG << "webview打开";
         if ( webview.start() ) {
             webview.navigate( "http://127.0.0.1:" + std::to_string( Config::getHttpServerPort() ) + "/webview" );
             webview.showMaximized();
@@ -247,10 +265,12 @@ void App::loadTrayMenu() {
     };
 
     auto root = {
-        m_systemTray->createMenu( "打开主页", OpenHome ),
-        m_systemTray->createMenu( "打开Webview", OpenWebview ),
+        m_systemTray->createMenu( "浏览器打开", OpenBrowser ),
+        m_systemTray->createMenu( "webview打开", OpenWebview ),
         m_systemTray->createMenu( "设置", Settings, settings ),
         m_systemTray->createSeparator(),
+        m_systemTray->createMenu( "关于", OpenAbout ),
+        m_systemTray->createMenu( "重启", Reboot ),
         m_systemTray->createMenu( "退出", Exit ),
     };
     m_systemTray->update( root );
@@ -398,5 +418,5 @@ void App::handleBoot( const std::vector<std::string> &args ) {
         return;
     }
     LOG_INFO << "生成分享ID: " << id << ",打开管理页面";
-    utils::openBrowser( "/index.html?page=./admin/&shareId=" + utils::urlEncode( id ) );
+    utils::openHome( "/index.html?page=./admin/&shareId=" + utils::urlEncode( id ) );
 }

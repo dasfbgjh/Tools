@@ -20,16 +20,12 @@ CMakeUserPresets.json
 
 
 /build
-/clipboard.db
-/clipboard.db-shm
-/clipboard.db-wal
 /appInfo/output
 /tmp
 /uploads
-/bin/test.exe
-/bin/Tools.exe
-/bin/tools_generate.exe
+/bin/test*
+/bin/Tools*
+/bin/tools*
 /bin/uploads
 /bin/temp
-/bin/RapidOCR/ch-server-v4
-/bin/database.db
+/bin/database*

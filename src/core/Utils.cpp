@@ -298,14 +298,23 @@ std::vector<std::string> getLocalIPs() {
     return ips;
 }
 
-void openBrowser( const std::string &path ) {
+void openHome( const std::string &path ) {
 #ifdef _WIN32
     std::string url;
     if ( Config::getEnableHttps() && !Config::getSslCertPath().empty() && !Config::getSslKeyPath().empty() )
         url = "https://127.0.0.1:" + std::to_string( Config::getHttpsServerPort() ) + path;
     else
         url = "http://127.0.0.1:" + std::to_string( Config::getHttpServerPort() ) + path;
-    ShellExecuteA( NULL, "open", url.c_str(), NULL, ".", SW_SHOWNORMAL );
+    openBrowser( url );
+#endif
+}
+
+void openBrowser( const std::string &url ) {
+#ifdef _WIN32
+    if ( startWith( url, "http://" ) || startWith( url, "https://" ) )
+        ShellExecuteA( NULL, "open", url.c_str(), NULL, ".", SW_SHOWNORMAL );
+    else
+        LOG_WARN << "打开URL失败: " << url;
 #endif
 }
 
@@ -353,6 +362,79 @@ bool isValidUtf8( const std::string &str ) {
         }
     }
     return true;
+}
+
+std::string sanitizeUtf8( const std::string &in ) {
+    size_t len = in.size();
+    while ( len > 0 && in[len - 1] == '\0' )
+        len--;
+    std::string out;
+    out.reserve( len + 8 );
+    size_t i = 0;
+    const char *data = in.data();
+    while ( i < len ) {
+        unsigned char c = static_cast<unsigned char>( data[i] );
+        if ( c < 0x80 ) {
+            out.push_back( data[i] );
+            i++;
+            continue;
+        }
+        size_t follow = 0;
+        bool invalid = false;
+        if ( ( c & 0xE0 ) == 0xC0 ) {
+            if ( c < 0xC2 )
+                invalid = true;
+            else
+                follow = 1;
+        } else if ( ( c & 0xF0 ) == 0xE0 ) {
+            follow = 2;
+        } else if ( ( c & 0xF8 ) == 0xF0 ) {
+            if ( c > 0xF4 )
+                invalid = true;
+            else
+                follow = 3;
+        } else {
+            invalid = true;
+        }
+        if ( !invalid && i + follow > len ) {
+            // 截断序列，跳过开头字节
+            invalid = true;
+        }
+        if ( !invalid && follow >= 1 ) {
+            unsigned char b2 = static_cast<unsigned char>( data[i + 1] );
+            if ( ( b2 & 0xC0 ) != 0x80 )
+                invalid = true;
+            if ( follow == 1 && c == 0xC0 )
+                invalid = true;
+            if ( follow == 2 ) {
+                unsigned char b3 = static_cast<unsigned char>( data[i + 2] );
+                if ( ( b3 & 0xC0 ) != 0x80 )
+                    invalid = true;
+                if ( c == 0xED && b2 >= 0xA0 )
+                    invalid = true; // surrogates
+                if ( c == 0xE0 && b2 < 0xA0 )
+                    invalid = true;
+            }
+            if ( follow == 3 ) {
+                unsigned char b3 = static_cast<unsigned char>( data[i + 2] );
+                unsigned char b4 = static_cast<unsigned char>( data[i + 3] );
+                if ( ( b3 & 0xC0 ) != 0x80 || ( b4 & 0xC0 ) != 0x80 )
+                    invalid = true;
+                if ( c == 0xF0 && b2 < 0x90 )
+                    invalid = true;
+                if ( c == 0xF4 && b2 > 0x8F )
+                    invalid = true;
+            }
+        }
+        if ( invalid ) {
+            out.append( "\xEF\xBF\xBD", 3 );
+            i += 1;
+            continue;
+        }
+        out.append( data + i, 1 + follow );
+        i += 1 + follow;
+    }
+    return out;
 }
 
 std::string utf8ToLocal( const std::string &utf8 ) {
@@ -405,11 +487,11 @@ std::string jsonStringValue( const json &j, const std::string &key ) {
     return "";
 }
 
-bool startsWith( const std::string &str, const std::string &prefix ) {
+bool startWith( const std::string &str, const std::string &prefix ) {
     return str.compare( 0, prefix.length(), prefix ) == 0;
 }
 
-bool endsWith( const std::string &str, const std::string &suffix ) {
+bool endWith( const std::string &str, const std::string &suffix ) {
     if ( str.length() < suffix.length() ) {
         return false;
     }

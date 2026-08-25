@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 project(Tools
-    VERSION 1.0.0
+    VERSION 1.0.1
     DESCRIPTION "Tools - A collection of useful tools for developers"
-    HOMEPAGE_URL "https://example.com"
+    HOMEPAGE_URL "https://github.com/dasfbgjh/Tools"
 )
 
 set(CMAKE_CXX_STANDARD 17)
@@ -45,7 +45,8 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(WIN_GUI WIN32)
 endif()
 
-add_executable(${PROJECT_NAME} ${WIN_GUI}
+set(APP_FILE_NAME ${PROJECT_NAME}_v${PROJECT_VERSION})
+add_executable(${APP_FILE_NAME} ${WIN_GUI}
     ${APPINFO_SRC}
     src/main.cpp
     src/common/App.cpp
@@ -76,7 +77,7 @@ add_executable(${PROJECT_NAME} ${WIN_GUI}
     src/routes/OcrTools.cpp
     3rdparty/qrcodegen/qrcodegen.cpp
 )
-target_include_directories(${PROJECT_NAME} PRIVATE
+target_include_directories(${APP_FILE_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 
     # cli11
@@ -95,23 +96,23 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/webview/core/include
     ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/webview2/include
 )
-target_compile_definitions(${PROJECT_NAME} PRIVATE
+target_compile_definitions(${APP_FILE_NAME} PRIVATE
     -DTRAY_WINAPI=1 # 启用系统托盘
     -DCMAKE_SOURCE_DIR="${CMAKE_SOURCE_DIR}" # 用于日志中转换文件路径到相对路径
 )
 
-target_link_options(${PROJECT_NAME} PRIVATE
+target_link_options(${APP_FILE_NAME} PRIVATE
     -static-libstdc++ -static-libgcc -static
 )
 
 # Debug 模式下，直接读取资源从系统目录
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_definitions(${PROJECT_NAME} PRIVATE
+    target_compile_definitions(${APP_FILE_NAME} PRIVATE
         -DRESOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/resource/data"
     )
 endif()
 
-target_link_libraries(${PROJECT_NAME} PRIVATE
+target_link_libraries(${APP_FILE_NAME} PRIVATE
     ${RESOURCE_NAME_PREIFX}_resource
 
     # SQLite3
@@ -133,7 +134,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 )
 
 if(WIN32)
-    target_link_libraries(${PROJECT_NAME} PRIVATE
+    target_link_libraries(${APP_FILE_NAME} PRIVATE
         iphlpapi
         crypt32
         ws2_32
@@ -144,7 +145,8 @@ if(WIN32)
 endif()
 
 # ----------------------------------------------------------------
-add_executable(test ${APPINFO_SRC}
+add_executable(test 
+# WIN32
     test/test.cpp
 )
 target_include_directories(test PRIVATE

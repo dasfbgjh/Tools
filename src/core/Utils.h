@@ -59,10 +59,14 @@ std::map<std::string, std::string> parseCookies( const std::string &cookieHeader
 
 std::vector<std::string> getLocalIPs();
 
-void openBrowser( const std::string &path = "/" );
+void openHome( const std::string &path = "/" );
+void openBrowser( const std::string &url );
 void openDirectory( const std::string &path );
 
 bool isValidUtf8( const std::string &str );
+
+// 将非法 UTF-8 字节替换为 U+FFFD（UTF-8: EF BF BD）
+std::string sanitizeUtf8( const std::string &in );
 
 std::string utf8ToLocal( const std::string &utf8 );
 
@@ -71,9 +75,9 @@ std::string localToUtf8( const std::string &local );
 // 获取JSON中的字符串字段，不存在则返回空字符串
 std::string jsonStringValue( const json &j, const std::string &key );
 
-bool startsWith( const std::string &str, const std::string &prefix );
+bool startWith( const std::string &str, const std::string &prefix );
 
-bool endsWith( const std::string &str, const std::string &suffix );
+bool endWith( const std::string &str, const std::string &suffix );
 
 std::string toLower( std::string str );
 

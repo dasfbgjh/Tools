@@ -214,80 +214,6 @@ public:
         return initModelInternal( *info, err );
     }
 
-    // 将非法 UTF-8 字节替换为 U+FFFD（UTF-8: EF BF BD）
-    std::string sanitizeUtf8( const std::string &in ) {
-        size_t len = in.size();
-        while ( len > 0 && in[len - 1] == '\0' )
-            len--;
-        std::string out;
-        out.reserve( len + 8 );
-        size_t i = 0;
-        const char *data = in.data();
-        while ( i < len ) {
-            unsigned char c = static_cast<unsigned char>( data[i] );
-            if ( c < 0x80 ) {
-                out.push_back( data[i] );
-                i++;
-                continue;
-            }
-            size_t follow = 0;
-            bool invalid = false;
-            if ( ( c & 0xE0 ) == 0xC0 ) {
-                if ( c < 0xC2 )
-                    invalid = true;
-                else
-                    follow = 1;
-            } else if ( ( c & 0xF0 ) == 0xE0 ) {
-                follow = 2;
-            } else if ( ( c & 0xF8 ) == 0xF0 ) {
-                if ( c > 0xF4 )
-                    invalid = true;
-                else
-                    follow = 3;
-            } else {
-                invalid = true;
-            }
-            if ( !invalid && i + follow > len ) {
-                // 截断序列，跳过开头字节
-                invalid = true;
-            }
-            if ( !invalid && follow >= 1 ) {
-                unsigned char b2 = static_cast<unsigned char>( data[i + 1] );
-                if ( ( b2 & 0xC0 ) != 0x80 )
-                    invalid = true;
-                if ( follow == 1 && c == 0xC0 )
-                    invalid = true;
-                if ( follow == 2 ) {
-                    unsigned char b3 = static_cast<unsigned char>( data[i + 2] );
-                    if ( ( b3 & 0xC0 ) != 0x80 )
-                        invalid = true;
-                    if ( c == 0xED && b2 >= 0xA0 )
-                        invalid = true; // surrogates
-                    if ( c == 0xE0 && b2 < 0xA0 )
-                        invalid = true;
-                }
-                if ( follow == 3 ) {
-                    unsigned char b3 = static_cast<unsigned char>( data[i + 2] );
-                    unsigned char b4 = static_cast<unsigned char>( data[i + 3] );
-                    if ( ( b3 & 0xC0 ) != 0x80 || ( b4 & 0xC0 ) != 0x80 )
-                        invalid = true;
-                    if ( c == 0xF0 && b2 < 0x90 )
-                        invalid = true;
-                    if ( c == 0xF4 && b2 > 0x8F )
-                        invalid = true;
-                }
-            }
-            if ( invalid ) {
-                out.append( "\xEF\xBF\xBD", 3 );
-                i += 1;
-                continue;
-            }
-            out.append( data + i, 1 + follow );
-            i += 1 + follow;
-        }
-        return out;
-    }
-
     bool detect( const std::string &imgPath, const OCR_PARAM &param,
                  Server::json &out, std::string &err ) {
         std::lock_guard<std::mutex> lk( m_mutex );
@@ -311,7 +237,7 @@ public:
         std::string fullText;
         for ( unsigned long long i = 0; i < result.textBlocksLength; i++ ) {
             const TEXT_BLOCK &tb = result.textBlocks[i];
-            std::string text = sanitizeUtf8( std::string( tb.text, tb.text + tb.textLength ) );
+            std::string text = utils::sanitizeUtf8( std::string( tb.text, tb.text + tb.textLength ) );
             Server::json box = Server::json::array();
             for ( unsigned long long j = 0; j < tb.boxPointLength; j++ )
                 box.push_back( { { "x", tb.boxPoint[j].x }, { "y", tb.boxPoint[j].y } } );

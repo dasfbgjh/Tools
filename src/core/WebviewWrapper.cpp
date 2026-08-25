@@ -24,6 +24,10 @@ bool WebviewWrapper::start() {
         initWindow( view );
         view.init( init_js );
 
+        // #ifdef _WIN32
+        //         ICoreWebView2Controller *controller = (ICoreWebView2Controller *)view.browser_controller().value();
+        // #endif
+
         view.set_html( Server::staticResource( "/webview/index.html", "" ) );
         view.set_size( 1200, 800, WEBVIEW_HINT_NONE );
         view.run();
@@ -250,7 +254,6 @@ void WebviewWrapper::initWindow( webview::webview &view ) {
 
 void WebviewWrapper::bindings( webview::webview &view ) {
     view.bind( "__windowPage", []( std::string msg ) -> std::string {
-        const unsigned char *data = nullptr;
         std::string content = Server::staticResource( "/webview/window.html", "" );
         nlohmann::json res( { { "content", content } } );
         return res.dump();

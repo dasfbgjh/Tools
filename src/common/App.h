@@ -16,6 +16,7 @@ private:
 
     bool m_running;
     int m_exitCode;
+    bool m_reboot;
 
     Server m_server; // http服务器实例
 
@@ -39,6 +40,8 @@ public:
     bool init();
     int exec();
     void exit( int exitCode = 0 );
+    void reboot();
+    bool isReboot();
     bool isRunning();
     void postEvent( std::function<void( App * )> handler );
 
@@ -48,11 +51,13 @@ public:
 
 private:
     enum MenuId {
-        OpenHome,
         Settings,
         Exit,
+        Reboot,
         EnableContextMenu,
         AutoBoot,
+        OpenAbout,
+        OpenBrowser,
         OpenWebview,
     };
 

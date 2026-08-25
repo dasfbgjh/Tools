@@ -9,6 +9,10 @@
 #include <boost/process/v2/stdio.hpp>
 #include <boost/process/v2/start_dir.hpp>
 #include <boost/process/v2/environment.hpp>
+#if defined( _WIN32 )
+#include <boost/process/v2/windows/creation_flags.hpp>
+#include <boost/process/v2/windows/show_window.hpp>
+#endif
 
 class EventLoop {
 public:
@@ -52,6 +56,8 @@ public:
 
     static EventLoop &instance();
 
+    static void delayBoot( const std::string &cmd, int seconds );
+
     // 获取当前进程的环境变量集
     static std::map<std::string, std::string> currentEnv();
 
@@ -61,6 +67,8 @@ public:
 
     // 创建一个绑定到主事件循环 io_context 的读管道
     std::shared_ptr<pipe_read> createPipeRead();
+
+    static std::string processPath( const std::string &exe );
 
     // 运行一个进程，返回进程对象
     std::shared_ptr<process> runProcess(

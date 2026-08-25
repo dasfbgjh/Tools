@@ -1,5 +1,6 @@
 #include "EventLoop.h"
 #include "common/Logger.hpp"
+#include "core/Utils.h"
 
 #include <atomic>
 #include <chrono>
@@ -24,6 +25,33 @@ void EventLoop::stop() {
 EventLoop &EventLoop::instance() {
     static EventLoop ins;
     return ins;
+}
+
+void EventLoop::delayBoot( const std::string &cmd, int seconds ) {
+#ifdef _WIN32
+    context ctx;
+
+    std::string delay = R"(C:\Windows\System32\timeout.exe /T )";
+    delay += std::to_string( seconds );
+    delay += R"( /NOBREAK > nul)";
+
+    namespace bpw = boost::process::v2::windows;
+    constexpr auto noWinFlags = bpw::process_creation_flags<CREATE_NO_WINDOW>{};
+
+    process p( ctx, R"(C:\Windows\System32\cmd.exe)",
+               { "/c", delay, "&", utils::fs::toNative( cmd ) }, noWinFlags );
+    p.detach();
+#else
+    context ctx;
+    std::string delay = "/usr/bin/sleep " + std::to_string( seconds );
+
+    namespace bpw = boost::process::v2::windows;
+    constexpr auto noWinFlags = bpw::process_creation_flags<CREATE_NO_WINDOW>{};
+
+    process p( ctx, R"(/usr/bin/bash)",
+               { "-c \"", delay, "&&", utils::fs::toNative( cmd ), "\"" }, noWinFlags );
+    p.detach();
+#endif
 }
 
 std::map<std::string, std::string> EventLoop::currentEnv() {
@@ -57,6 +85,56 @@ std::shared_ptr<EventLoop::pipe_read> EventLoop::createPipeRead() {
     return std::make_shared<pipe_read>( m_context );
 }
 
+std::string EventLoop::processPath( const std::string &exe ) {
+    if ( std::filesystem::exists( exe ) && !std::filesystem::is_directory( exe ) ) {
+        std::string path = std::filesystem::absolute( exe ).string();
+        return utils::fs::toNative( path );
+    }
+    if ( std::filesystem::path( exe ).is_absolute() )
+        return "";
+
+    std::string envPath = "";
+    auto envs = boost::process::environment::current();
+    for ( auto it : envs ) {
+        auto key = it.key();
+        if ( key.size() < 1 )
+            continue;
+        if ( utils::toUpper( it.key().string() ) == "PATH" ) {
+            auto value = it.value();
+            envPath = value.size() > 0 ? value.string() : "";
+            break;
+        }
+    }
+#ifdef _WIN32
+    const char sep = ';';
+#else
+    const char sep = ':';
+#endif
+
+    int pos = 0;
+    while ( pos < envPath.size() ) {
+        int nextPos = envPath.find( sep, pos );
+        if ( nextPos == std::string::npos )
+            nextPos = envPath.size();
+        std::string sub = envPath.substr( pos, nextPos - pos );
+        pos = nextPos + 1;
+
+        std::filesystem::path prefix( sub );
+        prefix /= exe;
+        if ( std::filesystem::exists( prefix ) && !std::filesystem::is_directory( prefix ) )
+            return utils::fs::toNative( prefix.string() );
+
+#ifdef _WIN32
+        if ( prefix.extension() != "" )
+            continue;
+        prefix += ".exe";
+        if ( std::filesystem::exists( prefix ) && !std::filesystem::is_directory( prefix ) )
+            return utils::fs::toNative( prefix.string() );
+#endif
+    }
+    return "";
+}
+
 std::shared_ptr<EventLoop::process> EventLoop::runProcess(
     const std::vector<std::string> &cmd,
     const std::filesystem::path &workDir,
@@ -71,11 +149,11 @@ std::shared_ptr<EventLoop::process> EventLoop::runProcess(
         return nullptr;
     }
 
-    std::string exePath = cmd.front();
-    if ( !std::filesystem::exists( exePath ) ) {
+    std::string exePath = processPath( cmd.front() );
+    if ( exePath.empty() ) {
         if ( errorMsg )
-            *errorMsg = "命令" + exePath + "不存在";
-        LOG_WARN << "命令" << exePath << "不存在";
+            *errorMsg = "命令" + cmd.front() + "不存在";
+        LOG_WARN << "命令" << cmd.front() << "不存在";
         return nullptr;
     }
 
@@ -96,13 +174,28 @@ std::shared_ptr<EventLoop::process> EventLoop::runProcess(
         io.err = *err;
 
     try {
+#if defined( _WIN32 )
+        // - CREATE_NO_WINDOW：不为控制台子系统进程分配控制台
+        namespace bpw = boost::process::v2::windows;
+        constexpr auto noWinFlags = bpw::process_creation_flags<CREATE_NO_WINDOW>{};
+        return std::make_shared<process>(
+            m_context, exePath,
+            argv, cwd,
+            process_env( environment ),
+            io,
+            noWinFlags );
+#else
         return std::make_shared<process>(
             m_context, exePath, argv, cwd,
             process_env( environment ), io );
+#endif
     } catch ( const std::exception &e ) {
+        std::string msg = e.what();
+        if ( !utils::isValidUtf8( msg ) )
+            msg = utils::localToUtf8( msg );
         if ( errorMsg )
-            *errorMsg = e.what();
-        LOG_WARN << "启动进程:" << e.what();
+            *errorMsg = msg + " (" + exePath + ")";
+        LOG_WARN << "启动进程" << exePath << "失败:" << msg;
         return nullptr;
     }
 }

@@ -2,6 +2,7 @@
 #include "common/Config.h"
 #include "common/App.h"
 #include "AppInfo.h"
+#include "common/EventLoop.h"
 
 int main( int argc, char *argv[] ) {
     AppExtension::setOutputGBKCode( true );
@@ -9,15 +10,30 @@ int main( int argc, char *argv[] ) {
     auto &logger = Logger::getInstance();
     logger.setOutputToConsole( true );
     logger.setOutputToFile( Logger::FileMode::FILE_OFF );
-    logger.setLevel( Logger::Level::INFO );
+    logger.setLevel( Logger::Level::DEBUG );
 
-    LOG_INFO << "========== 应用启动 ==========";
-    LOG_INFO << "应用版本: " APP_VERSION;
-    LOG_DEBUG << "命令行参数个数: " << argc;
+#if APP_BUILD_RELEASE == 0
+#ifdef WIN32
+    system( "cls" );
+#else
+    system( "clear" );
+#endif
+#endif
+    LOG_DEBUG << "应用名称:" << APP_NAME << "(" << APP_NAME_CODE << ")" << "\n"
+              << "应用描述:" << APP_DESCRIPTION << "\n"
+              << "应用开发组织:" << APP_ORG_NAME << "(" << APP_ORG_CODE << ")" << "\n"
+              << "应用主页:" << APP_WEB_URL << "\n"
+              << "应用开发者:" << APP_DEVELOPER << "\n"
+              << "调试模式:" << APP_DEBUG_MODE << "\n"
+              << "构建模式:" << APP_BUILD_RELEASE << "\n"
+              << "应用版本:" << APP_VERSION << "(" << APP_VERSION_CODE << ")" << "\n"
+              << "启动参数个数:" << argc << "\n"
+              << "更新日志:" << "\n"
+              << APP_UPDATE_LOG;
 
     try {
         Config::init( argc, argv );
-        LOG_INFO << "配置解析完成";
+        LOG_DEBUG << "配置解析完成";
     } catch ( const std::exception &e ) {
         LOG_ERROR << "配置解析异常: " << e.what();
         return 1;
@@ -39,6 +55,10 @@ int main( int argc, char *argv[] ) {
     LOG_INFO << "进入主事件循环";
     int code = app.exec();
     LOG_INFO << "应用退出，返回码:" << code;
-    LOG_INFO << "========== 应用结束 ==========";
+
+    if ( app.isReboot() ) {
+        LOG_INFO << "应用重启";
+        EventLoop::delayBoot( Config::getAppFullPath(), 2 );
+    }
     return code;
 }

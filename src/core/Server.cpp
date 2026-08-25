@@ -212,7 +212,7 @@ void Server::redirectPage( httplib::Response &res, const std::string &path ) {
 };
 
 void Server::serveStatic( const httplib::Request &req, httplib::Response &res, const std::string &path ) {
-    if ( ( utils::startsWith( path, "/admin" ) || utils::startsWith( path, "/local-tools" ) ) && !isLocalhost( req ) ) {
+    if ( ( utils::startWith( path, "/admin" ) || utils::startWith( path, "/local-tools" ) ) && !isLocalhost( req ) ) {
         LOG_WARN << "非本机访问敏感页面" << req.remote_addr;
         res.status = 403;
         res.set_content( "<html> <head> <title>403 Forbidden</title> </head> <body> "

@@ -31,7 +31,7 @@ static httplib::Server::Handler createProxyHandler( const std::string &reqPath, 
         cli.set_follow_location( true );
 
         std::string path = req.path;
-        if ( utils::startsWith( path, reqPath ) ) {
+        if ( utils::startWith( path, reqPath ) ) {
             path = path.substr( reqPath.size() );
         }
         if ( path.empty() )
@@ -144,7 +144,7 @@ bool HttpServerManager::start( const std::string &id ) {
             continue;
         if ( source.empty() )
             continue;
-        if ( utils::startsWith( source, "http://" ) || utils::startsWith( source, "https://" ) ) {
+        if ( utils::startWith( source, "http://" ) || utils::startWith( source, "https://" ) ) {
             // 代理：捕获所有子路径
             inst->server->Get( path + "(.*)", createProxyHandler( path, source ) );
             inst->server->Post( path + "(.*)", createProxyHandler( path, source ) );
