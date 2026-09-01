@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小游戏</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./game.css">
+</head>
+
+<body>
+    <div class="game-layout">
+        <div class="game-sidebar" id="game-sidebar">
+            <div class="game-sidebar-head">
+                <div class="game-mode-switch">
+                    <button class="game-mode-btn" id="mode-pc">PC端</button>
+                    <button class="game-mode-btn" id="mode-mobile">移动端</button>
+                </div>
+                <button class="game-sidebar-toggle" id="sidebar-collapse" title="收起侧栏">◀</button>
+            </div>
+            <div class="game-zoom-row">
+                <span class="game-zoom-label" id="game-zoom-label">100%</span>
+                <input type="range" class="game-zoom-slider" id="game-zoom-slider" min="25" max="200" value="100" step="5">
+            </div>
+            <div class="game-search">
+                <input type="text" id="game-search-input" placeholder="搜索游戏..." autocomplete="off">
+            </div>
+            <ul class="game-list" id="game-list"></ul>
+        </div>
+        <div class="game-main">
+            <button class="game-sidebar-expand" id="sidebar-expand" title="展开侧栏">▶</button>
+            <div class="game-area pc-mode" id="game-area">
+                <div class="game-empty">
+                    <div class="game-empty-icon">🎮</div>
+                    <div class="game-empty-text">从左侧列表选择一个游戏开始</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="./common.js"></script>
+    <script src="../api.js"></script>
+    <script src="./game.js"></script>
+</body>
+
+</html>

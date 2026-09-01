@@ -11,8 +11,10 @@ class App {
 private:
     static App *g_instance;
 
+#ifdef _WIN32
     static const char *g_localServerName;
     static HANDLE g_mutex;
+#endif
 
     bool m_running;
     int m_exitCode;

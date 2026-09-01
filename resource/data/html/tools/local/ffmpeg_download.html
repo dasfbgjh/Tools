@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FFmpeg 视频下载 / 录制</title>
+    <link rel="stylesheet" href="../../style.css">
+    <script src="../../theme.js"></script>
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="./ffmpeg_download.css">
+</head>
+
+<body>
+    <div class="tool-page">
+        <div id="fd-banner"></div>
+        <!-- ffmpeg 信息 -->
+        <div class="fd-section" style="padding: 0.5rem 0.75rem;">
+            <div class="fd-info" id="fd-info">
+                <span class="pill">FFmpeg: 检测中...</span>
+            </div>
+        </div>
+
+        <div class="fd-main">
+            <!-- 左：参数 -->
+            <div>
+                <div class="fd-section">
+                    <div class="tool-toolbar" style="margin-bottom:0.625rem;">
+                        <h2 style="margin:0;flex:0 0 auto;">任务设置</h2>
+                        <span class="spacer"></span>
+                        <button class="btn btn-primary" id="fd-btn-add" type="button">添加任务</button>
+                    </div>
+                    <div class="fd-mode-tabs">
+                        <button class="fd-mode-tab active" data-mode="download">下载 (m3u8/HTTP/HTTPS)</button>
+                        <button class="fd-mode-tab" data-mode="record">录制 (RTMP/RTSP/直播)</button>
+                    </div>
+
+                    <div class="fd-field">
+                        <label class="fd-label">源 URL</label>
+                        <input type="text" class="ui-form-input" id="fd-url"
+                            placeholder="https://example.com/path/to/index.m3u8 或 rtmp://server/live/stream">
+                    </div>
+
+                    <h2>输出位置</h2>
+                    <div class="fd-field">
+                        <label class="fd-label">输出目录</label>
+                        <div class="fd-row">
+                            <input type="text" class="ui-form-input" id="fd-output-dir" style="flex:1;"
+                                placeholder="输出目录（绝对路径）">
+                            <button class="btn btn-outline btn-sm" id="fd-btn-pick-dir">浏览...</button>
+                        </div>
+                    </div>
+                    <div class="fd-field">
+                        <label class="fd-label">文件名前缀</label>
+                        <input type="text" class="ui-form-input" id="fd-base-name" style="flex:1;" value="download"
+                            placeholder="生成 download.mp4 / download.crt 等">
+                    </div>
+                </div>
+
+                <div class="fd-section">
+                    <h2 id="fd-mode-h2">下载设置</h2>
+                    <div class="fd-row" style="gap:0.5rem;">
+                        <div class="fd-field" style="flex:1; min-width:0;">
+                            <label class="fd-label">保存格式</label>
+                            <select class="ui-form-input" id="fd-format">
+                                <option value="mp4" selected>mp4</option>
+                                <option value="ts">ts</option>
+                                <option value="mkv">mkv</option>
+                                <option value="mov">mov</option>
+                                <option value="flv">flv</option>
+                            </select>
+                        </div>
+                        <div class="fd-field" style="flex:1; min-width:0;">
+                            <label class="fd-label">网络超时 (ms)</label>
+                            <input type="number" class="ui-form-input" id="fd-timeout" min="1000" step="1000"
+                                value="30000">
+                        </div>
+                    </div>
+
+                    <label class="ui-toggle">
+                        <input type="checkbox" id="fd-reconnect" checked>
+                        <span>允许断流自动重连 (http/https)</span>
+                    </label>
+                    <label class="ui-toggle">
+                        <input type="checkbox" id="fd-hls-ext" checked>
+                        <span>允许 m3u8 加载子扩展 (allowed_extensions ALL)</span>
+                    </label>
+                    <label class="ui-toggle">
+                        <input type="checkbox" id="fd-reencode">
+                        <span>重新编码 (流复制 → H.264/AAC)</span>
+                    </label>
+                </div>
+
+                <div class="fd-section">
+                    <h2>录制 / 时长</h2>
+                    <div class="fd-field">
+                        <label class="fd-label">最长录制时长（秒，0 = 直到源结束）</label>
+                        <input type="number" class="ui-form-input" id="fd-duration" min="0" step="1" value="0">
+                    </div>
+                </div>
+
+                <div class="fd-section">
+                    <h2>HTTP 头 (可选)</h2>
+                    <p class="fd-hint">每行一个，如 <code>User-Agent: Mozilla/5.0</code> 或
+                        <code>Referer: https://example.com</code>。用于需要 Referer / Cookie 的源。
+                    </p>
+                    <textarea class="ui-form-input" id="fd-headers" rows="3"
+                        placeholder="User-Agent: Mozilla/5.0&#10;Referer: https://example.com"></textarea>
+                </div>
+            </div>
+
+            <!-- 右：任务 -->
+            <div>
+                <div class="fd-section">
+                    <div class="tool-toolbar" style="margin-bottom:0.75rem;">
+                        <h2 style="margin:0;flex:0 0 auto;">任务列表
+                            <span class="fd-hint" style="margin-left:0.5rem; font-weight:400;"
+                                id="fd-task-summary"></span>
+                        </h2>
+                    </div>
+                    <div class="fd-task-list" id="fd-task-list">
+                        <div class="fd-empty">加载中...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../app.js"></script>
+    <script src="../../api.js"></script>
+    <script src="./../common.js"></script>
+    <script src="../../fs_browser.js"></script>
+    <script src="./ffmpeg_download.js"></script>
+</body>
+
+</html>

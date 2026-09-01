@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTTP 路径挂载 / 代理</title>
+    <link rel="stylesheet" href="../../style.css">
+    <script src="../../theme.js"></script>
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="./http_servers.css">
+</head>
+
+<body>
+    <div class="tool-page">
+        <div class="tool-card" style="margin-bottom:1.5rem;">
+            <div class="tool-toolbar" style="margin:0;">
+                <h2 style="margin:0;flex:0 0 auto;">HTTP 路径挂载 / 代理</h2>
+                <span class="spacer"></span>
+                <button class="btn btn-primary" id="btn-new">+ 新建服务器</button>
+            </div>
+        </div>
+        <div id="banner"></div>
+        <div class="ui-card-list" id="ui-card-list"></div>
+    </div>
+
+    <!-- 编辑/新建弹窗 -->
+    <div class="ui-fs-modal" id="hs-modal" hidden>
+        <div class="ui-fs-modal-head" style="margin-bottom:0.5rem;">
+            <strong id="hs-modal-title">新建服务器</strong>
+        </div>
+        <div class="ui-modal-form">
+            <div class="ui-form-row">
+                <label class="ui-form-label">名称</label>
+                <input type="text" class="ui-form-input" id="f-name" placeholder="例如 本地静态站点" style="flex:1;">
+                <label class="ui-form-label">端口</label>
+                <input type="number" class="ui-form-input sm" id="f-port" min="1" max="65535" value="8080"
+                    style="width:96px;flex:0 0 96px;">
+            </div>
+            <div class="ui-form-row">
+                <label class="ui-toggle" style="margin-left:auto;">
+                    <input type="checkbox" id="f-auto">
+                    <span>应用启动时自动启动</span>
+                </label>
+            </div>
+
+            <div class="ui-fieldset">
+                <div class="ui-fieldset-title">路径配置（可添加多个，按顺序匹配）</div>
+                <div id="f-mounts"></div>
+                <button class="btn btn-sm" id="f-add-mount">+ 添加路径</button>
+            </div>
+
+            <div class="ui-hint" style="margin-top:0.5rem;">
+                路径示例：<code>/</code> <code>/api/</code> <code>/static/</code><br>
+                源示例：本地目录 <code>C:\www</code> 或 URL <code>http://localhost:3000</code>（自动判断）
+            </div>
+        </div>
+        <div class="ui-fs-modal-foot">
+            <span id="hs-modal-err" class="ui-banner-error" style="display:none;"></span>
+            <span class="ui-spacer"></span>
+            <button class="btn btn-outline" data-modal-close>取消</button>
+            <button class="btn btn-primary" id="f-save">保存</button>
+        </div>
+    </div>
+
+    <script src="../../app.js"></script>
+    <script src="../../api.js"></script>
+    <script src="./../common.js"></script>
+    <script src="./http_servers.js"></script>
+</body>
+
+</html>

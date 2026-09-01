@@ -17,10 +17,6 @@ HttpServerInstance *HttpServerManager::findInstance( const std::string &id ) con
     return it == m_instances.end() ? nullptr : it->second.get();
 }
 
-HttpServerManager::~HttpServerManager() {
-    shutdownAll();
-}
-
 static httplib::Server::Handler createProxyHandler( const std::string &reqPath, const std::string &targetUrl ) {
     return [reqPath, targetUrl]( const httplib::Request &req, httplib::Response &res ) {
         httplib::Client cli( targetUrl );

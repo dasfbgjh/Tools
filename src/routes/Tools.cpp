@@ -757,12 +757,364 @@ void imageConvert( const httplib::Request &req, httplib::Response &res ) {
     res.set_header( "Content-Disposition", "attachment; filename=\"" + newFilename + "\"" );
 }
 
+void toolCatalog( const httplib::Request &req, httplib::Response &res ) {
+    const bool isLocal = Server::isLocalhost( req );
+
+    Server::json categories = Server::json::array();
+    categories.push_back( { { "code", "all" }, { "name", "全部工具" } } );
+    categories.push_back( { { "code", "common" }, { "name", "常用工具" } } );
+    categories.push_back( { { "code", "json" }, { "name", "JSON工具" } } );
+    categories.push_back( { { "code", "encoding" }, { "name", "编码加密" } } );
+    categories.push_back( { { "code", "network" }, { "name", "网络工具" } } );
+    categories.push_back( { { "code", "datetime" }, { "name", "时间日期" } } );
+    categories.push_back( { { "code", "code" }, { "name", "代码工具" } } );
+    categories.push_back( { { "code", "text" }, { "name", "文本处理" } } );
+    categories.push_back( { { "code", "image" }, { "name", "图像工具" } } );
+    categories.push_back( { { "code", "frontend" }, { "name", "前端开发" } } );
+    categories.push_back( { { "code", "pdf" }, { "name", "PDF工具" } } );
+    categories.push_back( { { "code", "math" }, { "name", "数学计算" } } );
+    categories.push_back( { { "code", "crypto" }, { "name", "加密工具" } } );
+    if ( isLocal ) {
+        categories.push_back( { { "code", "local" }, { "name", "本地工具" } } );
+    }
+
+    Server::json tools = Server::json::array();
+
+    auto pushTool = [&tools]( const char *code, const char *icon, std::vector<const char *> cats,
+                              const char *title, const char *desc,
+                              std::vector<const char *> keywords, const char *url ) {
+        Server::json jcats = Server::json::array();
+        for ( auto c : cats )
+            jcats.push_back( c );
+        Server::json jkws = Server::json::array();
+        for ( auto k : keywords )
+            jkws.push_back( k );
+        tools.push_back( { { "code", code },
+                           { "icon", icon },
+                           { "cats", jcats },
+                           { "title", title },
+                           { "desc", desc },
+                           { "keywords", jkws },
+                           { "url", url ? url : "" } } );
+    };
+
+    // ===== Online tools (isLocal=false) =====
+    pushTool( "json_formatter", "{ }", { "common", "json" }, "JSON格式化", "JSON美化、压缩、校验与路径查询",
+              { "json", "格式化", "美化", "压缩", "校验", "formatter" }, "/tools/json_formatter.html" );
+
+    pushTool( "http_tester", "🌐", { "common", "network" }, "HTTP接口测试", "发送GET/POST等请求,测试API接口",
+              { "http", "api", "请求", "postman", "接口测试" }, "/tools/http_tester.html" );
+
+    pushTool( "timestamp_converter", "⏰", { "common", "datetime" }, "时间戳转换", "Unix时间戳与日期时间互转",
+              { "时间戳", "timestamp", "unix", "时间", "日期" }, "/tools/timestamp_converter.html" );
+
+    pushTool( "encoding_converter", "🔄", { "common", "encoding" }, "编码转换", "Base64/URL/Unicode/Hex多编码互转",
+              { "编码", "base64", "url", "unicode", "hex", "解码" }, "/tools/encoding_converter.html" );
+
+    pushTool( "ip_lookup", "📡", { "common", "network" }, "IP地址查询", "查询IP归属地、运营商信息",
+              { "ip", "地址", "归属地", "运营商", "查询" }, "/tools/ip_lookup.html" );
+
+    pushTool( "image_compressor", "🖼️", { "common", "image" }, "图片压缩", "在线压缩JPEG/PNG图片",
+              { "图片", "压缩", "image", "compress" }, "/tools/image_compressor.html" );
+
+    pushTool( "qrcode_generator", "📱", { "common", "image" }, "二维码生成", "生成文本/URL二维码",
+              { "二维码", "qrcode", "扫码" }, "/tools/qrcode_generator.html" );
+
+    pushTool( "icon_designer", "🎨", { "common", "image" }, "图标设计", "在线设计App图标和favicon",
+              { "图标", "icon", "logo", "favicon" }, "/tools/icon_designer.html" );
+
+    pushTool( "json_editor", "✏️", { "common", "json" }, "JSON编辑器", "可视化编辑JSON数据",
+              { "json", "编辑器", "editor" }, "/tools/json_editor.html" );
+
+    pushTool( "json_converter", "🔄", { "json" }, "JSON转换", "JSON与XML/CSV/YAML互转",
+              { "json", "xml", "csv", "yaml", "转换" }, "/tools/json_converter.html" );
+
+    pushTool( "regex_tester", "🔑", { "text" }, "正则表达式测试", "在线测试正则表达式匹配",
+              { "正则", "regex", "表达式" }, "/tools/regex_tester.html" );
+
+    pushTool( "crypto_tools", "🔒", { "encoding" }, "加密解密工具", "MD5/SHA/AES/DES哈希与加密",
+              { "加密", "解密", "md5", "sha", "aes", "hash" }, "/tools/crypto_tools.html" );
+
+    pushTool( "url_encoder", "🔗", { "encoding" }, "URL编码解码", "URL编码与解码工具",
+              { "url", "编码", "解码", "urlencode" }, "/tools/url_encoder.html" );
+
+    pushTool( "unicode_converter", "🔤", { "encoding" }, "Unicode转换", "中文与Unicode编码互转",
+              { "unicode", "中文", "编码" }, "/tools/unicode_converter.html" );
+
+    pushTool( "jwt_decoder", "🎟️", { "encoding" }, "JWT解析", "解析JWT令牌的Header与Payload",
+              { "jwt", "token", "令牌", "解析" }, "/tools/jwt_decoder.html" );
+
+    pushTool( "number_base_converter", "🔢", { "encoding" }, "进制转换", "二/八/十/十六进制互转",
+              { "进制", "二进制", "十六进制", "binary", "hex" }, "/tools/number_base_converter.html" );
+
+    pushTool( "base64_to_image", "🖼️", { "image", "encoding" }, "Base64图片互转", "Base64与图片互转",
+              { "base64", "图片", "image" }, "/tools/base64_to_image.html" );
+
+    pushTool( "date_calculator", "📅", { "datetime" }, "日期计算器", "计算两个日期差值与加减",
+              { "日期", "计算", "差值", "天数" }, "/tools/date_calculator.html" );
+
+    pushTool( "timezone_converter", "🌍", { "datetime" }, "时区转换", "世界各时区时间转换",
+              { "时区", "timezone", "UTC", "GMT" }, "/tools/timezone_converter.html" );
+
+    pushTool( "cron_generator", "⏱️", { "datetime" }, "Cron表达式生成", "生成与解析Cron定时表达式",
+              { "cron", "crontab", "定时", "调度" }, "/tools/cron_generator.html" );
+
+    pushTool( "text_counter", "📏", { "text" }, "字数统计", "统计字符、单词、行数等",
+              { "字数", "统计", "字符", "行数" }, "/tools/text_counter.html" );
+
+    pushTool( "text_space_stripper", "🧹", { "text" }, "去空格工具", "去除文本中的空格与换行",
+              { "空格", "换行", "trim", "strip" }, "/tools/text_space_stripper.html" );
+
+    pushTool( "html_markdown_converter", "📝", { "code", "text" }, "HTML与Markdown互转", "HTML与Markdown格式互转",
+              { "html", "markdown", "md", "转换" }, "/tools/html_markdown_converter.html" );
+
+    pushTool( "code_formatter", "📋", { "code" }, "代码格式化", "HTML/CSS/JS/SQL代码美化",
+              { "代码", "格式化", "美化", "formatter" }, "/tools/code_formatter.html" );
+
+    pushTool( "yml_properties_converter", "📄", { "code" }, "YML与Properties互转", "YAML与Properties配置互转",
+              { "yml", "yaml", "properties", "配置" }, "/tools/yml_properties_converter.html" );
+
+    pushTool( "password_generator", "🔑", { "code" }, "密码生成器", "生成随机强密码",
+              { "密码", "password", "随机", "生成" }, "/tools/password_generator.html" );
+
+    pushTool( "color_tools", "🎭", { "frontend" }, "颜色工具", "RGB/HEX/HSL颜色转换与调色",
+              { "颜色", "color", "rgb", "hex", "hsl" }, "/tools/color_tools.html" );
+
+    pushTool( "css_gradient_generator", "🌈", { "frontend" }, "CSS渐变生成器", "生成线性/径向CSS渐变",
+              { "css", "渐变", "gradient", "背景" }, "/tools/css_gradient_generator.html" );
+
+    pushTool( "image_converter", "🔄", { "image" }, "图片格式转换", "使用stb_image库转换图片格式",
+              { "图片", "转换", "格式", "png", "jpg", "bmp", "image", "converter" }, "/tools/image_converter.html" );
+
+    pushTool( "image_ocr", "🔍", { "image", "common" }, "图片OCR识别", "基于RapidOcr识别图片中的文字",
+              { "图片", "ocr", "文字识别", "光标识别", "rapidocr", "文字提取" }, "/tools/image_ocr.html" );
+
+    pushTool( "image_watermark", "💧", { "image" }, "图片水印", "为图片添加文字水印",
+              { "图片", "水印", "watermark" }, "/tools/image_watermark.html" );
+
+    pushTool( "pdf_manager", "📚", { "pdf", "common" }, "PDF合并分割", "合并、分割、提取、旋转PDF文件",
+              { "pdf", "合并", "分割", "提取", "旋转", "merger" }, "/tools/pdf_manager.html" );
+
+    pushTool( "pdf_compressor", "🗜️", { "pdf", "common" }, "PDF压缩", "压缩PDF文件大小",
+              { "pdf", "压缩", "compress" }, "/tools/pdf_compressor.html" );
+
+    pushTool( "pdf_watermark", "💧", { "pdf" }, "PDF水印", "为PDF添加文字水印",
+              { "pdf", "水印", "watermark" }, "/tools/pdf_watermark.html" );
+
+    pushTool( "uuid_generator", "🆔", { "encoding", "common" }, "UUID生成器", "生成UUID v1/v4/v7与ULID",
+              { "uuid", "ulid", "guid", "唯一id", "random" }, "/tools/uuid_generator.html" );
+
+    pushTool( "text_to_binary", "💾", { "encoding" }, "文本与二进制互转", "文本与二进制字符串互转",
+              { "二进制", "binary", "编码", "0和1" }, "/tools/text_to_binary.html" );
+
+    pushTool( "basic_auth_generator", "🔐", { "encoding", "network" }, "Basic Auth生成器", "生成HTTP Basic Auth认证头",
+              { "basic", "auth", "认证", "base64", "header" }, "/tools/basic_auth_generator.html" );
+
+    pushTool( "html_entities", "🔡", { "encoding", "frontend" }, "HTML实体编解码", "HTML实体编码与解码",
+              { "html", "实体", "entities", "编码", "解码" }, "/tools/html_entities.html" );
+
+    pushTool( "token_generator", "🔑", { "encoding", "crypto" }, "Token生成器", "生成随机Token、UUID、JWT格式等",
+              { "token", "随机", "uuid", "jwt", "api key" }, "/tools/token_generator.html" );
+
+    pushTool( "lorem_ipsum_generator", "📜", { "text" }, "Lorem Ipsum生成器", "生成占位用拉丁文假文本",
+              { "lorem", "ipsum", "占位", "假文", "dummy" }, "/tools/lorem_ipsum_generator.html" );
+
+    pushTool( "case_converter", "🔠", { "text" }, "大小写转换", "多种命名风格互转(camel/snake/kebab等)",
+              { "大小写", "case", "camel", "snake", "kebab", "pascal" }, "/tools/case_converter.html" );
+
+    pushTool( "text_to_nato_alphabet", "📻", { "text" }, "北约音标字母", "字母转北约音标与摩斯电码",
+              { "nato", "音标", "摩斯", "morse", "字母" }, "/tools/text_to_nato_alphabet.html" );
+
+    pushTool( "slugify_string", "🏷️", { "text" }, "URL Slug生成器", "将文本转为URL友好的slug",
+              { "slug", "url", "seo", "拼音", "permalink" }, "/tools/slugify_string.html" );
+
+    pushTool( "list_converter", "📃", { "text" }, "列表转换器", "列表去重、排序、添加前后缀等",
+              { "列表", "list", "去重", "排序", "转换" }, "/tools/list_converter.html" );
+
+    pushTool( "numeronym_generator", "#️⃣", { "text" }, "数字缩写生成器", "生成i18n、k8s等数字缩写",
+              { "缩写", "numeronym", "i18n", "k8s" }, "/tools/numeronym_generator.html" );
+
+    pushTool( "text_diff", "⚖️", { "text" }, "文本对比", "逐行对比两段文本的差异",
+              { "diff", "对比", "差异", "compare" }, "/tools/text_diff.html" );
+
+    pushTool( "roman_numeral_converter", "🏛️", { "text", "math" }, "罗马数字转换", "阿拉伯数字与罗马数字互转",
+              { "罗马", "roman", "数字", "转换" }, "/tools/roman_numeral_converter.html" );
+
+    pushTool( "math_evaluator", "🧮", { "math", "code" }, "数学表达式计算", "安全计算数学表达式",
+              { "数学", "计算", "表达式", "math", "evaluate", "计算器" }, "/tools/math_evaluator.html" );
+
+    pushTool( "percentage_calculator", "📈", { "math" }, "百分比计算器", "多种百分比计算模式",
+              { "百分比", "percent", "计算", "增减" }, "/tools/percentage_calculator.html" );
+
+    pushTool( "temperature_converter", "🌡️", { "math", "datetime" }, "温度转换", "摄氏/华氏/开尔文/兰氏互转",
+              { "温度", "temperature", "摄氏", "华氏", "开尔文" }, "/tools/temperature_converter.html" );
+
+    pushTool( "chmod_calculator", "🐧", { "code" }, "Chmod计算器", "Linux文件权限计算器",
+              { "chmod", "权限", "linux", "rwx", "octal" }, "/tools/chmod_calculator.html" );
+
+    pushTool( "mime_types", "📎", { "code" }, "MIME类型查询", "文件扩展名与MIME类型对照表",
+              { "mime", "类型", "扩展名", "content-type", "文件" }, "/tools/mime_types.html" );
+
+    pushTool( "http_status_codes", "📶", { "network" }, "HTTP状态码查询", "HTTP状态码含义速查表",
+              { "http", "状态码", "status", "code", "响应" }, "/tools/http_status_codes.html" );
+
+    pushTool( "mac_address_generator", "💻", { "network" }, "MAC地址生成器", "生成随机MAC地址",
+              { "mac", "地址", "随机", "网卡", "oui" }, "/tools/mac_address_generator.html" );
+
+    pushTool( "random_port_generator", "🎰", { "network" }, "随机端口生成器", "生成随机网络端口号",
+              { "端口", "port", "随机", "random" }, "/tools/random_port_generator.html" );
+
+    pushTool( "ipv4_subnet_calculator", "🖥️", { "network" }, "IPv4子网计算器", "CIDR子网掩码与主机范围计算",
+              { "ipv4", "子网", "subnet", "cidr", "掩码", "mask" }, "/tools/ipv4_subnet_calculator.html" );
+
+    pushTool( "url_parser", "🔗", { "network", "frontend" }, "URL解析器", "解析URL各组件和查询参数",
+              { "url", "解析", "query", "params", "components" }, "/tools/url_parser.html" );
+
+    pushTool( "device_information", "📱", { "network", "common" }, "设备信息", "查看浏览器和设备详细信息",
+              { "设备", "浏览器", "user agent", "屏幕", "系统" }, "/tools/device_information.html" );
+
+    pushTool( "meta_tag_generator", "🏷️", { "frontend" }, "元标签生成器", "生成HTML元标签和OG标签",
+              { "meta", "og", "标签", "seo", "social" }, "/tools/meta_tag_generator.html" );
+
+    pushTool( "json_diff", "🔍", { "json" }, "JSON对比", "深度对比两个JSON对象的差异",
+              { "json", "diff", "对比", "差异", "compare" }, "/tools/json_diff.html" );
+
+    pushTool( "bip39_mnemonic", "🔐", { "crypto", "common" }, "BIP39助记词", "生成和验证BIP39加密货币助记词",
+              { "bip39", "助记词", "mnemonic", "加密货币", "钱包" }, "/tools/bip39_mnemonic.html" );
+
+    pushTool( "password_strength_analyser", "🛡️", { "crypto" }, "密码强度分析器", "分析密码强度、熵值与破解时间",
+              { "密码", "强度", "熵", "安全", "password" }, "/tools/password_strength_analyser.html" );
+
+    pushTool( "pdf_signature_checker", "✍️", { "crypto", "pdf" }, "PDF签名检查器", "检测PDF数字签名与证书信息",
+              { "pdf", "签名", "数字签名", "证书", "signature" }, "/tools/pdf_signature_checker.html" );
+
+    pushTool( "pdf_converter", "🔄", { "pdf" }, "PDF转换", "PDF与Word/Excel/PPT/图片等格式互转",
+              { "pdf", "转换", "word", "excel", "ppt", "图片" }, "/tools/pdf_converter.html" );
+
+    pushTool( "toml_converter", "📐", { "code" }, "TOML转换器", "TOML与JSON/YAML互转",
+              { "toml", "json", "yaml", "转换", "配置" }, "/tools/toml_converter.html" );
+
+    pushTool( "otp_generator", "🔑", { "crypto", "network" }, "OTP生成器", "生成和验证TOTP/HOTP一次性密码",
+              { "otp", "totp", "hotp", "双因素", "2fa" }, "/tools/otp_generator.html" );
+
+    pushTool( "keycode_info", "⌨️", { "frontend", "code" }, "键码信息", "查看键盘按键的keyCode等信息",
+              { "keycode", "键盘", "按键", "key", "code" }, "/tools/keycode_info.html" );
+
+    pushTool( "user_agent_parser", "🔍", { "network" }, "用户代理解析器", "解析User-Agent字符串",
+              { "user-agent", "ua", "浏览器", "解析" }, "/tools/user_agent_parser.html" );
+
+    pushTool( "html_wysiwyg_editor", "📝", { "frontend" }, "HTML所见即所得编辑器", "在线富文本HTML编辑器",
+              { "html", "编辑器", "wysiwyg", "富文本" }, "/tools/html_wysiwyg_editor.html" );
+
+    pushTool( "safelink_decoder", "🔓", { "network" }, "安全链接解码器", "解码Google/Outlook等安全链接",
+              { "safelink", "安全链接", "解码", "url", "google" }, "/tools/safelink_decoder.html" );
+
+    pushTool( "wifi_qr_code_generator", "📶", { "image" }, "WiFi二维码生成器", "生成WiFi连接二维码",
+              { "wifi", "二维码", "qrcode", "无线网络" }, "/tools/wifi_qr_code_generator.html" );
+
+    pushTool( "svg_placeholder_generator", "🖼️", { "image", "frontend" }, "SVG占位符生成器", "生成SVG格式占位图片",
+              { "svg", "占位符", "placeholder", "图片" }, "/tools/svg_placeholder_generator.html" );
+
+    pushTool( "camera_recorder", "📹", { "image" }, "摄像头录制器", "录制摄像头视频并下载",
+              { "摄像头", "录制", "camera", "视频", "webcam" }, "/tools/camera_recorder.html" );
+
+    pushTool( "git_memo", "📋", { "code" }, "Git备忘", "Git命令速查表",
+              { "git", "命令", "备忘", "速查" }, "/tools/git_memo.html" );
+
+    pushTool( "docker_run_to_compose", "🐳", { "code" }, "Docker Run转Compose", "将docker run命令转为docker-compose.yml",
+              { "docker", "compose", "yaml", "转换" }, "/tools/docker_run_to_compose.html" );
+
+    pushTool( "yaml_viewer", "📄", { "code", "json" }, "YAML查看器", "YAML格式化、校验与树形查看",
+              { "yaml", "格式化", "查看器", "树形" }, "/tools/yaml_viewer.html" );
+
+    pushTool( "email_normalizer", "📧", { "text" }, "邮箱标准化", "邮箱地址标准化与批量处理",
+              { "邮箱", "email", "标准化", "normalize" }, "/tools/email_normalizer.html" );
+
+    pushTool( "regex_memo", "📒", { "text", "code" }, "正则备忘", "正则表达式语法速查表",
+              { "正则", "regex", "备忘", "速查", "语法" }, "/tools/regex_memo.html" );
+
+    pushTool( "ipv4_address_converter", "🔢", { "network" }, "IPv4地址转换器", "IPv4地址与十进制/十六进制互转",
+              { "ipv4", "地址", "转换", "十进制", "十六进制" }, "/tools/ipv4_address_converter.html" );
+
+    pushTool( "ipv4_range_expander", "📊", { "network" }, "IPv4范围扩展器", "计算包含IP范围的最小CIDR",
+              { "ipv4", "范围", "cidr", "子网", "扩展" }, "/tools/ipv4_range_expander.html" );
+
+    pushTool( "mac_address_lookup", "💻", { "network" }, "MAC地址查询", "通过OUI查询MAC地址厂商",
+              { "mac", "地址", "oui", "厂商", "查询" }, "/tools/mac_address_lookup.html" );
+
+    pushTool( "ipv6_ula_generator", "🌐", { "network" }, "IPv6 ULA生成器", "生成RFC 4193 IPv6唯一本地地址",
+              { "ipv6", "ula", "唯一本地地址", "rfc4193" }, "/tools/ipv6_ula_generator.html" );
+
+    pushTool( "eta_calculator", "⏳", { "math" }, "ETA计算器", "计算预计完成时间和剩余时间",
+              { "eta", "预计", "完成", "时间", "进度" }, "/tools/eta_calculator.html" );
+
+    pushTool( "chronometer", "⏱️", { "datetime" }, "计时器", "秒表计时与记圈",
+              { "计时器", "秒表", "chronometer", "lap", "圈" }, "/tools/chronometer.html" );
+
+    pushTool( "benchmark_builder", "⚡", { "code", "math" }, "基准测试构建器", "对比JavaScript代码执行性能",
+              { "基准", "benchmark", "性能", "测试", "对比" }, "/tools/benchmark_builder.html" );
+
+    pushTool( "string_obfuscator", "🔒", { "text", "crypto" }, "字符串混淆器", "将字符串混淆为多种编码形式",
+              { "混淆", "obfuscator", "编码", "unicode", "hex" }, "/tools/string_obfuscator.html" );
+
+    pushTool( "ascii_text_drawer", "🔤", { "text" }, "ASCII文本绘图", "将文本转为ASCII艺术字",
+              { "ascii", "艺术", "绘图", "字符画", "banner" }, "/tools/ascii_text_drawer.html" );
+
+    pushTool( "emoji_picker", "😀", { "text" }, "Emoji选择器", "浏览和复制Emoji表情",
+              { "emoji", "表情", "选择器", "picker" }, "/tools/emoji_picker.html" );
+
+    pushTool( "phone_parser", "📞", { "network" }, "电话号码解析器", "解析和格式化国际电话号码",
+              { "电话", "phone", "解析", "格式化", "国际" }, "/tools/phone_parser.html" );
+
+    pushTool( "iban_validator", "🏦", { "network" }, "IBAN验证器", "验证和解析国际银行账号",
+              { "iban", "银行", "账号", "验证", "解析" }, "/tools/iban_validator.html" );
+
+    pushTool( "game", "🎮", { "common" }, "小游戏", "小游戏合集",
+              { "游戏" }, "/tools/game.html" );
+
+    // ===== Local tools (only include when localhost) =====
+    if ( isLocal ) {
+        pushTool( "batch-rename", "Aa", { "local", "common" }, "批量重命名", "按规则批量重命名本机文件或文件夹，支持编号、替换、插入、转换大小写",
+                  { "批量", "重命名", "rename", "文件" }, "/tools/local/batch_rename.html" );
+
+        pushTool( "mcp-debug", "🔭", { "local", "code" }, "MCP 调试器", "对任意 HTTP MCP 服务执行握手、工具/资源/提示枚举与调用，查看全链路请求/响应与耗时",
+                  { "mcp", "调试", "debug", "ai", "协议" }, "/tools/local/mcp_debug.html" );
+
+        pushTool( "http-servers", "⇄", { "local", "network", "code" }, "HTTP 路径挂载 / 代理", "添加端口并配置不同路径挂载本地目录或代理请求，支持启动/停止监听",
+                  { "http", "服务器", "挂载", "文件服务器", "代理", "proxy" }, "/tools/local/http_servers.html" );
+
+        pushTool( "process-mgr", "▶", { "local", "code" }, "服务进程管理", "配置并启动/停止本机进程，实时查看输出，可配置命令、工作目录、环境变量等",
+                  { "进程", "process", "服务", "启动", "命令" }, "/tools/local/processes.html" );
+
+        pushTool( "ffmpeg", "🎬", { "local", "common" }, "FFmpeg 视频处理", "调用本地 FFmpeg 进行截取、格式转换、压缩，支持 GPU 编码与并行任务",
+                  { "ffmpeg", "视频", "转码", "压缩", "截取" }, "/tools/local/ffmpeg.html" );
+
+        pushTool( "ffmpeg-download", "⬇", { "local", "common" }, "FFmpeg 视频下载 / 录制", "从 m3u8/HTTP/HTTPS 拉取视频，或录制 RTMP/RTSP 直播流到本地",
+                  { "ffmpeg", "下载", "视频", "录制", "直播", "m3u8" }, "/tools/local/ffmpeg_download.html" );
+
+        pushTool( "cert", "🔒", { "local", "code", "encoding" }, "自签名证书生成", "基于本地 OpenSSL 生成自签名 X.509 证书，支持 IP/DNS SAN 与自定义主体信息",
+                  { "证书", "cert", "ssl", "tls", "openssl", "签名" }, "/tools/local/cert_tool.html" );
+
+        pushTool( "docs", "📚", { "local", "text" }, "文档阅读", "指定本机目录，递归浏览 Markdown / HTML 文档，左侧目录树 + 右侧内容",
+                  { "文档", "doc", "markdown", "阅读", "目录" }, "/tools/local/docs.html" );
+
+        pushTool( "sys-monitor", "📊", { "local", "common" }, "系统监测", "查看本机硬件信息（CPU/内存/磁盘/网络）与实时占用率，基于 hwinfo 库",
+                  { "系统", "监测", "cpu", "内存", "磁盘", "网络", "gpu" }, "/tools/local/sys_monitor.html" );
+
+        pushTool( "image-annotator", "✏️", { "local", "image" }, "图片标注工具", "截屏图片标注工具，支持遮罩选区、绘制图形、添加文字、模糊、撤销恢复和保存导出",
+                  { "图片", "标注", "绘图", "截图", "注释" }, "/tools/local/image_annotator.html" );
+    }
+
+    Server::sendJson( res, { { "categories", categories }, { "tools", tools } } );
+}
+
 void registerToolRoutes( httplib::Server &svr ) {
     svr.Get( "/api/tools/ip", ipLookup );
     svr.Post( "/api/tools/proxy", httpProxy );
     svr.Get( "/api/tools/qrcode", qrcode );
     svr.Post( "/api/tools/image/convert", imageConvert );
-    LOG_DEBUG << "已注册 4 个工具路由";
+    svr.Get( "/api/tools/catalog", toolCatalog );
+    LOG_DEBUG << "已注册 5 个工具路由";
 }
 
 } // namespace routes::tools

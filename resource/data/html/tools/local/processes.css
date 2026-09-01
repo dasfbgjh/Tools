@@ -1,0 +1,140 @@
+/* ===== Process Manager ===== */
+
+.proc-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+}
+
+/* 进程卡片：相比 http 服务器在 head 与 body 留出更宽松的间距 */
+.proc-list .ui-card-head {
+    padding: 0.875rem 1rem 0.875rem;
+    column-gap: 0.75rem;
+    row-gap: 1.25rem;
+    align-items: flex-start;
+}
+
+.proc-list .ui-card-title {
+    gap: 0.625rem;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.proc-list .ui-card-actions {
+    gap: 0.75rem;
+    flex: 0 0 auto;
+    margin-top: 0.25rem;
+}
+
+.proc-list .ui-card-body {
+    padding: 0.75rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+}
+
+.proc-cmdline {
+    font-family: ui-monospace, monospace;
+    font-size: 0.8125rem;
+    color: var(--text);
+    background: var(--bg);
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    word-break: break-all;
+    max-height: 4.5em;
+    overflow-y: auto;
+    line-height: 1.5;
+}
+
+.proc-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.proc-env-tag {
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    background: var(--bg-muted);
+    padding: 0.125rem 0.5rem;
+    border-radius: 999px;
+}
+
+/* ===== 备注 ===== */
+.proc-remarks {
+    font-size: 0.8125rem;
+    color: var(--text);
+    background: var(--bg);
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    line-height: 1.6;
+    word-break: break-word;
+    white-space: pre-wrap;
+}
+
+.proc-remarks a.proc-remark-link {
+    color: var(--primary);
+    text-decoration: none;
+}
+.proc-remarks a.proc-remark-link:hover {
+    text-decoration: underline;
+}
+
+/* ===== Env editor ===== */
+.proc-env-row {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-bottom: 0.375rem;
+}
+
+.proc-env-name {
+    width: 180px;
+    flex: 0 0 180px;
+    font-family: ui-monospace, monospace;
+}
+
+.proc-env-val {
+    flex: 1;
+    min-width: 180px;
+    font-family: ui-monospace, monospace;
+}
+
+/* ===== Log viewer ===== */
+.proc-log {
+    flex: 1;
+    overflow: auto;
+    background: #0a0e14;
+    color: #d6dbdf;
+    border-radius: var(--radius);
+    padding: 0.5rem 0.75rem;
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    border: 1px solid var(--border);
+}
+
+.proc-log-line {
+    display: flex;
+    gap: 0.625rem;
+    align-items: flex-start;
+}
+
+.proc-log-err {
+    color: #fca5a5;
+}
+
+.proc-log-ts {
+    color: #6b7280;
+    flex: 0 0 auto;
+    user-select: none;
+}
+
+.proc-log-text {
+    white-space: pre-wrap;
+    word-break: break-all;
+    flex: 1;
+}

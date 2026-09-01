@@ -84,8 +84,6 @@ private:
 
     ProcManager &operator=( const ProcManager & ) = delete;
 
-    ~ProcManager();
-
     std::map<std::string, std::string> buildEnv( bool envInherit, const std::map<std::string, std::string> &userEnv );
 
     void waitProcess( ProcInstance *instPtr, const std::string &name, const std::string &id );

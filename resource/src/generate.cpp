@@ -11,7 +11,8 @@ namespace fs = std::filesystem;
 struct FileInfo {
     std::string arrayName;
     std::string relativePath;
-    std::vector<unsigned char> data;
+    fs::path filePath;
+    size_t fileSize;
 };
 
 std::string escapePath( const std::string &path ) {
@@ -25,52 +26,70 @@ std::string escapePath( const std::string &path ) {
 }
 
 void generateData( const FileInfo &file, std::ostream &out ) {
+    std::ifstream ifs( file.filePath, std::ios::binary );
+    if ( !ifs ) {
+        std::cerr << "Warning: Cannot read file: " << file.filePath << std::endl;
+        return;
+    }
+
     int n;
-    if ( file.data.size() % sizeof( unsigned long long ) == 0 ) {
+    const char *typeStr;
+    const char *suffix;
+    if ( file.fileSize % sizeof( unsigned long long ) == 0 ) {
         n = sizeof( unsigned long long );
-        out << "static const unsigned long long " << file.arrayName << "[]={";
-        unsigned long long value;
-        for ( size_t i = 0; i < file.data.size(); i += n ) {
-            if ( i > 0 )
-                out << ",";
-            std::memcpy( &value, &file.data[i], n );
-            out << value << "ULL";
-        }
-        out << "};\n";
-    } else if ( file.data.size() % sizeof( unsigned int ) == 0 ) {
+        typeStr = "unsigned long long";
+        suffix = "ULL";
+    } else if ( file.fileSize % sizeof( unsigned int ) == 0 ) {
         n = sizeof( unsigned int );
-        out << "static const unsigned int " << file.arrayName << "[]={";
-        unsigned int value;
-        for ( size_t i = 0; i < file.data.size(); i += n ) {
-            if ( i > 0 )
-                out << ",";
-            std::memcpy( &value, &file.data[i], n );
-            out << value << "U";
-        }
-        out << "};\n";
-    } else if ( file.data.size() % sizeof( unsigned short ) == 0 ) {
+        typeStr = "unsigned int";
+        suffix = "U";
+    } else if ( file.fileSize % sizeof( unsigned short ) == 0 ) {
         n = sizeof( unsigned short );
-        out << "static const unsigned short " << file.arrayName << "[]={";
-        unsigned short value;
-        for ( size_t i = 0; i < file.data.size(); i += n ) {
-            if ( i > 0 )
-                out << ",";
-            std::memcpy( &value, &file.data[i], n );
-            out << value;
-        }
-        out << "};\n";
+        typeStr = "unsigned short";
+        suffix = "";
     } else {
         n = sizeof( unsigned char );
-        out << "static const unsigned char " << file.arrayName << "[]={";
-        unsigned char value;
-        for ( size_t i = 0; i < file.data.size(); i += n ) {
-            if ( i > 0 )
-                out << ",";
-            std::memcpy( &value, &file.data[i], n );
-            out << static_cast<int>( value );
-        }
-        out << "};\n";
+        typeStr = "unsigned char";
+        suffix = "";
     }
+
+    out << "static const " << typeStr << " " << file.arrayName << "[]={";
+
+    constexpr size_t CHUNK_SIZE = 8192; // 值必须能被n整除
+    std::vector<unsigned char> chunk( CHUNK_SIZE );
+    bool first = true;
+
+    while ( ifs ) {
+        ifs.read( reinterpret_cast<char *>( chunk.data() ), CHUNK_SIZE );
+        auto bytesRead = static_cast<size_t>( ifs.gcount() );
+        if ( bytesRead == 0 )
+            break;
+
+        for ( size_t i = 0; i < bytesRead; i += n ) {
+            if ( !first )
+                out << ",";
+            else
+                first = false;
+
+            if ( n == sizeof( unsigned long long ) ) {
+                unsigned long long value;
+                std::memcpy( &value, &chunk[i], n );
+                out << value << suffix;
+            } else if ( n == sizeof( unsigned int ) ) {
+                unsigned int value;
+                std::memcpy( &value, &chunk[i], n );
+                out << value << suffix;
+            } else if ( n == sizeof( unsigned short ) ) {
+                unsigned short value;
+                std::memcpy( &value, &chunk[i], n );
+                out << value;
+            } else {
+                out << static_cast<int>( chunk[i] );
+            }
+        }
+    }
+
+    out << "};\n";
 }
 
 bool generateResourceHeader( const std::string &inputDir, const std::string &outputPath ) {
@@ -89,18 +108,8 @@ bool generateResourceHeader( const std::string &inputDir, const std::string &out
             fs::path relPath = fs::relative( entry.path(), inputDir );
             info.relativePath = "/" + escapePath( relPath.string() );
             info.arrayName = "D" + std::to_string( number++ );
-
-            std::ifstream file( entry.path(), std::ios::binary );
-            if ( !file ) {
-                std::cerr << "Warning: Cannot read file: " << entry.path() << std::endl;
-                continue;
-            }
-
-            info.data = std::vector<unsigned char>(
-                std::istreambuf_iterator<char>( file ),
-                std::istreambuf_iterator<char>()
-
-            );
+            info.filePath = entry.path();
+            info.fileSize = fs::file_size( entry.path() );
 
             files.push_back( info );
         }
@@ -133,13 +142,6 @@ bool generateResourceHeader( const std::string &inputDir, const std::string &out
     out << "#define " << guardName << "\n\n";
 
     for ( const auto &file : files ) {
-        // out << "static const unsigned char " << file.arrayName << "[]={";
-        // for ( size_t i = 0; i < file.data.size(); ++i ) {
-        //     if ( i > 0 )
-        //         out << ",";
-        //     out << static_cast<int>( file.data[i] );
-        // }
-        // out << "};\n\n";
         generateData( file, out );
     }
 
@@ -157,7 +159,7 @@ bool generateResourceHeader( const std::string &inputDir, const std::string &out
         out << "    {\""
             << files[i].relativePath << "\","
             << "(const unsigned char*)" << files[i].arrayName << ","
-            << files[i].data.size()
+            << files[i].fileSize
             << "}";
 
         if ( i < files.size() - 1 ) {

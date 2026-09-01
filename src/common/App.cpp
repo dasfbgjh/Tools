@@ -6,10 +6,14 @@
 #include "common/EventLoop.h"
 #include "core/HttpServerManager.h"
 #include "core/ProcManager.h"
+#include "routes/FfmpegTool.h"
 
 App *App::g_instance = nullptr;
+
+#ifdef _WIN32
 const char *App::g_localServerName = "\\\\.\\pipe\\tools-ipc";
 HANDLE App::g_mutex = nullptr;
+#endif
 
 App::App() {
     if ( g_instance )
@@ -114,8 +118,10 @@ int App::exec() {
     LOG_INFO << "系统托盘已退出，正在停止所有服务线程...";
 #endif
 
+    HttpServerManager::instance().shutdownAll();
+    ProcManager::instance().shutdownAll();
+    routes::ffmpeg::FfmpegManager::instance().shutdownAll();
     webview.stop();
-
     m_server.stop();
     if ( serverTh1.joinable() )
         serverTh1.join();

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP 调试器</title>
+    <link rel="stylesheet" href="../../style.css">
+    <script src="../../theme.js"></script>
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="./mcp_debug.css">
+</head>
+
+<body>
+    <div class="tool-page md-page" >
+        <div class="md-layout">
+            <!-- ============ 左侧：参数面板 ============ -->
+            <aside class="md-panel md-form">
+                <div class="md-panel-title">
+                    <span>目标与动作</span>
+                </div>
+
+                <div class="ui-form-row">
+                    <label class="ui-form-label" style="width:96px;flex:0 0 96px;">目标端点</label>
+                    <input type="text" class="ui-form-input" id="f-endpoint" placeholder="http://127.0.0.1:8080/mcp"
+                        style="flex:1;" list="endpoint-list">
+                    <datalist id="endpoint-list">
+                        <option value="http://127.0.0.1:8080/mcp"></option>
+                        <option value="http://localhost:8080/mcp"></option>
+                        <option value="http://127.0.0.1/mcp"></option>
+                    </datalist>
+                </div>
+
+                <div class="ui-form-row">
+                    <label class="ui-form-label" style="width:96px;flex:0 0 96px;">调试动作</label>
+                    <select class="ui-form-input" id="f-action" style="flex:1;">
+                        <option value="probe">probe — 全链路诊断（握手 + 三项枚举 + 工具名提取）</option>
+                        <option value="initialize">initialize — 仅握手（initialize + notifications/initialized）</option>
+                        <option value="tools_list">tools_list — 列出工具（支持分页）</option>
+                        <option value="call_tool">call_tool — 调用指定工具</option>
+                        <option value="resources_list">resources_list — 列出资源（支持分页）</option>
+                        <option value="read_resource">read_resource — 读取指定资源 URI</option>
+                        <option value="prompts_list">prompts_list — 列出提示词（支持分页）</option>
+                        <option value="get_prompt">get_prompt — 获取指定提示词</option>
+                        <option value="raw">raw — 发送任意自定义 JSON-RPC 请求/通知</option>
+                    </select>
+                </div>
+
+                <div class="ui-form-row">
+                    <label class="ui-form-label" style="width:96px;flex:0 0 96px;">超时（秒）</label>
+                    <input type="number" class="ui-form-input sm" id="f-timeout" min="1" max="600" value="30"
+                        style="width:120px;flex:0 0 120px;">
+                    <label class="ui-toggle" style="margin-left:auto;">
+                        <input type="checkbox" id="f-skip-handshake">
+                        <span>跳过握手（initialize / raw 之外的动作）</span>
+                    </label>
+                </div>
+
+                <div class="ui-form-row">
+                    <label class="ui-form-label" style="width:96px;flex:0 0 96px;">传输模式</label>
+                    <select class="ui-form-input" id="f-transport" style="flex:1;">
+                        <option value="auto">auto — 自动检测（推荐）</option>
+                        <option value="streamable_http">streamable_http — Streamable HTTP</option>
+                        <option value="sse">sse — SSE 传输</option>
+                    </select>
+                </div>
+
+                <div class="md-action-help" id="action-help"></div>
+
+                <!-- ========== 握手/客户端 可折叠区 ========== -->
+                <details class="md-details" open>
+                    <summary>握手与客户端参数（可修改）</summary>
+                    <div class="md-details-body">
+                        <div class="ui-form-row">
+                            <label class="ui-form-label" style="width:112px;flex:0 0 112px;">协议版本</label>
+                            <input type="text" class="ui-form-input" id="f-proto" value="2025-03-26" style="flex:1;">
+                        </div>
+                        <div class="ui-form-row">
+                            <label class="ui-form-label" style="width:112px;flex:0 0 112px;">客户端名</label>
+                            <input type="text" class="ui-form-input" id="f-client-name" value="MCP-Debug-Tool-WebUI"
+                                style="flex:1;">
+                        </div>
+                        <div class="ui-form-row">
+                            <label class="ui-form-label" style="width:112px;flex:0 0 112px;">客户端版本</label>
+                            <input type="text" class="ui-form-input" id="f-client-version" value="1.0" style="flex:1;">
+                        </div>
+                    </div>
+                </details>
+
+                <!-- ========== 动作专属动态参数 ========== -->
+                <div class="md-dynamic-params" id="dyn-params">
+                    <div class="ui-fieldset">
+                        <div class="ui-fieldset-title" id="dyn-title">动态参数</div>
+                        <div id="dyn-body"></div>
+                    </div>
+                </div>
+
+                <div class="tool-toolbar" style="margin:1rem 0 0;">
+                    <button class="btn btn-outline btn-sm" id="btn-examples" type="button">示例填充</button>
+                    <button class="btn btn-ghost btn-sm" id="btn-clear" type="button">清空结果</button>
+                    <span class="spacer"></span>
+                    <button class="btn btn-primary" id="btn-run" type="button">▶ 执行调试</button>
+                </div>
+            </aside>
+
+            <!-- ============ 右侧：结果面板 ============ -->
+            <section class="md-panel md-result">
+                <div class="md-panel-title">
+                    <span>执行结果</span>
+                    <div id="summary-head" class="md-summary" hidden>
+                        <span id="sum-ok" class="ui-badge ok">成功</span>
+                        <span id="sum-elapsed" class="md-meta">–</span>
+                    </div>
+                </div>
+
+                <!-- Overview -->
+                <div id="overview" class="md-overview" hidden>
+                    <div class="md-ov-row">
+                        <div class="md-ov-label">动作</div>
+                        <div class="md-ov-val" id="ov-action">–</div>
+                        <div class="md-ov-label">目标</div>
+                        <div class="md-ov-val md-ov-truncate" id="ov-endpoint">–</div>
+                    </div>
+                    <div class="md-ov-row">
+                        <div class="md-ov-label">步骤</div>
+                        <div class="md-ov-val" id="ov-steps">–</div>
+                        <div class="md-ov-label">工具数</div>
+                        <div class="md-ov-val" id="ov-tools">–</div>
+                    </div>
+                </div>
+
+                <!-- Notifications (errors, success, info) -->
+                <div id="notifications" class="md-notifications" hidden></div>
+
+                <!-- Step list -->
+                <div id="steps" class="md-steps"></div>
+
+                <!-- Empty state -->
+                <div id="empty-state" class="admin-empty">
+                    <div class="icon">🔭</div>
+                    <h3>尚未执行调试</h3>
+                    <p>填写左侧参数，点击顶部"执行调试"即可查看全链路握手与调用步骤的请求/响应原文、HTTP 状态码、耗时与错误。</p>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="../../app.js"></script>
+    <script src="../../api.js"></script>
+    <script src="./../common.js"></script>
+    <script src="./mcp_debug.js"></script>
+</body>
+
+</html>

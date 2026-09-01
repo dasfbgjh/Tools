@@ -61,6 +61,9 @@ add_executable(${APP_FILE_NAME} ${WIN_GUI}
     src/core/HttpServerManager.cpp
     src/core/ProcManager.cpp
     src/core/WebviewWrapper.cpp
+    src/core/McpCore.cpp
+    src/core/McpServer.cpp
+    src/core/McpClient.cpp
     src/routes/Admin.cpp
     src/routes/Auth.cpp
     src/routes/Clipboard.cpp
@@ -73,8 +76,10 @@ add_executable(${APP_FILE_NAME} ${WIN_GUI}
     src/routes/FfmpegTool.cpp
     src/routes/CertTool.cpp
     src/routes/DocTool.cpp
+    src/routes/GameTool.cpp
     src/routes/SysMonitor.cpp
     src/routes/OcrTools.cpp
+    src/routes/Mcp.cpp
     3rdparty/qrcodegen/qrcodegen.cpp
 )
 target_include_directories(${APP_FILE_NAME} PRIVATE
@@ -145,8 +150,9 @@ if(WIN32)
 endif()
 
 # ----------------------------------------------------------------
-add_executable(test 
-# WIN32
+add_executable(test
+
+    # WIN32
     test/test.cpp
 )
 target_include_directories(test PRIVATE

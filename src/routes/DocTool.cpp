@@ -74,35 +74,6 @@ static std::string trim( const std::string &s ) {
     return s.substr( a, b - a );
 }
 
-static int hexValue( char c ) {
-    if ( c >= '0' && c <= '9' )
-        return c - '0';
-    if ( c >= 'a' && c <= 'f' )
-        return c - 'a' + 10;
-    if ( c >= 'A' && c <= 'F' )
-        return c - 'A' + 10;
-    return -1;
-}
-
-// URL 路径段解码(不解码 + 为空格, + 保留原义)
-static std::string urlDecodePath( const std::string &s ) {
-    std::string out;
-    out.reserve( s.size() );
-    for ( size_t i = 0; i < s.size(); i++ ) {
-        if ( s[i] == '%' && i + 2 < s.size() ) {
-            int h = hexValue( s[i + 1] );
-            int l = hexValue( s[i + 2] );
-            if ( h >= 0 && l >= 0 ) {
-                out.push_back( static_cast<char>( ( h << 4 ) | l ) );
-                i += 2;
-                continue;
-            }
-        }
-        out.push_back( s[i] );
-    }
-    return out;
-}
-
 static Server::json sourceToJson( const Database::Row &r ) {
     Server::json j;
     j["id"] = r.count( "id" ) ? r.at( "id" ) : "";
@@ -147,7 +118,7 @@ std::string g_baseUrl; // 形如 http://127.0.0.1:12345/
 
 // 在源根目录下解析 URL 路径到文件, 失败返回空
 static fs::path resolveFile( const std::string &urlPath ) {
-    std::string decoded = urlDecodePath( urlPath );
+    std::string decoded = utils::urlDecode( urlPath );
     // 去掉前导 /
     while ( !decoded.empty() && ( decoded.front() == '/' || decoded.front() == '\\' ) )
         decoded.erase( decoded.begin() );
@@ -161,9 +132,6 @@ static fs::path resolveFile( const std::string &urlPath ) {
             return {};
         rootStr = g_state.sourceDir;
     }
-
-    // 规范化路径分隔符(Windows)
-    std::replace( decoded.begin(), decoded.end(), '/', '\\' );
 
     std::error_code ec;
     fs::path rootCanonical = fs::weakly_canonical( fs::path( rootStr ), ec );

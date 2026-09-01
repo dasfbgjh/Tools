@@ -12,6 +12,8 @@
 #include "routes/FfmpegTool.h"
 #include "routes/OcrTools.h"
 #include "routes/DocTool.h"
+#include "routes/GameTool.h"
+#include "routes/Mcp.h"
 
 const char *Server::resourcePrefix = "/html";
 
@@ -39,7 +41,7 @@ void Server::registerhRoutes( httplib::Server &server ) {
     LOG_DEBUG << "注册管理员路由...";
     routes::admin::registerAdminRoutes( server ); // 注册管理员路由
     LOG_DEBUG << "注册本机工具路由...";
-    routes::registerLocalTools( server ); // 注册本机工具路由（仅限本机访问）
+    routes::localTools::registerLocalTools( server ); // 注册本机工具路由（仅限本机访问）
     LOG_DEBUG << "注册授权路由...";
     routes::auth::registerAuthRoutes( server ); // 注册授权路由
     LOG_DEBUG << "注册团队路由...";
@@ -58,6 +60,10 @@ void Server::registerhRoutes( httplib::Server &server ) {
     routes::ffmpeg::registerFfmpegRoutes( server ); // 注册FFmpeg工具路由
     LOG_DEBUG << "注册用户设置路由...";
     routes::settings::registerSettingsRoutes( server ); // 注册用户设置路由
+    LOG_DEBUG << "注册MCP协议服务路由...";
+    routes::mcpRoutes::registerMcpRoutes( server ); // 注册 MCP (Model Context Protocol) 服务端接口
+    LOG_DEBUG << "注册游戏工具路由...";
+    routes::game::registerGameRoutes( server ); // 注册游戏工具路由
 
     server.Get( "/webview", [this]( const httplib::Request &req, httplib::Response &res ) {
         res.set_content( R"(<!DOCTYPE html>
@@ -172,6 +178,8 @@ void Server::stop() {
 #endif
     // 关闭文档阅读工具的内部 HTTP 服务(若有)
     routes::docs::shutdownDocHttpServer();
+    // 关闭游戏工具的内部 HTTP 服务(若有)
+    routes::game::shutdownGameHttpServer();
 }
 
 bool Server::resourceExists( const std::string &resName ) {
@@ -212,7 +220,7 @@ void Server::redirectPage( httplib::Response &res, const std::string &path ) {
 };
 
 void Server::serveStatic( const httplib::Request &req, httplib::Response &res, const std::string &path ) {
-    if ( ( utils::startWith( path, "/admin" ) || utils::startWith( path, "/local-tools" ) ) && !isLocalhost( req ) ) {
+    if ( ( utils::startWith( path, "/admin" ) || utils::startWith( path, "/tools/local" ) || utils::startWith( path, "/tools/local" ) ) && !isLocalhost( req ) ) {
         LOG_WARN << "非本机访问敏感页面" << req.remote_addr;
         res.status = 403;
         res.set_content( "<html> <head> <title>403 Forbidden</title> </head> <body> "
@@ -332,6 +340,8 @@ std::string Server::contentType( const std::filesystem::path &path ) {
         return "audio/mpeg";
     if ( ext == ".wav" )
         return "audio/wav";
+    if ( ext == ".ogg" )
+        return "audio/ogg";
     return "application/octet-stream";
 }
 

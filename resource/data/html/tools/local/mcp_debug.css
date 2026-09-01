@@ -1,0 +1,524 @@
+/* ===== MCP 调试器：布局 ===== */
+
+/* 全宽覆盖：去掉 .tool-page 的 max-width 限制，让调试器占满视口 */
+.tool-page.md-page {
+    max-width: none !important;
+    width: 100%;
+    padding: 0.75rem;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* 头部占固定高度，不压缩 */
+.tool-page.md-page>.tool-header {
+    flex-shrink: 0;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+/* 网格行填充 flex 剩余空间，两侧面板才能正确获得高度 */
+.md-layout {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    grid-template-rows: 1fr;
+    gap: 0.75rem;
+    align-items: stretch;
+    min-height: 0;
+    flex: 1;
+}
+
+@media (max-width: 960px) {
+    .md-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+    }
+}
+
+/* 两侧面板都必须填满网格单元格，内部才能正确滚动 */
+.md-panel.md-form,
+.md-panel.md-result {
+    height: 100%;
+    min-height: 0;
+}
+
+.md-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.md-panel-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text);
+    background: var(--bg-muted);
+}
+
+.md-badge {
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.md-badge .dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+}
+
+.dot-g {
+    background: #10b981;
+}
+
+.dot-r {
+    background: #ef4444;
+}
+
+.dot-y {
+    background: #f59e0b;
+}
+
+/* ===== 表单 ===== */
+.md-form {
+    padding: 0;
+    min-width: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 表单标题：粘性在顶部 */
+.md-form>.md-panel-title {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    flex-shrink: 0;
+}
+
+/* 表单项统一内边距 */
+.md-form>.ui-form-row,
+.md-form>.md-action-help,
+.md-form>.md-details,
+.md-form>.md-dynamic-params {
+    flex-shrink: 0;
+    padding: 0.5rem 1rem;
+}
+
+/* 表单底部与最后一项拉开一点间距 */
+.md-form>.md-dynamic-params {
+    padding-bottom: 1.5rem;
+}
+
+.md-form .ui-form-row {
+    margin-bottom: 0.625rem;
+}
+
+.md-action-help {
+    padding: 0.5rem 0.75rem !important;
+    margin: 0.25rem 1rem 0.75rem;
+    border-radius: var(--radius);
+    background: var(--primary-light);
+    color: var(--primary);
+    font-size: 0.75rem;
+    line-height: 1.45;
+}
+
+.md-details {
+    margin: 0.5rem 1rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-muted);
+}
+
+.md-form>.md-details {
+    padding: 0;
+}
+
+.md-details>summary {
+    list-style: none;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.md-details>summary::before {
+    content: '▸';
+    transition: transform 0.15s;
+    color: var(--primary);
+}
+
+.md-details[open]>summary::before {
+    transform: rotate(90deg);
+}
+
+.md-details-body {
+    padding: 0.375rem 0.75rem 0.75rem;
+    border-top: 1px dashed var(--border);
+}
+
+.md-dynamic-params {
+    margin-top: 0.5rem;
+}
+
+/* JSON 参数文本框 */
+.md-jsonarea {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 96px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.8125rem;
+    resize: vertical;
+}
+
+.md-jsonarea:focus-visible {
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.md-input-full {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* ===== 结果面板 ===== */
+.md-result {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.md-result>.md-panel-title {
+    flex-shrink: 0;
+}
+
+.md-summary {
+    display: inline-flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.md-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 400;
+    padding: 0.125rem 0.5rem;
+    background: var(--bg);
+    border-radius: 999px;
+}
+
+.md-overview {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px dashed var(--border);
+    font-size: 0.8125rem;
+    color: var(--text);
+    background: var(--bg-muted);
+    flex-shrink: 0;
+}
+
+.md-ov-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 80px 2fr;
+    gap: 0.5rem;
+    row-gap: 0.25rem;
+    align-items: center;
+}
+
+@media (max-width: 640px) {
+    .md-ov-row {
+        grid-template-columns: 80px 1fr;
+    }
+}
+
+.md-ov-label {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.md-ov-val {
+    color: var(--text);
+    font-size: 0.8125rem;
+    min-width: 0;
+}
+
+.md-ov-truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.8125rem;
+}
+
+/* 步骤列表：唯一滚动容器 */
+.md-steps {
+    display: block;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0.75rem;
+}
+
+/* 步骤为空时不占空间，让 empty-state 显示 */
+.md-steps:empty {
+    display: none;
+}
+
+/* 通知区域：在概览与步骤之间，显示错误/成功/提示信息 */
+.md-notifications {
+    flex-shrink: 0;
+    padding: 0.5rem 1rem 0;
+}
+
+.md-notifications[hidden] {
+    display: none !important;
+}
+
+.md-notifications .tool-banner {
+    margin: 0;
+}
+
+/* 空状态：默认居中显示，[hidden] 时必须隐藏 */
+#empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+    text-align: center;
+    min-height: 0;
+}
+
+#empty-state[hidden] {
+    display: none !important;
+}
+
+/* 单个步骤卡片 */
+.md-step {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--surface);
+    transition: border-color 0.15s, box-shadow 0.15s;
+    flex-shrink: 0;
+    margin-bottom: 0.5rem;
+}
+
+.md-step:last-child {
+    margin-bottom: 0;
+}
+
+.md-step[data-ok="false"] {
+    border-color: rgba(239, 68, 68, 0.35);
+}
+
+.md-step[data-ok="true"] {
+    border-color: rgba(16, 185, 129, 0.35);
+}
+
+.md-step-head {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.625rem 0.875rem;
+    background: var(--bg-muted);
+    cursor: pointer;
+    user-select: none;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+
+.md-step-head:hover {
+    background: var(--bg);
+}
+
+.md-step-arrow {
+    color: var(--primary);
+    font-size: 0.75rem;
+    transition: transform 0.15s;
+    flex-shrink: 0;
+}
+
+.md-step[data-open="true"] .md-step-arrow {
+    transform: rotate(90deg);
+}
+
+.md-step-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text);
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.md-step-chips {
+    display: inline-flex;
+    gap: 0.375rem;
+    flex-wrap: wrap;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.md-step-chip {
+    display: inline-block;
+    padding: 0.0625rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    background: var(--bg);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    line-height: 1.4;
+}
+
+.md-step-chip.http-ok {
+    color: #10b981;
+    border-color: rgba(16, 185, 129, 0.3);
+    background: rgba(16, 185, 129, 0.08);
+}
+
+.md-step-chip.http-err {
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.35);
+    background: rgba(239, 68, 68, 0.08);
+}
+
+.md-step-body {
+    display: none;
+    border-top: 1px solid var(--border);
+    padding: 0.625rem 0.875rem;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.md-step[data-open="true"]>.md-step-body {
+    display: flex;
+}
+
+.md-step-sec {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.md-step-sec-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+}
+
+.md-step-sec-actions {
+    display: inline-flex;
+    gap: 0.25rem;
+}
+
+.md-mini-btn {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    padding: 0.125rem 0.5rem;
+    font-size: 0.6875rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.12s;
+}
+
+.md-mini-btn:hover {
+    color: var(--primary);
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.md-pre {
+    margin: 0;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.625rem 0.75rem;
+    max-height: 340px;
+    overflow: auto;
+    font-size: 0.78125rem;
+    line-height: 1.5;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.md-pre.err {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.05);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* 工具名列表 */
+.md-tool-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin: 0;
+    padding: 0.375rem 0;
+    list-style: none;
+}
+
+.md-tool-list li {
+    background: var(--primary-light);
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    padding: 0.125rem 0.625rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* ===== Empty state (only used in MCP debugger) — moved from tools/style.css ===== */
+.admin-empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-muted);
+}
+
+.admin-empty .icon {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+}
+
+.admin-empty h3 {
+    font-size: 1.125rem;
+    margin: 0 0 0.25rem;
+    color: var(--text);
+}
+
+.admin-empty p {
+    font-size: 0.875rem;
+    margin: 0;
+}

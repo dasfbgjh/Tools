@@ -3,7 +3,7 @@
 
 #include <httplib.h>
 
-namespace routes {
+namespace routes::localTools {
 
 void registerLocalTools( httplib::Server &svr );
 

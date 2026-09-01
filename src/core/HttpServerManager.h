@@ -49,7 +49,6 @@ private:
     HttpServerManager() = default;
     HttpServerManager( const HttpServerManager & ) = delete;
     HttpServerManager &operator=( const HttpServerManager & ) = delete;
-    ~HttpServerManager();
 
     HttpServerInstance *findInstance( const std::string &id ) const;
 

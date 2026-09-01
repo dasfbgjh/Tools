@@ -26,10 +26,6 @@ ProcManager &ProcManager::instance() {
     return inst;
 }
 
-ProcManager::~ProcManager() {
-    shutdownAll();
-}
-
 std::map<std::string, std::string> ProcManager::buildEnv(
     bool envInherit,
     const std::map<std::string, std::string> &userEnv ) {

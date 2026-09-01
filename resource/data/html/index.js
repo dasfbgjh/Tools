@@ -1,37 +1,44 @@
 (function (window) {
     'use strict';
-    const ICON_SUN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
-    const ICON_MOON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
-    const ICON_MEMO = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h12a2 2 0 0 1 2 2v14l-4-3-4 3-4-3-4 3V6a2 2 0 0 1 2-2z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="13" y2="13"/></svg>';
-    const ICON_LOGOUT = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>';
+    const ICON_SUN = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+    const ICON_MOON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+    const ICON_MEMO = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h12a2 2 0 0 1 2 2v14l-4-3-4 3-4-3-4 3V6a2 2 0 0 1 2-2z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="13" y2="13"/></svg>';
+    const ICON_LOGOUT = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>';
+    const ICON_QR = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h7v7H3V3zm2 2v3h3V5H5zm9-2h7v7h-7V3zm2 2v3h3V5h-3zM3 14h7v7H3v-7zm2 2v3h3v-3H5zm9-2h2v2h-2v-2zm4 0h3v3h-2v-1h-1v-2zm-4 4h2v3h-2v-3zm4 1h1v-1h2v3h-3v-2zm0-2h1v1h-1v-1z"/></svg>';
+    const ICON_REFRESH = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>';
+    const ICON_LOGIN = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>';
+    const ICON_USER = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+    const ICON_COLLAPSE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>';
 
     const App = window.App;
 
     const navItems = [
-        { id: 'tools', name: '工具箱', path: './tools/' },
-        { id: 'clipboard', name: '剪切板', path: './clipboard/', isBrand: true },
-        { id: 'fileservice', name: '文件服务器', path: './fileservice/' },
-        { id: 'localtools', name: '本机工具', path: './local-tools/', localhostOnly: true },
-        { id: 'admin', name: '管理员', path: './admin/', localhostOnly: true }
+        { id: 'tools', name: '工具箱', path: './tools.html', pathPrefix: '/tools/', icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>' },
+        { id: 'clipboard', name: '剪切板', path: './clipboard/', isBrand: true, icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>' },
+        { id: 'fileservice', name: '文件服务', path: './fileservice/', icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>' },
+        { id: 'admin', name: '管理员', path: './admin/', localhostOnly: true, icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>' }
     ];
     const defaultPage = navItems[0];
     let currentPageId = defaultPage.id;
-    const headerEl = document.getElementById('app-header');
+    const sidebarEl = document.getElementById('sidebar');
     const iframe = document.getElementById('content-frame');
+    let sidebarCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
 
     function toggleTheme() {
         var current = document.documentElement.getAttribute('data-theme') || 'dark';
         var next = current === 'dark' ? 'light' : 'dark';
         window.Theme.update(next);
-
-        // 无论是否登录，都调用接口保存到数据库
         Api.settings.update({ theme: next }).catch(function () { });
-        var btn = document.getElementById('theme-btn');
-        if (btn) {
-            btn.innerHTML = next === 'dark' ? ICON_SUN : ICON_MOON;
-            btn.title = next === 'dark' ? '切换浅色主题' : '切换深色主题';
+        renderSidebar();
+    }
+
+    function toggleSidebar() {
+        sidebarCollapsed = !sidebarCollapsed;
+        try { localStorage.setItem('sidebar-collapsed', sidebarCollapsed); } catch (e) { }
+        if (sidebarCollapsed) {
+            sidebarEl.classList.add('collapsed');
         } else {
-            renderShellHeader();
+            sidebarEl.classList.remove('collapsed');
         }
     }
 
@@ -134,7 +141,6 @@
     function getNavUrl(pageId) {
         var item = navItems.find(function (n) { return n.id === pageId; });
         var base = item ? item.path : defaultPage.path;
-        // 将当前URL的所有查询参数（排除page）传递给iframe
         var qp = new URLSearchParams(window.location.search);
         qp.delete('page');
         var qs = qp.toString();
@@ -173,7 +179,6 @@
     }
 
     function appendQueryParams(url) {
-        // 将当前URL的所有查询参数（排除page）附加到目标URL
         var qp = new URLSearchParams(window.location.search);
         qp.delete('page');
         var qs = qp.toString();
@@ -199,10 +204,9 @@
         currentPageId = page;
         savePage(page);
         iframe.src = getNavUrl(page);
-        renderShellHeader();
+        renderSidebar();
     }
 
-    // 动态加载 marked.js（memo 依赖）
     var _markedLoading = false;
     function loadMarked(cb) {
         if (window.marked) { cb && cb(); return; }
@@ -220,7 +224,6 @@
         document.head.appendChild(s);
     }
 
-    // 动态加载 memo.js（仅在用户首次点击备忘录时加载，节省带宽）
     var _memoLoading = false;
     function loadMemoModule(cb) {
         if (window.MemoModule) { cb && cb(); return; }
@@ -247,70 +250,101 @@
         });
     }
 
-    function renderShellHeader() {
+    function renderSidebar() {
         var user = App.state.user;
         var authed = !!user;
+        var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
 
-        var leftNav = '';
+        var navHtml = '';
         getLeftNavItems().forEach(function (item) {
             var isActive = currentPageId === item.id;
-            var isBrandClass = item.isBrand ? ' nav-brand' : '';
-            leftNav += '<button class="btn btn-ghost btn-sm' + isBrandClass + (isActive ? ' active' : '') + '" data-nav="' + item.id + '">' + item.name + '</button>';
+            navHtml += '<button class="sidebar-nav-item' + (isActive ? ' active' : '') + '" data-nav="' + item.id + '" title="' + escapeHtml(item.name) + '">' +
+                item.icon +
+                '<span>' + escapeHtml(item.name) + '</span>' +
+                '</button>';
         });
 
-        // Right nav
-        var rightNav = '';
+        var bottomHtml = '';
+        bottomHtml += '<button class="sidebar-nav-item" id="memo-btn" title="备忘录">' + ICON_MEMO + '<span>备忘录</span></button>';
+        bottomHtml += '<button class="sidebar-nav-item" id="theme-btn" title="' + (isDark ? '切换浅色主题' : '切换深色主题') + '">' + (isDark ? ICON_SUN : ICON_MOON) + '<span>' + (isDark ? '浅色主题' : '深色主题') + '</span></button>';
+        bottomHtml += '<button class="sidebar-nav-item" id="qr-btn" title="显示二维码">' + ICON_QR + '<span>二维码</span></button>';
+        bottomHtml += '<button class="sidebar-nav-item" id="refresh-btn" title="刷新页面">' + ICON_REFRESH + '<span>刷新</span></button>';
+
         if (authed) {
-            // User info
-            rightNav += '<div class="header-info" id="user-info" title="点击修改昵称">' +
-                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' +
-                '<span>' + escapeHtml(user.nickname || user.email) + '</span>' +
-                '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 4px; opacity: 0.6;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>' +
-                '</div>';
-            // Logout
-            rightNav += '<button class="btn btn-ghost btn-sm btn-icon" id="logout-btn" title="退出登录">' + ICON_LOGOUT + '</button>';
+            bottomHtml += '<button class="sidebar-nav-item" id="logout-btn" title="退出登录">' + ICON_LOGOUT + '<span>退出登录</span></button>';
         } else {
-            rightNav += '<a href="/auth/login.html"><button class="btn btn-ghost btn-sm">登录</button></a>' +
-                '<a href="/auth/register.html"><button class="btn btn-ghost btn-sm">注册</button></a>';
+            bottomHtml += '<a href="/auth/login.html" class="sidebar-nav-item" title="登录">' + ICON_LOGIN + '<span>登录</span></a>';
         }
-        // Theme toggle
-        var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        // Memo button
-        rightNav += '<button class="btn btn-ghost btn-sm btn-icon" id="memo-btn" title="备忘录">' + ICON_MEMO + '</button>';
-        rightNav += '<button class="btn btn-ghost btn-sm btn-icon theme-toggle" id="theme-btn" title="' + (isDark ? '切换浅色主题' : '切换深色主题') + '">' + (isDark ? ICON_SUN : ICON_MOON) + '</button>';
-        // QR code
-        rightNav += '<button class="btn btn-ghost btn-sm btn-icon" id="qr-btn" title="显示二维码"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h7v7H3V3zm2 2v3h3V5H5zm9-2h7v7h-7V3zm2 2v3h3V5h-3zM3 14h7v7H3v-7zm2 2v3h3v-3H5zm9-2h2v2h-2v-2zm4 0h3v3h-2v-1h-1v-2zm-4 4h2v3h-2v-3zm4 1h1v-1h2v3h-3v-2zm0-2h1v1h-1v-1z"/></svg></button>';
-        rightNav += '<button class="btn btn-ghost btn-sm btn-icon" id="refresh-btn" title="刷新页面"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>';
 
-        headerEl.innerHTML =
-            '<header class="app-header"><div class="container flex items-center justify-between">' +
-            '<div class="flex items-center space-x-2">' +
-            '<a href="javascript:void(0)" class="brand-logo" data-nav="tools" title="工具箱首页">' +
-            '<img src="./favicon.ico" alt="工具箱" /></a>' +
-            leftNav + '</div>' +
-            '<nav class="flex items-center space-x-2">' + rightNav + '</nav>' +
-            '</div></header>';
+        bottomHtml += '<button class="sidebar-toggle" id="sidebar-toggle" title="' + (sidebarCollapsed ? '展开侧栏' : '收起侧栏') + '">' + ICON_COLLAPSE + '</button>';
 
-        // Bind nav buttons
-        headerEl.querySelectorAll('[data-nav]').forEach(function (btn) {
+        var topHtml = '';
+        if (authed) {
+            topHtml = '<div class="sidebar-top" id="user-info" title="点击修改昵称">' +
+                ICON_USER +
+                '<span class="sidebar-title">' + escapeHtml(user.nickname || user.email) + '</span>' +
+                '</div>';
+        } else {
+            topHtml = '<div class="sidebar-top">' +
+                '<img src="./favicon.ico" class="sidebar-logo" alt="😁" />' +
+                '<span class="sidebar-title">😁</span>' +
+                '</div>';
+        }
+
+        sidebarEl.innerHTML =
+            topHtml +
+            '<div class="sidebar-nav">' + navHtml + '</div>' +
+            '<div class="sidebar-bottom">' + bottomHtml + '</div>';
+
+        if (sidebarCollapsed) {
+            sidebarEl.classList.add('collapsed');
+        } else {
+            sidebarEl.classList.remove('collapsed');
+        }
+
+        sidebarEl.querySelectorAll('[data-nav]').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var nav = btn.getAttribute('data-nav');
                 navigateTo(nav);
             });
         });
 
-        // Logout
         var logoutBtn = document.getElementById('logout-btn');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', function () {
-                Api.auth.logout().then(function () {
-                    App.logout();
-                    window.location.href = '/auth/login.html';
+                var overlay = document.createElement('div');
+                overlay.className = 'modal-overlay';
+                overlay.id = '__logout_modal';
+                overlay.innerHTML =
+                    '<div class="modal" style="width: 320px; height: auto;">' +
+                    '<div class="modal-header" style="padding: 10px 14px;">' +
+                    '<span class="modal-title" style="font-size: 14px;">确认退出</span>' +
+                    '<button class="btn btn-ghost btn-sm" data-modal-close>×</button>' +
+                    '</div>' +
+                    '<div class="modal-body" style="padding: 14px; font-size: 0.875rem;">确定要退出登录吗？</div>' +
+                    '<div class="modal-footer" style="padding: 10px 14px; justify-content: flex-end; gap: 8px;">' +
+                    '<button class="btn btn-outline btn-sm" data-modal-close style="padding: 6px 14px;">取消</button>' +
+                    '<button class="btn btn-sm" id="logout-confirm" style="padding: 6px 14px;">确定</button>' +
+                    '</div>' +
+                    '</div>';
+                document.body.appendChild(overlay);
+                overlay.addEventListener('click', function (e) {
+                    if (e.target === overlay || e.target.hasAttribute('data-modal-close')) {
+                        var modal = document.getElementById('__logout_modal');
+                        if (modal) modal.remove();
+                    }
+                });
+                document.getElementById('logout-confirm').addEventListener('click', function () {
+                    var modal = document.getElementById('__logout_modal');
+                    if (modal) modal.remove();
+                    Api.auth.logout().then(function () {
+                        App.logout();
+                        window.location.href = '/auth/login.html';
+                    });
                 });
             });
         }
 
-        // User info (change nickname)
         var userInfo = document.getElementById('user-info');
         if (userInfo) {
             userInfo.addEventListener('click', function () {
@@ -352,7 +386,7 @@
                             App.setUser(data.user);
                             var modal = document.getElementById('__nick_modal');
                             if (modal) modal.remove();
-                            renderShellHeader();
+                            renderSidebar();
                         } else {
                             alert(data.error || '更新失败');
                         }
@@ -361,21 +395,17 @@
             });
         }
 
-        // QR button
         var qrBtn = document.getElementById('qr-btn');
         if (qrBtn) qrBtn.addEventListener('click', openQrModal);
 
-        // Refresh button
         var refreshBtn = document.getElementById('refresh-btn');
         if (refreshBtn) refreshBtn.addEventListener('click', function () {
             try { iframe.contentWindow.location.reload(); } catch (ex) { iframe.src = iframe.src; }
         });
 
-        // Theme toggle button
         var themeBtn = document.getElementById('theme-btn');
         if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
 
-        // Memo button (顶栏备忘录入口)
         var memoBtn = document.getElementById('memo-btn');
         if (memoBtn) {
             memoBtn.addEventListener('click', function () {
@@ -386,36 +416,53 @@
                 }
             });
         }
+
+        var toggleBtn = document.getElementById('sidebar-toggle');
+        if (toggleBtn) toggleBtn.addEventListener('click', toggleSidebar);
     }
 
-    // ===== Shell initialization (main page with navigation + iframe) =====
     function initShell() {
         currentPageId = getSavedPage() || defaultPage.id;
-        var initialIframeUrl = null; // 若通过URL查询参数指定了页面，保存初始iframe地址
+        var initialIframeUrl = null;
 
-        // Check for initial page parameter (e.g. ?page=/admin/&shareId=xxx)
         var params = new URLSearchParams(window.location.search);
         var initialPage = params.get('page');
-        var themeQp = params.get('theme');
-        var initialPageSpecified = !!initialPage; // URL查询参数是否指定了页面
+        var initialPageSpecified = !!initialPage;
 
         iframe.addEventListener('load', function () {
             try {
                 var p = iframe.contentWindow.location.pathname;
+                var parentPath = window.location.pathname;
+                if (p === parentPath || p === '/' || p === '/index.html') {
+                    currentPageId = defaultPage.id;
+                    iframe.src = getNavUrl(defaultPage.id);
+                    renderSidebar();
+                    return;
+                }
                 var matched = navItems.find(function (n) {
                     var normalized = toAbsolutePath(n.path);
-                    return p.indexOf(normalized) !== -1;
+                    if (p.indexOf(normalized) !== -1) return true;
+                    if (n.pathPrefix) {
+                        var pp = n.pathPrefix;
+                        if (pp.startsWith('/') && p.indexOf(pp) !== -1) return true;
+                    }
+                    return false;
                 });
-                // 只有匹配到已知导航项时才同步 currentPageId 并重渲染；未匹配时保持点击时的状态
                 if (matched) {
                     currentPageId = matched.id;
-                    renderShellHeader();
+                    renderSidebar();
                 }
             } catch (e) { /* cross-origin */ }
         });
 
         if (initialPage) {
-            var matched = navItems.find(function (n) { return n.path === initialPage; });
+            var matched = navItems.find(function (n) {
+                if (n.path === initialPage) return true;
+                if (n.pathPrefix) {
+                    if (initialPage.indexOf(n.pathPrefix) !== -1) return true;
+                }
+                return false;
+            });
             if (matched) {
                 currentPageId = matched.id;
                 initialIframeUrl = appendQueryParams(matched.path);
@@ -426,38 +473,32 @@
             }
         }
 
-        // 若URL查询参数已指定初始页面（上面已设置iframe.src），此处不再覆盖
         if (!initialIframeUrl) {
             iframe.src = getNavUrl(currentPageId);
         }
 
-        // Listen for storage events (from iframes changing auth/theme state)
         window.addEventListener('storage', function (e) {
             if (e.key === 'auth-storage') {
                 App.loadState();
-                renderShellHeader();
+                renderSidebar();
             } else if (e.key === window.Theme.themeKey) {
-                renderShellHeader();
+                renderSidebar();
             }
         });
 
-        // Initial render
-        renderShellHeader();
+        renderSidebar();
 
-        // Initialize: check auth and render
         Api.auth.me().then(function (me) {
             if (me.success) {
                 App.setUser(me.user);
             }
         }).then(function () {
-            // 无论是否登录，从数据库加载共享设置（主题、当前页面）
             return Api.settings.list().then(function (sd) {
                 if (sd.success && sd.settings) {
                     var s = sd.settings;
                     if (s.theme)
                         window.Theme.update(s.theme);
 
-                    // URL查询参数指定了初始页面时，不从数据库配置覆盖currentPageId
                     if (s.currentPageId && !initialPageSpecified) {
                         currentPageId = s.currentPageId;
                         try { localStorage.setItem('tools-current-page', s.currentPageId); } catch (e) { }
@@ -465,8 +506,7 @@
                 }
             }).catch(function () { });
         }).then(function () {
-            renderShellHeader();
-            // 若URL查询参数指定了页面（如带share参数进入管理员页面），保持原URL不覆盖
+            renderSidebar();
             if (initialIframeUrl) return;
             iframe.src = getNavUrl(currentPageId);
         });

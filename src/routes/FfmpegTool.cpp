@@ -92,15 +92,11 @@ FfmpegManager::FfmpegManager() {
     m_worker = std::thread( [this] { workerLoop(); } );
 }
 
-FfmpegManager::~FfmpegManager() {
+void FfmpegManager::shutdownAll() {
     m_stop = true;
     m_cv.notify_all();
     if ( m_worker.joinable() )
         m_worker.join();
-    shutdownAll();
-}
-
-void FfmpegManager::shutdownAll() {
     std::lock_guard<std::mutex> lock( m_mutex );
     for ( auto &[id, task] : m_tasks ) {
         if ( task->status.load() == static_cast<int>( FfmpegStatus::Running ) && task->impl && task->impl->process ) {

@@ -169,6 +169,7 @@
     };
 
     Api.tools = {
+        catalog: function () { return Api.get('/tools/catalog'); },
         ipLookup: function (ip) {
             return Api.get('/tools/ip' + (ip ? '?ip=' + encodeURIComponent(ip) : ''));
         },
@@ -282,6 +283,11 @@
             selectSource: function (id) { return Api.post('/docs/source/select', { id: id }); },
             deselectSource: function () { return Api.post('/docs/source/deselect', {}); },
             status: function () { return Api.get('/docs/status'); }
+        },
+        game: {
+            list: function () { return Api.get('/game/list'); },
+            start: function () { return Api.post('/game/start', {}); },
+            status: function () { return Api.get('/game/status'); }
         }
     };
 

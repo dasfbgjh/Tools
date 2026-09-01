@@ -3,9 +3,9 @@
 [![C++](https://img.shields.io/badge/C++-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
 [![CMake](https://img.shields.io/badge/CMake-3.10+-green.svg)](https://cmake.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-1.0.0-orange.svg)](#)
+[![Version](https://img.shields.io/badge/Version-1.0.1-orange.svg)](#)
 
-一款面向开发者的综合性工具箱应用，集成了上百种实用工具，采用 C++ 后端 + Web 前端架构，通过 WebView 提供原生桌面体验。
+一款面向开发者的综合性工具箱应用，集成了上百种实用工具，采用 C++ 后端 + Web 前端架构，通过 WebView 提供原生桌面体验。同时实现了 MCP (Model Context Protocol) 协议服务，可供 AI IDE 连接调用本地工具。
 
 ## ✨ 功能特性
 
@@ -32,12 +32,14 @@
 - 文本去空格、NATO 字母表转换、文本混淆器
 - Lorem Ipsum 生成器、数字缩写生成器、字符串 Slugify
 - 罗马数字转换、占位符 SVG 生成器
+- 列表转换器、邮箱标准化、正则备忘录
 
 #### 编码转换
 - Base64 图片互转、URL 编码、Unicode 转换
 - HTML 实体转换、HTML ↔ Markdown 互转
 - JSON/YAML/TOML/Properties 格式互转
 - 字符编码转换、二维码生成、WiFi 二维码
+- 文本与二进制互转
 
 #### 加密与安全
 - 密码生成器、密码强度分析
@@ -51,7 +53,8 @@
 - MAC 地址生成/查询、HTTP 状态码速查
 - Cron 表达式生成器、User-Agent 解析器
 - URL 解析器、Safelink 解码器、IBAN 验证
-- 手机号解析、邮箱规范化
+- 手机号解析、邮箱规范化、IP 地址查询
+- 设备信息
 
 #### 开发辅助
 - JSON 编辑器/格式化/对比、JSON 转换器
@@ -61,18 +64,20 @@
 - 图标设计器、Emoji 选择器
 - Git 备忘录、正则表达式测试/备忘录
 - 键码信息查询、ASCII 艺术字生成器
+- 颜色工具、Docker Run 转 Compose
+- 元标签生成器、MIME 类型查询
 
 #### 计算工具
 - 数学表达式计算器、百分比计算器
 - ETA 预估时间计算器、日期计算器
-- 时间戳转换器、时区转换器
+- 时间戳转换器、时区转换器、计时器
 - 温度转换器、数字进制转换
 - CHMOD 权限计算器、基准测试构建器
 
 #### 图片处理
 - 图片格式转换、图片压缩、图片水印
 - OCR 文字识别（基于 RapidOCR，支持中英文）
-- 图标设计器、图片标注工具
+- 图标设计器、摄像头录制器
 
 #### PDF 工具
 - PDF 压缩、PDF 格式转换、PDF 管理
@@ -86,7 +91,13 @@
 - **FFmpeg 工具** - 音视频转码、下载（集成 yt-dlp）
 - **证书工具** - SSL/TLS 证书生成与管理
 - **文档阅读器** - 多源文档聚合浏览
-- **摄像头录制** - 本地摄像头视频录制
+- **图片标注工具** - 截屏图片标注，支持遮罩选区、绘制图形、添加文字
+- **MCP 调试器** - MCP 协议服务调试工具
+
+### 🔌 MCP 服务端
+- 支持 Model Context Protocol (MCP)，可供 AI IDE（如 Trae）连接调用本地工具
+- 支持 Streamable HTTP 和 SSE 两种传输模式
+- 内置工具：echo、get_server_info、get_time、list_directory、read_text_file、run_shell_command 等
 
 ## 🏗 项目架构
 
@@ -108,33 +119,48 @@ Toolbox/
 │   │   ├── ProcManager.cpp/h     # 进程管理
 │   │   ├── TransferTracker.cpp/h # 传输追踪
 │   │   ├── Sha256.cpp/h          # SHA256 哈希
+│   │   ├── McpCore.cpp/h         # MCP 协议数据结构与序列化
+│   │   ├── McpServer.cpp/h       # MCP 服务端引擎
+│   │   ├── Auth.hpp              # 认证鉴权中间件
 │   │   └── Utils.cpp/h           # 工具函数
 │   └── routes/                   # API 路由
 │       ├── Auth.cpp/h            # 认证接口
 │       ├── Admin.cpp/h           # 管理员接口
-│       ├── Clipboard.cpp         # 剪贴板接口
-│       ├── Teams.cpp             # 团队接口
-│       ├── FileService.cpp       # 文件服务接口
-│       ├── Tools.cpp             # 在线工具接口
-│       ├── PdfTools.cpp          # PDF 工具接口
-│       ├── LocalTools.cpp        # 本地工具接口
-│       ├── FfmpegTool.cpp        # FFmpeg 接口
-│       ├── CertTool.cpp          # 证书工具接口
-│       ├── DocTool.cpp           # 文档工具接口
-│       ├── SysMonitor.cpp        # 系统监控接口
-│       └── OcrTools.cpp          # OCR 工具接口
+│       ├── Clipboard.cpp/h       # 剪贴板接口
+│       ├── Teams.cpp/h           # 团队接口
+│       ├── FileService.cpp/h     # 文件服务接口
+│       ├── Tools.cpp/h           # 在线工具接口
+│       ├── PdfTools.cpp/h        # PDF 工具接口
+│       ├── LocalTools.cpp/h      # 本地工具接口
+│       ├── FfmpegTool.cpp/h      # FFmpeg 接口
+│       ├── CertTool.cpp/h        # 证书工具接口
+│       ├── DocTool.cpp/h         # 文档工具接口
+│       ├── SysMonitor.cpp/h      # 系统监控接口
+│       ├── OcrTools.cpp/h        # OCR 工具接口
+│       ├── Settings.cpp/h        # 用户设置接口
+│       └── Mcp.cpp/h             # MCP 协议接口
 ├── resource/                     # 前端资源
+│   ├── CMakeLists.txt            # 资源编译配置
+│   ├── include/
+│   │   └── resource.h            # 资源嵌入 API
 │   ├── data/
 │   │   ├── html/                 # 前端页面
 │   │   │   ├── admin/            # 管理后台
 │   │   │   ├── auth/             # 登录注册页
 │   │   │   ├── clipboard/        # 剪贴板页面
 │   │   │   ├── fileservice/      # 文件分享页面
-│   │   │   ├── local-tools/      # 本地系统工具页面
-│   │   │   ├── tools/            # 100+ 在线小工具页面
+│   │   │   ├── tools/            # 在线小工具页面
+│   │   │   │   └── local/        # 本地系统工具页面
+│   │   │   ├── lib/              # 前端第三方库
+│   │   │   ├── webview/          # WebView 容器页面
 │   │   │   ├── app.js            # 主应用脚本
 │   │   │   ├── api.js            # API 封装
-│   │   │   └── theme.js          # 主题管理
+│   │   │   ├── theme.js          # 主题管理
+│   │   │   ├── fs_browser.js     # 文件浏览器组件
+│   │   │   ├── tools.html/js     # 工具目录页
+│   │   │   └── memo.js/css       # 备忘录页
+│   │   ├── image/
+│   │   │   └── tray.ico          # 托盘图标
 │   │   └── sql/
 │   │       └── schema.sql        # 数据库表结构
 │   └── src/                      # 资源编译
@@ -152,9 +178,10 @@ Toolbox/
 │   └── cli11/                    # 命令行解析库
 ├── appInfo/                      # 应用元信息
 │   ├── AppInfo.cmake             # 版本信息配置
-│   └── config/                   # Windows 资源（图标/Manifest）
+│   ├── config/                   # Windows 资源模板（图标/Manifest/RC）
+│   ├── include/                  # 扩展头文件
+│   └── output/                   # CMake 生成输出
 ├── bin/                          # 编译输出目录
-│   ├── database.db               # SQLite 数据库文件
 │   └── RapidOCR/                 # OCR 模型文件
 └── CMakeLists.txt                # 顶层构建脚本
 ```
@@ -189,17 +216,17 @@ cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
 cmake --build .
 
 # 5. 运行（输出在 bin/ 目录）
-../bin/Tools.exe
+../bin/Tools_v1.0.1.exe
 ```
 
 ### 依赖库说明
 
-项目依赖以下静态库，请确保已正确安装或放置在 MinGW 库目录中：
+项目通过 CMake `find_package` 自动查找以下系统库，请确保已正确安装：
 
-- `libsqlite3.a` - SQLite3 数据库
-- `libboost_process-mt.a` - Boost.Process 进程管理
-- `libboost_filesystem-mt.a` - Boost.Filesystem 文件系统
-- `libssl.a` / `libcrypto.a` - OpenSSL（测试用）
+- **SQLite3** - 数据库存储（`find_package` 或手动指定）
+- **Boost** (process, filesystem) - 进程管理与文件系统（`find_package Boost COMPONENTS process filesystem`）
+- **OpenSSL** (SSL, Crypto) - HTTPS 服务支持（`find_package OpenSSL REQUIRED`）
+- **nlohmann/json** - JSON 处理（系统安装的头文件库）
 
 ## 📦 目录结构说明
 
@@ -214,10 +241,14 @@ cmake --build .
 | `clipboard_teams` | 剪贴板团队 |
 | `clipboard_team_members` | 团队成员关系 |
 | `clipboard_items` | 剪贴板历史记录 |
+| `clipboard_team_invite_codes` | 团队邀请码 |
+| `clipboard_file_downloads` | 剪贴板文件下载令牌 |
 | `file_shares` | 文件分享条目 |
 | `file_share_permissions` | 分享权限 |
 | `http_servers` | 本地 HTTP 服务器配置 |
+| `http_server_mounts` | HTTP 服务器挂载点 |
 | `proc_configs` | 进程管理器配置 |
+| `proc_env_vars` | 进程环境变量 |
 | `memos` | 备忘录数据 |
 | `doc_sources` | 文档阅读源配置 |
 | `app_config` | 全局应用配置 |
@@ -227,10 +258,9 @@ cmake --build .
 
 `bin/RapidOCR/` 目录下包含 OCR 模型文件：
 - `ch-mobile-v4/` - 移动端模型（轻量快速）
-- `ch-server-v4/` - 服务端模型（高精度）
 - `RapidOcrOnnx.dll` - OCR 引擎运行时
 
-每个模型目录包含：
+模型目录包含：
 - `det.onnx` - 文本检测模型
 - `cls.onnx` - 方向分类模型
 - `rec.onnx` - 文本识别模型
@@ -238,7 +268,7 @@ cmake --build .
 
 ## 🖱 使用方式
 
-1. **启动应用**：双击 `Tools.exe` 或命令行运行
+1. **启动应用**：双击 `Tools_v1.0.1.exe` 或命令行运行
 2. **系统托盘**：应用启动后最小化至托盘，右键托盘图标可：
    - 打开主界面
    - 打开设置
@@ -249,13 +279,23 @@ cmake --build .
 ### 命令行参数
 
 ```
-Tools.exe [OPTIONS]
+Tools_v1.0.1.exe [OPTIONS] [PATH...]
 
 Options:
-  -h,--help                   打印帮助信息
-  -p,--port INT               HTTP 服务器端口（默认：自动分配）
-  --no-gui                    不启动 WebView 窗口，仅运行后台服务
-  --debug                     启用调试日志
+  -h,--help                           打印帮助信息
+  --port INT                          HTTP 服务器端口（默认：3100）
+  --https-port INT                    HTTPS 服务器端口（默认：3101）
+  --https                             启用 HTTPS 服务
+  --ssl-cert PATH                     SSL 证书文件路径
+  --ssl-key PATH                      SSL 私钥文件路径
+  --temp PATH                         临时文件目录
+  --invite-code-duration-sec INT      团队邀请码有效期（秒，默认：5）
+  --log-level INT                     日志等级（0=DEBUG,1=INFO,2=WARN,3=ERR）
+  --log-file-mode INT                 日志文件模式（0=关闭,1=单文件,2=按日期切分）
+  --log-file PATH                     日志文件路径
+
+Positional:
+  [PATH...]                           文件路径参数（自动生成文件分享 ID 并打开管理页）
 ```
 
 ## 🔧 开发调试
@@ -294,7 +334,7 @@ cmake --build .
 | [stb](https://github.com/nothings/stb) | 图像处理 |
 | [qrcodegen](https://github.com/nayuki/qr-code-generator-library) | 二维码生成 |
 | [CLI11](https://github.com/CLIUtils/CLI11) | 命令行解析库 |
-| [nlohmann/json](https://github.com/nlohmann/json) | JSON 处理 |
+| [nlohmann/json](https://github.com/nlohmann/json) | JSON 处理（系统库） |
 | [SQLite3](https://www.sqlite.org/) | 数据库存储 |
 | [Boost](https://www.boost.org/) | 进程管理 |
 | [OpenSSL](https://www.openssl.org/) | https 服务依赖 |
@@ -310,6 +350,7 @@ cmake --build .
 | [it-tools](https://github.com/CorentinTh/it-tools) | web 工具参照 it-tools 原生实现 |
 | [Font Awesome](https://fontawesome.com/) | 图标 |
 | [marked.js](https://github.com/markedjs/marked) | Markdown 解析 |
+| [BIP39 Wordlist](https://github.com/bitcoin/bips) | 助记词生成 |
 
 ---
 

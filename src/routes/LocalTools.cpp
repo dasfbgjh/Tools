@@ -21,7 +21,7 @@
 
 namespace fs = std::filesystem;
 
-namespace routes {
+namespace routes::localTools {
 
 void localIp( const httplib::Request &req, httplib::Response &res ) {
     Server::json ips = Server::json::array();
@@ -1003,4 +1003,4 @@ void registerLocalTools( httplib::Server &svr ) {
     LOG_DEBUG << "本机工具路由已注册";
 }
 
-} // namespace routes
+} // namespace routes::LocalTools

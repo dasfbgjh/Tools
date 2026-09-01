@@ -124,7 +124,6 @@ public:
 
 private:
     FfmpegManager();
-    ~FfmpegManager();
     FfmpegManager( const FfmpegManager & ) = delete;
     FfmpegManager &operator=( const FfmpegManager & ) = delete;
 

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文档阅读</title>
+    <link rel="stylesheet" href="../../style.css">
+    <script src="../../theme.js"></script>
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="./docs.css">
+</head>
+
+<body>
+    <div class="tool-page" data-no-header>
+        <div class="docs-shell">
+            <div class="docs-head">
+                <h1>📚 文档阅读</h1>
+                <select class="ui-form-input docs-source-select" id="docs-source-select">
+                    <option value="">-- 选择文档源 --</option>
+                </select>
+                <button class="docs-icon-btn" id="docs-refresh" title="刷新">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <polyline points="1 20 1 14 7 14"></polyline>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                </button>
+                <button class="docs-icon-btn" id="docs-add-source" title="添加">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+                <button class="docs-icon-btn" id="docs-delete-source" title="删除当前源" style="color:var(--danger)">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="docs-page">
+                <div class="docs-body">
+                    <aside class="docs-sidebar">
+                        <div class="docs-tree-header">文档目录</div>
+                        <input type="text" class="ui-form-input docs-search" id="docs-search" placeholder="过滤文件名…">
+                        <div class="docs-tree" id="docs-tree">
+                            <div class="docs-tree-empty">请先添加一个文档源</div>
+                        </div>
+                    </aside>
+                    <main class="docs-content-wrap" id="docs-content-wrap">
+                        <div class="docs-empty" id="docs-empty">
+                            <p>👈 在左侧选择文档源，然后在目录树中选择文件</p>
+                            <p>支持 <code>.md</code> / <code>.markdown</code> / <code>.html</code> / <code>.htm</code> /
+                                <code>.txt</code> / <code>.log</code> / <code>.json</code> / <code>.xml</code> /
+                                <code>.yaml</code> / <code>.csv</code> / <code>.ini</code> / <code>.conf</code> /
+                                <code>.sh</code> / <code>.bat</code> / <code>.ps1</code> / <code>.sql</code> 等
+                            </p>
+                        </div>
+                        <div class="docs-loading" id="docs-loading" hidden>加载中…</div>
+                        <iframe class="docs-content" id="docs-content" src="about:blank"
+                            sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+                            referrerpolicy="no-referrer"></iframe>
+                    </main>
+                </div>
+            </div>
+        </div>
+        <!-- 添加/编辑文档源对话框 -->
+        <div class="br-modal" id="docs-source-modal" style="display:none">
+            <div class="br-modal-mask"></div>
+            <div class="br-modal-panel" style="max-width:560px">
+                <div class="br-modal-header">
+                    <span id="docs-source-modal-title">添加文档源</span>
+                    <button class="br-modal-close" data-close>×</button>
+                </div>
+                <div class="br-modal-body">
+                    <div class="br-form-row">
+                        <label>名称 *</label>
+                        <input type="text" class="ui-form-input" id="docs-source-name" placeholder="例如：项目笔记">
+                    </div>
+                    <div class="br-form-row">
+                        <label>本机目录 *</label>
+                        <div class="ui-form-input-group">
+                            <input type="text" class="ui-form-input" id="docs-source-path" placeholder="例如 D:\notes">
+                            <button class="btn btn-outline btn-sm" id="docs-source-browse">浏览…</button>
+                        </div>
+                    </div>
+                    <div class="br-form-row" id="docs-source-path-row-current" style="display:none">
+                        <label>当前目录</label>
+                        <input type="text" class="ui-form-input" id="docs-source-path-current" readonly>
+                    </div>
+                    <div class="br-form-help">将递归扫描该目录下的所有 .md / .html / .htm 文件。</div>
+                </div>
+                <div class="br-modal-footer">
+                    <button class="btn" data-close>取消</button>
+                    <button class="btn btn-primary" id="docs-source-save">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../app.js"></script>
+    <script src="../../api.js"></script>
+    <script src="./../common.js"></script>
+    <script src="../../fs_browser.js"></script>
+    <script src="./docs.js"></script>
+</body>
+
+</html>
