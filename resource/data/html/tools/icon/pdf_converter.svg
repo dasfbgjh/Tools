@@ -1,0 +1,11 @@
+<svg width="23.999999999999996" height="23.999999999999996"
+  xmlns="http://www.w3.org/2000/svg" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" stroke="#ef4444" fill="none">
+
+  <g>
+    <title>Layer 1</title>
+    <path id="svg_1" d="m4,19.5a2.5,2.5 0 0 1 2.5,-2.5l13.5,0"/>
+    <path id="svg_2" d="m6.5,2l13.5,0l0,20l-13.5,0a2.5,2.5 0 0 1 -2.5,-2.5l0,-15a2.5,2.5 0 0 1 2.5,-2.5z"/>
+    <polyline id="svg_3" points="12.658862471580505,5.26086962223053 15.158864378929138,7.76086962223053 12.658862471580505,10.26086962223053 "/>
+    <path id="svg_4" d="m9.06355,13.10201l0,-3a2.5,2.5 0 0 1 2.5,-2.5l1.5,0"/>
+  </g>
+</svg>

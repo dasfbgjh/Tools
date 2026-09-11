@@ -1,0 +1,7 @@
+{
+    "name": "ping",
+    "desc": "ping IP",
+    "method": "command",
+    "entry": "ping.exe",
+    "extension": {}
+}

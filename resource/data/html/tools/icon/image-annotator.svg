@@ -1,0 +1,11 @@
+<svg width="24" height="24" xmlns="http://www.w3.org/2000/svg" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" stroke="#6366f1" fill="none">
+
+ <g>
+  <title>Layer 1</title>
+  <rect id="svg_1" rx="2" height="18" width="18" y="3" x="3"/>
+  <circle id="svg_2" r="1.5" cy="7.91898" cx="7.66075"/>
+  <polyline id="svg_3" points="20.483537435531616,13.063267558813095 15.483537435531616,8.063267558813095 4.483537673950195,19.063267558813095 "/>
+  <line id="svg_4" y2="18.00258" x2="15.29245" y1="14.00258" x1="15.29245"/>
+  <line id="svg_5" y2="16.00258" x2="17.16613" y1="16.00258" x1="13.41876"/>
+ </g>
+</svg>

@@ -7,75 +7,75 @@
             return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
         });
     };
+    var Api = window.Api;
 
-    // ===== 动作说明（帮助文本） =====
-    var ACTION_HELP = {
-        probe:            '发送 initialize + notifications/initialized，再连续发起 tools_list / resources_list / prompts_list，汇总出对方能力、工具名列表与步骤耗时。用于快速判断：服务可用？握手版本对齐？能列工具？',
-        initialize:       '仅执行一次握手：发送 initialize（附带客户端参数）后发送 notifications/initialized 通知。用于确认协议版本、能力协商、服务端信息返回。',
-        tools_list:       '请求 tools/list，若返回大量工具可设置 limit / cursor 分页。',
-        call_tool:        '请求 tools/call 调用对方工具。tool_args 可输入 JSON 对象或 JSON 字符串；若字符串解析失败会被包装为 {_raw: "..."} 传入。',
-        resources_list:   '请求 resources/list，返回资源 URI 列表与描述。',
-        read_resource:    '请求 resources/read，按 URI 读取资源（resource://... 或 HTTP(S) URL）。',
-        prompts_list:     '请求 prompts/list，返回提示词目录。',
-        get_prompt:       '请求 prompts/get，按 name 获取提示词，可附带 prompt_args 变量。',
-        raw:              '发送任意自定义 JSON-RPC 消息；默认 method 以 notifications/ 开头会发通知（无 id），可勾选 notification 强制无 id。params 可留空（空对象）或填写任何合法 JSON 文本/对象。'
+    var $ = function (id) { return document.getElementById(id); };
+
+    // ===== 全局状态 =====
+    var state = {
+        endpoint: '',
+        transport: 'auto',
+        timeout: 30,
+        skipHandshake: false,
+        protoVer: '2025-03-26',
+        clientName: 'MCP-Debug-Tool-WebUI',
+        clientVer: '1.0',
+        tools: [],
+        resources: [],
+        prompts: [],
+        selectedTool: null,
+        selectedResource: null,
+        selectedPrompt: null,
+        activeTab: 'tools',
+        busy: false
     };
 
     // ===== UI 引用 =====
-    var $ = function (id) { return document.getElementById(id); };
     var f = {
-        endpoint:   $('f-endpoint'),
-        action:     $('f-action'),
-        timeout:    $('f-timeout'),
-        skip:       $('f-skip-handshake'),
-        proto:      $('f-proto'),
+        endpoint: $('f-endpoint'),
+        transport: $('f-transport'),
+        timeout: $('f-timeout'),
+        command: $('f-command'),
+        env: $('f-env'),
+        skip: $('f-skip-handshake'),
+        proto: $('f-proto'),
         clientName: $('f-client-name'),
-        clientVer:  $('f-client-version'),
-        transport:  $('f-transport'),
-        dynBody:    $('dyn-body'),
-        dynTitle:   $('dyn-title')
+        clientVer: $('f-client-version'),
+        toolFilter: $('f-tool-filter'),
+        rawMethod: $('f-raw-method'),
+        rawParams: $('f-raw-params'),
+        rawNotif: $('f-raw-notification')
     };
     var el = {
-        help:       $('action-help'),
-        btnRun:     $('btn-run'),
-        btnClear:   $('btn-clear'),
-        btnExamples:$('btn-examples'),
-        notif:      $('notifications'),
-        empty:      $('empty-state'),
-        steps:      $('steps'),
-        overview:   $('overview'),
-        ovAction:   $('ov-action'),
+        connStatus: $('conn-status'),
+        cntTools: $('cnt-tools'),
+        cntResources: $('cnt-resources'),
+        cntPrompts: $('cnt-prompts'),
+        toolList: $('tool-list'),
+        resourceList: $('resource-list'),
+        promptList: $('prompt-list'),
+        actionPanel: $('action-panel'),
+        actionForm: $('action-form'),
+        btnCloseForm: $('btn-close-form'),
+        btnClear: $('btn-clear'),
+        notif: $('notifications'),
+        empty: $('empty-state'),
+        steps: $('steps'),
+        overview: $('overview'),
+        ovAction: $('ov-action'),
         ovEndpoint: $('ov-endpoint'),
-        ovSteps:    $('ov-steps'),
-        ovTools:    $('ov-tools'),
-        summary:    $('summary-head'),
-        sumOk:      $('sum-ok'),
+        ovSteps: $('ov-steps'),
+        ovTransport: $('ov-transport'),
+        summary: $('summary-head'),
+        sumOk: $('sum-ok'),
         sumElapsed: $('sum-elapsed')
     };
 
     // ===== 工具函数 =====
-    function showBanner(type, msg) {
-        if (!el.notif) return;
-        var cls = 'info';
-        if (type === 'error') cls = 'error';
-        else if (type === 'warn') cls = 'warn';
-        else if (type === 'success') cls = 'success';
-        el.notif.innerHTML = '<div class="tool-banner ' + cls + '">' + App.escapeHtml(msg) + '</div>';
-        el.notif.hidden = false;
-        if (type === 'success') setTimeout(clearBanner, 3500);
-    }
-    function clearBanner() {
-        if (el.notif) {
-            el.notif.innerHTML = '';
-            el.notif.hidden = true;
-        }
-    }
-
     function isLocalhost() {
         var h = location.hostname;
         return h === '127.0.0.1' || h === 'localhost' || h === '::1';
     }
-
     function prettyJson(v) {
         try {
             if (typeof v === 'string') {
@@ -95,7 +95,7 @@
         } catch (e) { return String(v); }
     }
     function copyText(text, onDone) {
-        if (!text && text !== '') return;
+        if (text == null) return;
         try {
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(text).then(function () { if (onDone) onDone(); })
@@ -113,237 +113,85 @@
             } catch (e2) { /* ignore */ }
         }
     }
-
-    // ===== 动态参数：按 action 渲染表单 =====
-    function clearDyn() { f.dynBody.innerHTML = ''; }
-    function addRow(labelEl, inputEl, hint) {
-        var row = document.createElement('div');
-        row.className = 'ui-form-row';
-        row.appendChild(labelEl);
-        row.appendChild(inputEl);
-        if (hint) {
-            var h = document.createElement('div');
-            h.className = 'ui-hint';
-            h.style.width = '100%';
-            h.style.paddingLeft = '8px';
-            h.textContent = hint;
-            row.appendChild(h);
-        }
-        f.dynBody.appendChild(row);
+    function showBanner(type, msg) {
+        if (!el.notif) return;
+        var cls = 'info';
+        if (type === 'error') cls = 'error';
+        else if (type === 'warn') cls = 'warn';
+        else if (type === 'success') cls = 'success';
+        el.notif.innerHTML = '<div class="tool-banner ' + cls + '">' + App.escapeHtml(msg) + '</div>';
+        el.notif.hidden = false;
+        if (type === 'success') setTimeout(clearBanner, 3500);
     }
-    function mkLabel(text, widthPx) {
-        var l = document.createElement('label');
-        l.className = 'ui-form-label';
-        if (widthPx) { l.style.width = widthPx + 'px'; l.style.flex = '0 0 ' + widthPx + 'px'; }
-        l.textContent = text;
-        return l;
+    function clearBanner() {
+        if (el.notif) { el.notif.innerHTML = ''; el.notif.hidden = true; }
     }
-    function mkInput(type, id, value) {
-        var i = document.createElement(type === 'textarea' ? 'textarea' : 'input');
-        if (type !== 'textarea') {
-            i.type = type;
-            if (value != null) i.value = value;
-        } else if (value != null) {
-            i.value = value;
-        }
-        i.className = 'ui-form-input' + (type === 'textarea' ? ' md-jsonarea' : ' md-input-full');
-        if (id) i.id = id;
-        if (type !== 'textarea' && type !== 'checkbox' && type !== 'select') {
-            i.style.flex = '1';
-        }
-        return i;
+    function setConnStatus(text, kind) {
+        el.connStatus.textContent = text || '';
+        el.connStatus.className = 'md-conn-status' + (kind ? ' ' + kind : '');
     }
 
-    function renderDynamicParams(action) {
-        clearDyn();
-
-        if (action === 'tools_list' || action === 'resources_list' || action === 'prompts_list') {
-            f.dynTitle.textContent = '分页参数（可选）';
-            var cursor = mkInput('text', 'p-cursor', '');
-            cursor.placeholder = 'cursor (可选)';
-            addRow(mkLabel('cursor', 88), cursor);
-            var limit = mkInput('number', 'p-limit', '');
-            limit.min = 1; limit.placeholder = 'limit (可选，正整数)';
-            addRow(mkLabel('limit', 88), limit);
-            return;
-        }
-        if (action === 'call_tool') {
-            f.dynTitle.textContent = '工具调用参数';
-            var tn = mkInput('text', 'p-toolname', '');
-            tn.placeholder = '例如: echo / run_shell_command / list_directory';
-            addRow(mkLabel('工具名 *', 88), tn, '必需。填写目标 MCP 服务中实际存在的工具名，可用 probe 先查列表。');
-            var targs = mkInput('textarea', 'p-toolarags', '{\n  \n}');
-            targs.placeholder = 'object 或 JSON 字符串；留空会不传 arguments';
-            var wrap = document.createElement('div');
-            wrap.style.width = '100%';
-            wrap.appendChild(targs);
-            var lbl = mkLabel('tool_args', 88);
-            lbl.style.alignSelf = 'flex-start';
-            lbl.style.paddingTop = '0.5rem';
-            addRow(lbl, wrap, '填写对象 {}；若写成字符串，后端会尝试 JSON.parse，解析失败会用 {_raw: "..."} 兜底并给出 warn。');
-            return;
-        }
-        if (action === 'read_resource') {
-            f.dynTitle.textContent = '资源参数';
-            var uri = mkInput('text', 'p-uri', '');
-            uri.placeholder = 'resource://tools/readme  或  https://... 或 file://...';
-            addRow(mkLabel('resource_uri *', 104), uri, '必需。资源 URI，须与目标 MCP 服务已注册的资源一致。');
-            return;
-        }
-        if (action === 'get_prompt') {
-            f.dynTitle.textContent = '提示词参数';
-            var pn = mkInput('text', 'p-promptname', '');
-            pn.placeholder = '提示词名，可用 prompts_list 先查';
-            addRow(mkLabel('prompt_name *', 112), pn, '必需。');
-            var pa = mkInput('textarea', 'p-promptargs', '{}');
-            pa.placeholder = 'object 或留空';
-            var w = document.createElement('div');
-            w.style.width = '100%';
-            w.appendChild(pa);
-            var lbl = mkLabel('prompt_args', 112);
-            lbl.style.alignSelf = 'flex-start';
-            lbl.style.paddingTop = '0.5rem';
-            addRow(lbl, w, '可选。提示词变量，object：{"lang":"zh-CN","tone":"formal"}');
-            return;
-        }
-        if (action === 'raw') {
-            f.dynTitle.textContent = '自定义 JSON-RPC 参数';
-            var m = mkInput('text', 'p-rawmethod', '');
-            m.placeholder = '例如: initialize / tools/list / resources/read / my.custom.method';
-            addRow(mkLabel('raw_method *', 112), m, '必需。任意 method 字符串。');
-
-            var p = mkInput('textarea', 'p-rawparams', '{}');
-            p.placeholder = '任意 JSON 值；留空或填 {} 不传 params';
-            var w2 = document.createElement('div');
-            w2.style.width = '100%';
-            w2.appendChild(p);
-            var lbl2 = mkLabel('raw_params', 112);
-            lbl2.style.alignSelf = 'flex-start';
-            lbl2.style.paddingTop = '0.5rem';
-            addRow(lbl2, w2, '可填写 object / array / string / 数字；若填文本后端会作为原始 JSON 解析；解析失败按字符串传入。');
-
-            var notif = document.createElement('label');
-            notif.className = 'ui-toggle';
-            notif.style.marginLeft = 'auto';
-            notif.innerHTML = '<input type="checkbox" id="p-notification"> <span>作为通知发送（无 JSON-RPC id）。不填但 method 以 notifications/ 开头时自动勾选。</span>';
-            var rowNotif = document.createElement('div');
-            rowNotif.className = 'ui-form-row';
-            rowNotif.appendChild(notif);
-            f.dynBody.appendChild(rowNotif);
-            return;
-        }
-
-        f.dynTitle.textContent = '动态参数';
-        var none = document.createElement('div');
-        none.className = 'ui-hint';
-        none.textContent = '当前动作无需额外参数。';
-        f.dynBody.appendChild(none);
+    // ===== 传输模式切换 =====
+    function isStdioMode() {
+        return (f.transport && f.transport.value) === 'stdio';
+    }
+    function updateTransportUI() {
+        var stdio = isStdioMode();
+        var rowEndpoint = $('row-endpoint');
+        var rowCommand = $('row-command');
+        var rowEnv = $('row-env');
+        if (rowEndpoint) rowEndpoint.style.display = stdio ? 'none' : '';
+        if (rowCommand) rowCommand.style.display = stdio ? '' : 'none';
+        if (rowEnv) rowEnv.style.display = stdio ? '' : 'none';
     }
 
-    function readDynamicParams(action) {
-        var p = {};
-        function v(id) {
-            var e = document.getElementById(id);
-            if (!e) return undefined;
-            if (e.type === 'checkbox') return e.checked;
-            if (e.type === 'number') {
-                if (e.value === '' || e.value == null) return undefined;
-                return parseInt(e.value, 10);
-            }
-            if (e.tagName === 'TEXTAREA') {
-                return (e.value == null || e.value === '') ? undefined : e.value;
-            }
-            return (e.value == null || e.value === '') ? undefined : e.value;
+    // ===== 采集连接参数 =====
+    function readConnArgs() {
+        state.transport = (f.transport && f.transport.value) || 'auto';
+        state.timeout = parseInt(f.timeout.value || '30', 10);
+        if (isNaN(state.timeout) || state.timeout < 1) state.timeout = 30;
+        if (state.timeout > 600) state.timeout = 600;
+        state.skipHandshake = !!f.skip.checked;
+        state.protoVer = (f.proto.value || '').trim() || '2025-03-26';
+        state.clientName = (f.clientName.value || '').trim() || 'MCP-Debug-Tool-WebUI';
+        state.clientVer = (f.clientVer.value || '').trim() || '1.0';
+        if (isStdioMode()) {
+            state.command = (f.command.value || '').trim();
+            state.envStr = (f.env.value || '').trim();
+            state.endpoint = '';
+        } else {
+            state.endpoint = (f.endpoint.value || '').trim();
+            state.command = '';
+            state.envStr = '';
         }
-        function parseJsonString(s) {
-            if (s == null || s === '') return undefined;
-            s = s.trim();
-            if (!s) return undefined;
-            try { return JSON.parse(s); }
-            catch (e) { return s; /* 字符串原文；后端会二次判断 */ }
-        }
-
-        if (action === 'tools_list' || action === 'resources_list' || action === 'prompts_list') {
-            if (typeof v('p-cursor') === 'string' && v('p-cursor').length) p.cursor = v('p-cursor');
-            if (typeof v('p-limit') === 'number' && !isNaN(v('p-limit'))) p.limit = v('p-limit');
-        } else if (action === 'call_tool') {
-            p.tool_name = v('p-toolname') || '';
-            var t = v('p-toolarags');
-            if (t != null && t !== '') p.tool_args = parseJsonString(t);
-        } else if (action === 'read_resource') {
-            p.resource_uri = v('p-uri') || '';
-        } else if (action === 'get_prompt') {
-            p.prompt_name = v('p-promptname') || '';
-            var pa = v('p-promptargs');
-            if (pa != null && pa !== '') {
-                var parsed = parseJsonString(pa);
-                if (parsed && typeof parsed === 'object') p.prompt_args = parsed;
-            }
-        } else if (action === 'raw') {
-            p.raw_method = v('p-rawmethod') || '';
-            var rp = v('p-rawparams');
-            if (rp != null && rp !== '') p.raw_params = parseJsonString(rp);
-            p.notification = !!v('p-notification');
-        }
-        return p;
     }
-
-    // ===== 采集最终请求参数 =====
-    function collectArgs() {
-        var endpoint = (f.endpoint.value || '').trim();
-        var action   = f.action.value;
-        var timeout  = parseInt(f.timeout.value || '30', 10);
-        if (isNaN(timeout) || timeout < 1) timeout = 30;
-        if (timeout > 600) timeout = 600;
-
+    function baseArgs(action) {
+        readConnArgs();
         var args = {
-            endpoint: endpoint,
             action: action,
-            timeout_seconds: timeout,
-            skip_handshake: !!f.skip.checked,
-            protocol_version: (f.proto.value || '').trim() || '2025-03-26',
-            client_name: (f.clientName.value || '').trim() || 'MCP-Debug-Tool-WebUI',
-            client_version: (f.clientVer.value || '').trim() || '1.0',
-            transport: (f.transport && f.transport.value) || 'auto'
+            timeout_seconds: state.timeout,
+            skip_handshake: state.skipHandshake,
+            protocol_version: state.protoVer,
+            client_name: state.clientName,
+            client_version: state.clientVer,
+            transport: state.transport
         };
-        var dyn = readDynamicParams(action);
-        Object.keys(dyn).forEach(function (k) { args[k] = dyn[k]; });
+        if (isStdioMode()) {
+            args.command = state.command;
+            if (state.envStr) args.env = state.envStr;
+        } else {
+            args.endpoint = state.endpoint;
+        }
         return args;
     }
 
-    // ===== 调用后端 MCP 调试代理（POST /api/local/mcp_debug）=====
-    // 后端代理直接返回 runMcpDebugReport 生成的 report JSON，无需走 /mcp + tools/call 的
-    // JSON-RPC 包装。report 字段：{ ok, action, target_endpoint, steps, tool_names?, warn?, fatal_exception?, error? }
-    function callMcpDebugTool(args, onProgress) {
+    // ===== 调用后端 MCP 调试代理（统一走 Api.localTools.mcpDebug）=====
+    function callProxy(args) {
         var t0 = Date.now();
-        onProgress && onProgress({ phase: 'requesting', t0: t0 });
-
-        return fetch('/api/local/mcp_debug', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(args)
-        }).then(function (res) {
-            return res.text().then(function (t) {
-                var report;
-                try { report = t ? JSON.parse(t) : null; }
-                catch (e) {
-                    throw new Error('响应 JSON 解析失败: ' + e.message + '，原始：' + t.slice(0, 200));
-                }
-                if (!report) throw new Error('空响应');
-                // 后端始终返回 200 + report JSON：
-                //   - 输入校验失败：{ ok:false, error:"...", steps:[] }
-                //   - 正常执行：{ ok:bool, steps:[...], ... }
-                if (!res.ok) {
-                    var errMsg = (report && report.error) ? report.error
-                              : (res.statusText ? res.statusText : ('HTTP ' + res.status));
-                    var err = new Error(errMsg);
-                    err.report = report;
-                    throw err;
-                }
-                report.__elapsedMs = Date.now() - t0;
-                return report;
-            });
+        return Api.localTools.mcpDebug(args).then(function (report) {
+            report = report || {};
+            report.__elapsedMs = Date.now() - t0;
+            return report;
         });
     }
 
@@ -352,87 +200,51 @@
         el.empty.hidden = true;
         el.summary.hidden = false;
         el.overview.hidden = false;
-        el.steps.style.display = 'block';  // 确保步骤列表可见（覆盖 :empty 规则）
-        clearBanner();  // 清除旧通知
+        el.btnClear.hidden = false;
+        el.steps.style.display = 'block';
+        clearBanner();
 
         var ok = report.ok === true;
         el.sumOk.className = 'ui-badge ' + (ok ? 'ok' : 'err');
         el.sumOk.textContent = ok ? '全部成功' : '存在失败';
-        var transportInfo = '';
-        if (report.transport_detected === 'sse') {
-            transportInfo = ' · SSE 传输';
-        }
-        el.sumElapsed.textContent = '总计 ' + (report.__elapsedMs ? report.__elapsedMs : '?') + ' ms' + transportInfo;
+        el.sumElapsed.textContent = '总计 ' + (report.__elapsedMs != null ? report.__elapsedMs : '?') + ' ms';
 
-        el.ovAction.textContent   = String(report.action || '–');
+        el.ovAction.textContent = String(report.action || '–');
         el.ovEndpoint.textContent = String(report.target_endpoint || '–');
-        el.ovEndpoint.title       = el.ovEndpoint.textContent;
+        el.ovEndpoint.title = el.ovEndpoint.textContent;
+        el.ovTransport.textContent = String(report.transport_mode || '–');
         var steps = Array.isArray(report.steps) ? report.steps : [];
-        el.ovSteps.textContent    = steps.length;
-
-        var toolNames = Array.isArray(report.tool_names) ? report.tool_names : null;
-        el.ovTools.textContent = toolNames ? toolNames.length : '–';
+        el.ovSteps.textContent = steps.length;
 
         el.steps.innerHTML = '';
 
-        // 工具名展示 banner（若有）
-        if (toolNames && toolNames.length) {
-            var list = document.createElement('ul');
-            list.className = 'md-tool-list';
-            toolNames.forEach(function (n) {
-                var li = document.createElement('li');
-                li.textContent = String(n);
-                li.title = '点击复制';
-                li.style.cursor = 'copy';
-                li.addEventListener('click', function () {
-                    copyText(String(n), function () {
-                        showBanner('success', '已复制工具名: ' + n);
-                    });
-                });
-                list.appendChild(li);
-            });
-            var wrap = document.createElement('div');
-            wrap.style.padding = '0.25rem 0.75rem 0';
-            wrap.appendChild(list);
-            el.steps.appendChild(wrap);
-        }
-
-        // 若有 error / warn / fatal_exception
         if (report.error || report.warn || report.fatal_exception) {
             var banner = document.createElement('div');
-            var isFatal  = !!report.fatal_exception;
-            var isError  = !!report.error;
+            var isFatal = !!report.fatal_exception;
+            var isError = !!report.error;
             banner.className = 'tool-banner ' + ((isFatal || isError) ? 'error' : 'warn');
-            banner.style.margin = '0.5rem 0.75rem 0';
-            if (isFatal) {
-                banner.innerHTML = '<strong>致命异常：</strong>' + App.escapeHtml(report.fatal_exception);
-            } else if (isError) {
-                banner.innerHTML = '<strong>参数错误：</strong>' + App.escapeHtml(report.error);
-            } else {
-                banner.innerHTML = '<strong>Warn：</strong>' + App.escapeHtml(report.warn);
-            }
+            banner.style.margin = '0 0.75rem';
+            if (isFatal) banner.innerHTML = '<strong>致命异常：</strong>' + App.escapeHtml(report.fatal_exception);
+            else if (isError) banner.innerHTML = '<strong>参数错误：</strong>' + App.escapeHtml(report.error);
+            else banner.innerHTML = '<strong>Warn：</strong>' + App.escapeHtml(report.warn);
             el.steps.appendChild(banner);
         }
-
-        // 协议版本不一致警告
         if (report.protocol_warning) {
             var pv = document.createElement('div');
             pv.className = 'tool-banner warn';
-            pv.style.margin = '0.5rem 0.75rem 0';
+            pv.style.margin = '0 0.75rem';
             pv.innerHTML = '<strong>协议版本提示：</strong>' + App.escapeHtml(report.protocol_warning);
             el.steps.appendChild(pv);
         }
 
-        // Steps
         if (!steps.length) {
-            var emptyStep = document.createElement('div');
-            emptyStep.className = 'admin-empty';
-            emptyStep.style.padding = '1.5rem';
-            emptyStep.innerHTML = '<div class="icon">—</div><p>本次调用未产生步骤。</p>';
-            el.steps.appendChild(emptyStep);
+            var es = document.createElement('div');
+            es.className = 'admin-empty';
+            es.style.padding = '1.5rem';
+            es.innerHTML = '<div class="icon">—</div><p>本次调用未产生步骤。</p>';
+            el.steps.appendChild(es);
             return;
         }
-
         steps.forEach(function (step, idx) {
             el.steps.appendChild(renderStepCard(step, idx));
         });
@@ -443,29 +255,24 @@
         var card = document.createElement('div');
         card.className = 'md-step';
         card.dataset.ok = ok ? 'true' : 'false';
-        card.dataset.open = 'true';
+        card.dataset.open = 'false';
 
         var head = document.createElement('div');
         head.className = 'md-step-head';
-
         var arrow = document.createElement('span');
         arrow.className = 'md-step-arrow';
         arrow.textContent = '▸';
         head.appendChild(arrow);
-
         var name = document.createElement('span');
         name.className = 'md-step-name';
         name.textContent = (idx + 1) + '. ' + (step.step || 'request');
         head.appendChild(name);
-
         var chips = document.createElement('span');
         chips.className = 'md-step-chips';
-
         var stBadge = document.createElement('span');
         stBadge.className = 'ui-badge ' + (ok ? 'ok' : 'err');
         stBadge.textContent = ok ? 'OK' : 'FAIL';
         chips.appendChild(stBadge);
-
         if (typeof step.http_status === 'number') {
             var c1 = document.createElement('span');
             var httpOk = step.http_status >= 200 && step.http_status < 300;
@@ -480,72 +287,57 @@
             chips.appendChild(c2);
         }
         head.appendChild(chips);
-
         head.addEventListener('click', function () {
-            var cur = card.dataset.open === 'true';
-            card.dataset.open = cur ? 'false' : 'true';
+            card.dataset.open = card.dataset.open === 'true' ? 'false' : 'true';
         });
 
         var body = document.createElement('div');
         body.className = 'md-step-body';
-
-        // error (顶层)
         if (step.error) {
-            var errSec = mkSection('错误信息');
-            var errPre = document.createElement('pre');
-            errPre.className = 'md-pre err';
-            errPre.textContent = String(step.error);
-            errSec.secBody.appendChild(errPre);
+            var errSec = mkSection('错误信息', String(step.error), true);
             body.appendChild(errSec.root);
         }
-
-        // request
-        if (step.request != null && typeof step.request !== 'undefined') {
-            var reqSec = mkSection('Request', step.request);
-            body.appendChild(reqSec.root);
-        }
-        // response
-        if (step.response != null && typeof step.response !== 'undefined') {
-            var resSec = mkSection('Response', step.response);
-            body.appendChild(resSec.root);
-        }
+        if (step.request != null) body.appendChild(mkSection('Request', step.request).root);
+        if (step.response != null) body.appendChild(mkSection('Response', step.response).root);
 
         card.appendChild(head);
         card.appendChild(body);
         return card;
     }
 
-    function mkSection(title, jsonValue) {
+    function mkSection(title, jsonValue, isText) {
         var root = document.createElement('div');
         root.className = 'md-step-sec';
-
         var head = document.createElement('div');
         head.className = 'md-step-sec-title';
         var label = document.createElement('span');
         label.textContent = title;
         head.appendChild(label);
-
         var actions = document.createElement('div');
         actions.className = 'md-step-sec-actions';
         head.appendChild(actions);
-
         var secBody = document.createElement('div');
         root.appendChild(head);
         root.appendChild(secBody);
 
         var pre = document.createElement('pre');
-        pre.className = 'md-pre';
+        pre.className = isText ? 'md-pre err' : 'md-pre';
         var curView = 'pretty';
         function apply() {
-            pre.textContent = curView === 'pretty' ? prettyJson(jsonValue) : compactJson(jsonValue);
+            if (isText) {
+                pre.textContent = jsonValue;
+            } else {
+                pre.textContent = curView === 'pretty' ? prettyJson(jsonValue) : compactJson(jsonValue);
+            }
         }
         apply();
         secBody.appendChild(pre);
 
+        if (isText) return { root: root, secBody: secBody };
+
         var btnToggle = document.createElement('button');
         btnToggle.className = 'md-mini-btn';
         btnToggle.textContent = '压缩';
-        btnToggle.title = '在格式化 / 压缩 JSON 视图之间切换';
         btnToggle.addEventListener('click', function () {
             curView = (curView === 'pretty') ? 'compact' : 'pretty';
             btnToggle.textContent = (curView === 'pretty') ? '压缩' : '格式化';
@@ -556,170 +348,519 @@
         var btnCopy = document.createElement('button');
         btnCopy.className = 'md-mini-btn';
         btnCopy.textContent = '复制';
-        btnCopy.title = '复制该 JSON 到剪贴板';
         btnCopy.addEventListener('click', function () {
-            var text = (curView === 'pretty') ? prettyJson(jsonValue) : compactJson(jsonValue);
-            copyText(text, function () {
+            copyText(curView === 'pretty' ? prettyJson(jsonValue) : compactJson(jsonValue), function () {
                 btnCopy.textContent = '✓ 已复制';
                 setTimeout(function () { btnCopy.textContent = '复制'; }, 1200);
             });
         });
         actions.appendChild(btnCopy);
-
         return { root: root, secBody: secBody, pre: pre };
     }
 
-    // ===== 动作帮助文本 =====
-    function refreshActionHelp() {
-        var a = f.action.value;
-        var t = ACTION_HELP[a] || '';
-        el.help.textContent = '当前动作 [' + a + ']：' + t;
-        renderDynamicParams(a);
+    // ===== 标签切换 =====
+    function switchTab(tab) {
+        state.activeTab = tab;
+        var tabs = document.querySelectorAll('.md-tab');
+        for (var i = 0; i < tabs.length; i++) {
+            tabs[i].classList.toggle('active', tabs[i].dataset.tab === tab);
+        }
+        var panes = document.querySelectorAll('.md-tab-pane');
+        for (var j = 0; j < panes.length; j++) {
+            panes[j].classList.toggle('active', panes[j].dataset.tab === tab);
+        }
+        // 切到 raw 时隐藏上下文表单；其它标签保留已选表单
+        if (tab === 'raw') hideActionForm();
+    }
+    document.querySelectorAll('.md-tab').forEach(function (btn) {
+        btn.addEventListener('click', function () { switchTab(btn.dataset.tab); });
+    });
+
+    // ===== 连接并加载 =====
+    function connectAndLoad() {
+        readConnArgs();
+        if (isStdioMode()) {
+            if (!state.command) { showBanner('error', '请填写启动命令'); return; }
+        } else {
+            if (!state.endpoint) { showBanner('error', '请填写目标端点 endpoint'); return; }
+        }
+        if (!isLocalhost()) { showBanner('error', '本工具仅限本机浏览器访问'); return; }
+        setBusy(true);
+        setConnStatus('加载中…', 'loading');
+        clearBanner();
+        // 并行拉取三项列表
+        var pTools = callProxy(baseArgs('tools_list'));
+        var pRes = callProxy(baseArgs('resources_list'));
+        var pPrompts = callProxy(baseArgs('prompts_list'));
+        Promise.all([pTools, pRes, pPrompts]).then(function (results) {
+            var t = results[0], r = results[1], p = results[2];
+            if (t && Array.isArray(t.tools)) { state.tools = t.tools; renderToolList(); }
+            if (r && Array.isArray(r.resources)) { state.resources = r.resources; renderResourceList(); }
+            if (p && Array.isArray(p.prompts)) { state.prompts = p.prompts; renderPromptList(); }
+            // 展示工具列表的 report 作为主结果
+            renderResult(t);
+            var fails = [];
+            if (t && !t.ok) fails.push('工具');
+            if (r && !r.ok) fails.push('资源');
+            if (p && !p.ok) fails.push('提示词');
+            var nT = state.tools.length, nR = state.resources.length, nP = state.prompts.length;
+            if (fails.length) {
+                setConnStatus('部分失败', 'warn');
+                showBanner('warn', '已加载 工具 ' + nT + ' / 资源 ' + nR + ' / 提示词 ' + nP +
+                    '；' + fails.join('、') + ' 拉取失败，详见结果。');
+            } else {
+                setConnStatus('已连接 · 工具 ' + nT + ' / 资源 ' + nR + ' / 提示词 ' + nP, 'ok');
+                showBanner('success', '连接成功：工具 ' + nT + ' / 资源 ' + nR + ' / 提示词 ' + nP + '。点击列表项即可操作。');
+            }
+        }).catch(function (err) {
+            setConnStatus('连接失败', 'err');
+            showBanner('error', '连接失败：' + (err && err.message ? err.message : err));
+        }).finally(function () { setBusy(false); });
     }
 
-    // ===== 使用示例（快速填充表单） =====
-    function showExamples() {
-        // 简易“示例”选择（1~6），不走模态框，直接 banner 提示
-        var html = '';
-        var examples = [
-            { name: '① 本机服务自检', endpoint: 'http://127.0.0.1:' + location.port + '/mcp', action: 'probe' },
-            { name: '② 握手', endpoint: 'http://127.0.0.1:8080/mcp', action: 'initialize' },
-            { name: '③ 列工具', endpoint: 'http://127.0.0.1:8080/mcp', action: 'tools_list' },
-            { name: '④ 调用 echo', endpoint: 'http://127.0.0.1:8080/mcp', action: 'call_tool',
-              extra: function () {
-                  document.getElementById('p-toolname').value = 'echo';
-                  document.getElementById('p-toolarags').value = '{\n  "message": "Hi from MCP Debug UI!"\n}';
-              }},
-            { name: '⑤ 读 README 资源', endpoint: 'http://127.0.0.1:' + location.port + '/mcp', action: 'read_resource',
-              extra: function () {
-                  document.getElementById('p-uri').value = 'resource://tools/readme';
-              }},
-            { name: '⑥ 自定义: server-info 风格 raw', endpoint: 'http://127.0.0.1:' + location.port + '/mcp', action: 'raw',
-              extra: function () {
-                  document.getElementById('p-rawmethod').value = 'server-info';
-                  document.getElementById('p-rawparams').value = '{}';
-                  document.getElementById('p-notification').checked = false;
-              }}
-        ];
-        var container = document.createElement('div');
-        container.style.display = 'flex';
-        container.style.flexWrap = 'wrap';
-        container.style.gap = '0.375rem';
-        examples.forEach(function (ex, i) {
-            var btn = document.createElement('button');
-            btn.className = 'btn btn-sm btn-outline';
-            btn.textContent = ex.name;
-            btn.addEventListener('click', function () {
-                f.endpoint.value = ex.endpoint;
-                f.action.value = ex.action;
-                refreshActionHelp();
-                if (typeof ex.extra === 'function') ex.extra();
-                showBanner('success', '已填充示例 [' + ex.name + ']，请点击"执行调试"。');
-            });
-            container.appendChild(btn);
-        });
-        var close = document.createElement('button');
-        close.className = 'btn btn-sm';
-        close.textContent = '关闭';
-        close.style.marginLeft = 'auto';
-        container.appendChild(close);
-        close.addEventListener('click', clearBanner);
+    function doPing() {
+        readConnArgs();
+        if (isStdioMode()) {
+            if (!state.command) { showBanner('error', '请填写启动命令'); return; }
+        } else {
+            if (!state.endpoint) { showBanner('error', '请填写目标端点'); return; }
+        }
+        runAction(baseArgs('ping'), 'ping');
+    }
 
-        el.notif.innerHTML = '';
-        el.notif.hidden = false;
-        var box = document.createElement('div');
-        box.className = 'tool-banner info';
-        box.style.display = 'flex';
-        box.style.alignItems = 'center';
-        box.style.flexWrap = 'wrap';
-        box.style.gap = '0.5rem';
-        var t = document.createElement('strong');
-        t.style.marginRight = '0.25rem';
-        t.textContent = '快速示例：';
-        box.appendChild(t);
-        box.appendChild(container);
-        el.notif.appendChild(box);
+    // ===== 通用动作执行 =====
+    function runAction(args, label) {
+        if (!isLocalhost()) { showBanner('error', '本工具仅限本机访问'); return; }
+        setBusy(true);
+        clearBanner();
+        callProxy(args).then(function (report) {
+            renderResult(report);
+            if (report.error) showBanner('error', '参数错误：' + report.error);
+            else if (report.ok) showBanner('success', label + ' 完成，共 ' + (report.steps ? report.steps.length : 0) + ' 步');
+            else showBanner('warn', label + ' 部分步骤失败，请查看详情。');
+        }).catch(function (err) {
+            showBanner('error', '请求失败：' + (err && err.message ? err.message : err));
+        }).finally(function () { setBusy(false); });
+    }
+    function setBusy(b) {
+        state.busy = b;
+        var btns = ['btn-connect', 'btn-ping', 'btn-refresh-tools', 'btn-refresh-resources',
+            'btn-refresh-prompts', 'btn-raw-send'];
+        btns.forEach(function (id) {
+            var bEl = $(id);
+            if (bEl) bEl.disabled = b;
+        });
+    }
+
+    // ===== 工具列表 =====
+    function renderToolList() {
+        el.cntTools.textContent = state.tools.length;
+        var filter = (f.toolFilter.value || '').toLowerCase().trim();
+        el.toolList.innerHTML = '';
+        var list = state.tools.filter(function (t) {
+            if (!filter) return true;
+            return (t.name || '').toLowerCase().indexOf(filter) >= 0 ||
+                (t.description || '').toLowerCase().indexOf(filter) >= 0;
+        });
+        if (!list.length) {
+            el.toolList.innerHTML = '<div class="md-item-empty">' +
+                (state.tools.length ? '无匹配工具' : '尚未加载工具，点击「刷新工具」') + '</div>';
+            return;
+        }
+        list.forEach(function (tool) {
+            el.toolList.appendChild(mkToolCard(tool));
+        });
+    }
+    function mkToolCard(tool) {
+        var card = document.createElement('div');
+        card.className = 'md-item-card';
+        if (state.selectedTool && state.selectedTool.name === tool.name) card.classList.add('selected');
+        var reqCount = 0, propCount = 0;
+        if (tool.inputSchema && tool.inputSchema.properties) {
+            propCount = Object.keys(tool.inputSchema.properties).length;
+            reqCount = Array.isArray(tool.inputSchema.required) ? tool.inputSchema.required.length : 0;
+        }
+        card.innerHTML =
+            '<div class="md-item-name">' + App.escapeHtml(tool.name || '') + '</div>' +
+            '<div class="md-item-desc">' + App.escapeHtml(tool.description || '（无描述）') + '</div>' +
+            '<div class="md-item-meta">' +
+            (propCount ? '<span class="md-chip">' + propCount + ' 个参数</span>' : '<span class="md-chip">无参数</span>') +
+            (reqCount ? '<span class="md-chip warn">' + reqCount + ' 必填</span>' : '') +
+            '</div>';
+        card.addEventListener('click', function () {
+            state.selectedTool = tool;
+            state.selectedResource = null;
+            state.selectedPrompt = null;
+            renderToolList();
+            renderToolForm(tool);
+        });
+        return card;
+    }
+    f.toolFilter.addEventListener('input', renderToolList);
+
+    // ===== 工具参数表单（根据 inputSchema 自动生成）=====
+    function renderToolForm(tool) {
+        var schema = tool.inputSchema || {};
+        var props = schema.properties || {};
+        var required = Array.isArray(schema.required) ? schema.required : [];
+        var keys = Object.keys(props);
+
+        var html = '<div class="md-af-head">' +
+            '<span class="md-af-tag">工具</span>' +
+            '<strong class="md-af-title">' + App.escapeHtml(tool.name || '') + '</strong>' +
+            '</div>';
+        if (tool.description) {
+            html += '<div class="md-af-desc">' + App.escapeHtml(tool.description) + '</div>';
+        }
+        if (!keys.length) {
+            html += '<div class="ui-hint">该工具无需参数，直接点击调用。</div>';
+        } else {
+            html += '<div class="md-af-grid">';
+            keys.forEach(function (key) {
+                var p = props[key] || {};
+                var isReq = required.indexOf(key) >= 0;
+                html += renderSchemaField(key, p, isReq, 'tool');
+            });
+            html += '</div>';
+        }
+        html += '<div class="md-af-actions">' +
+            '<button class="btn btn-primary btn-sm" id="btn-call-tool">▶ 调用工具</button>' +
+            '<label class="ui-toggle" style="margin-left:0.5rem;">' +
+            '<input type="checkbox" id="af-skip-handshake"' + (state.skipHandshake ? ' checked' : '') + '>' +
+            '<span>跳过握手</span>' +
+            '</label>' +
+            '</div>';
+
+        el.actionForm.innerHTML = html;
+        el.actionPanel.hidden = false;
+        $('btn-call-tool').addEventListener('click', function () {
+            var args = baseArgs('call_tool');
+            args.tool_name = tool.name;
+            var argObj = collectFormValues(keys, 'tool');
+            if (argObj === null) return; // 校验失败
+            if (Object.keys(argObj).length) args.tool_args = argObj;
+            args.skip_handshake = !!$('af-skip-handshake').checked;
+            runAction(args, '调用工具 ' + tool.name);
+        });
+    }
+
+    // 根据 JSON Schema 渲染单个字段
+    function renderSchemaField(key, prop, isReq, prefix) {
+        var type = prop.type || 'string';
+        var desc = prop.description || '';
+        var id = 'af-' + prefix + '-' + key;
+        var label = App.escapeHtml(key) + (isReq ? ' <span class="md-req">*</span>' : '');
+        var typeHint = type;
+        var h = '<div class="md-field">';
+        h += '<label class="md-field-label" for="' + id + '">' + label + '</label>';
+
+        // enum 下拉
+        if (Array.isArray(prop.enum) && prop.enum.length) {
+            h += '<select class="ui-form-input md-field-input" id="' + id + '" data-key="' + App.escapeHtml(key) + '" data-type="enum"' + (isReq ? ' required' : '') + '>';
+            h += '<option value="">' + (isReq ? '请选择…' : '（不传）') + '</option>';
+            prop.enum.forEach(function (v) {
+                h += '<option value="' + App.escapeHtml(String(v)) + '">' + App.escapeHtml(String(v)) + '</option>';
+            });
+            h += '</select>';
+        } else if (type === 'boolean') {
+            h += '<label class="ui-toggle"><input type="checkbox" id="' + id + '" data-key="' + App.escapeHtml(key) + '" data-type="boolean"><span>' + (isReq ? '勾选=true，不勾选=false（必填）' : '勾选=true，不勾选=false') + '</span></label>';
+        } else if (type === 'number' || type === 'integer') {
+            var step = type === 'integer' ? '1' : 'any';
+            h += '<input type="number" class="ui-form-input md-field-input" id="' + id + '" data-key="' + App.escapeHtml(key) + '" data-type="number" step="' + step + '" placeholder="' + typeHint + (isReq ? '（必填）' : '（不传）') + '"' + (isReq ? ' required' : '') + '>';
+        } else if (type === 'array' || type === 'object') {
+            h += '<textarea class="ui-form-input md-field-input md-jsonarea-sm" id="' + id + '" data-key="' + App.escapeHtml(key) + '" data-type="' + type + '" placeholder="' + typeHint + ' JSON' + (isReq ? '（必填）' : '（不传）') + '"' + (isReq ? ' required' : '') + '></textarea>';
+        } else {
+            // string / 其它
+            h += '<input type="text" class="ui-form-input md-field-input" id="' + id + '" data-key="' + App.escapeHtml(key) + '" data-type="string" placeholder="' + typeHint + (isReq ? '（必填）' : '（不传）') + '"' + (isReq ? ' required' : '') + '>';
+        }
+        if (desc) h += '<div class="md-field-hint">' + App.escapeHtml(desc) + '</div>';
+        h += '</div>';
+        return h;
+    }
+
+    // 收集表单值
+    function collectFormValues(keys, prefix) {
+        var obj = {};
+        for (var i = 0; i < keys.length; i++) {
+            var key = keys[i];
+            var input = $('af-' + prefix + '-' + key);
+            if (!input) continue;
+            var dtype = input.dataset.type;
+            var raw;
+            if (dtype === 'boolean') {
+                obj[key] = !!input.checked;
+                continue;
+            }
+            raw = (input.value != null ? input.value : '').trim();
+            if (raw === '') {
+                if (input.hasAttribute('required')) {
+                    showBanner('error', '必填参数「' + key + '」不能为空');
+                    input.focus();
+                    return null;
+                }
+                continue;
+            }
+            if (dtype === 'number') {
+                var n = Number(raw);
+                if (isNaN(n)) {
+                    showBanner('error', '参数「' + key + '」不是合法数字');
+                    input.focus();
+                    return null;
+                }
+                obj[key] = n;
+            } else if (dtype === 'enum') {
+                obj[key] = raw;
+            } else if (dtype === 'array') {
+                try {
+                    var arr = JSON.parse(raw);
+                    if (!Array.isArray(arr)) {
+                        throw new Error('not array');
+                    }
+                    obj[key] = arr;
+                } catch (e) {
+                    showBanner('error', '参数「' + key + '」需为 JSON 数组'); input.focus(); return null;
+                }
+            } else if (dtype === 'object') {
+                try {
+                    var o = JSON.parse(raw);
+                    if (typeof o !== 'object' || o === null || Array.isArray(o)) {
+                        throw new Error('not object');
+                    }
+                    obj[key] = o;
+                } catch (e) {
+                    showBanner('error', '参数「' + key + '」需为 JSON 对象'); input.focus(); return null;
+                }
+            } else {
+                try {
+                    obj[key] = JSON.parse(raw);
+                } catch (e) {
+                    obj[key] = raw;
+                }
+            }
+        }
+        return obj;
+    }
+
+    // ===== 资源列表 =====
+    function renderResourceList() {
+        el.cntResources.textContent = state.resources.length;
+        el.resourceList.innerHTML = '';
+        if (!state.resources.length) {
+            el.resourceList.innerHTML = '<div class="md-item-empty">尚未加载资源，点击「刷新资源」</div>';
+            return;
+        }
+        state.resources.forEach(function (res) {
+            var card = document.createElement('div');
+            card.className = 'md-item-card';
+            if (state.selectedResource && state.selectedResource.uri === res.uri) card.classList.add('selected');
+            card.innerHTML =
+                '<div class="md-item-name md-mono">' + App.escapeHtml(res.uri || '') + '</div>' +
+                '<div class="md-item-desc">' + App.escapeHtml(res.description || res.name || '') + '</div>' +
+                '<div class="md-item-meta"><span class="md-chip">' + App.escapeHtml(res.mimeType || 'resource') + '</span></div>';
+            card.addEventListener('click', function () {
+                state.selectedResource = res;
+                state.selectedTool = null;
+                state.selectedPrompt = null;
+                renderResourceList();
+                renderResourceForm(res);
+            });
+            el.resourceList.appendChild(card);
+        });
+    }
+    function renderResourceForm(res) {
+        var html = '<div class="md-af-head">' +
+            '<span class="md-af-tag">资源</span>' +
+            '<strong class="md-af-title md-mono">' + App.escapeHtml(res.uri || '') + '</strong>' +
+            '</div>';
+        if (res.description || res.name) {
+            html += '<div class="md-af-desc">' + App.escapeHtml(res.description || res.name) + '</div>';
+        }
+        html += '<div class="md-af-actions">' +
+            '<button class="btn btn-primary btn-sm" id="btn-read-resource">▶ 读取资源</button>' +
+            '<label class="ui-toggle" style="margin-left:0.5rem;">' +
+            '<input type="checkbox" id="af-skip-handshake"' + (state.skipHandshake ? ' checked' : '') + '>' +
+            '<span>跳过握手</span>' +
+            '</label></div>';
+        el.actionForm.innerHTML = html;
+        el.actionPanel.hidden = false;
+        $('btn-read-resource').addEventListener('click', function () {
+            var args = baseArgs('read_resource');
+            args.resource_uri = res.uri;
+            args.skip_handshake = !!$('af-skip-handshake').checked;
+            runAction(args, '读取资源 ' + res.uri);
+        });
+    }
+
+    // ===== 提示词列表 =====
+    function renderPromptList() {
+        el.cntPrompts.textContent = state.prompts.length;
+        el.promptList.innerHTML = '';
+        if (!state.prompts.length) {
+            el.promptList.innerHTML = '<div class="md-item-empty">尚未加载提示词，点击「刷新提示词」</div>';
+            return;
+        }
+        state.prompts.forEach(function (p) {
+            var card = document.createElement('div');
+            card.className = 'md-item-card';
+            if (state.selectedPrompt && state.selectedPrompt.name === p.name) card.classList.add('selected');
+            var argCount = (p.arguments && Array.isArray(p.arguments)) ? p.arguments.length : 0;
+            card.innerHTML =
+                '<div class="md-item-name">' + App.escapeHtml(p.name || '') + '</div>' +
+                '<div class="md-item-desc">' + App.escapeHtml(p.description || '（无描述）') + '</div>' +
+                '<div class="md-item-meta"><span class="md-chip">' + (argCount ? argCount + ' 个变量' : '无变量') + '</span></div>';
+            card.addEventListener('click', function () {
+                state.selectedPrompt = p;
+                state.selectedTool = null;
+                state.selectedResource = null;
+                renderPromptList();
+                renderPromptForm(p);
+            });
+            el.promptList.appendChild(card);
+        });
+    }
+    function renderPromptForm(p) {
+        var html = '<div class="md-af-head">' +
+            '<span class="md-af-tag">提示词</span>' +
+            '<strong class="md-af-title">' + App.escapeHtml(p.name || '') + '</strong>' +
+            '</div>';
+        if (p.description) html += '<div class="md-af-desc">' + App.escapeHtml(p.description) + '</div>';
+        var args = Array.isArray(p.arguments) ? p.arguments : [];
+        if (!args.length) {
+            html += '<div class="ui-hint">该提示词无变量，直接点击获取。</div>';
+        } else {
+            html += '<div class="md-af-grid">';
+            args.forEach(function (a) {
+                var prop = { type: 'string', description: a.description || '' };
+                if (a.required) prop._req = true;
+                html += renderSchemaField(a.name || '', prop, !!a.required, 'prompt');
+            });
+            html += '</div>';
+        }
+        html += '<div class="md-af-actions">' +
+            '<button class="btn btn-primary btn-sm" id="btn-get-prompt">▶ 获取提示词</button>' +
+            '<label class="ui-toggle" style="margin-left:0.5rem;">' +
+            '<input type="checkbox" id="af-skip-handshake"' + (state.skipHandshake ? ' checked' : '') + '>' +
+            '<span>跳过握手</span>' +
+            '</label></div>';
+        el.actionForm.innerHTML = html;
+        el.actionPanel.hidden = false;
+        $('btn-get-prompt').addEventListener('click', function () {
+            var reqArgs = baseArgs('get_prompt');
+            reqArgs.prompt_name = p.name;
+            var keys = args.map(function (a) { return a.name; });
+            var argObj = collectFormValues(keys, 'prompt');
+            if (argObj === null) return;
+            if (Object.keys(argObj).length) reqArgs.prompt_args = argObj;
+            reqArgs.skip_handshake = !!$('af-skip-handshake').checked;
+            runAction(reqArgs, '获取提示词 ' + p.name);
+        });
+    }
+
+    function hideActionForm() {
+        el.actionForm.innerHTML = '';
+        el.actionPanel.hidden = true;
+    }
+    function clearResults() {
+        el.summary.hidden = true;
+        el.overview.hidden = true;
+        el.btnClear.hidden = true;
+        el.steps.innerHTML = '';
+        el.steps.style.display = '';
+        el.empty.hidden = false;
+        clearBanner();
+    }
+
+    // ===== 原始请求 =====
+    function sendRaw() {
+        readConnArgs();
+        if (isStdioMode()) {
+            if (!state.command) { showBanner('error', '请填写启动命令'); return; }
+        } else {
+            if (!state.endpoint) { showBanner('error', '请填写目标端点'); return; }
+        }
+        var method = (f.rawMethod.value || '').trim();
+        if (!method) { showBanner('error', '请填写 method'); return; }
+        var args = baseArgs('raw');
+        args.raw_method = method;
+        var paramsRaw = (f.rawParams.value || '').trim();
+        if (paramsRaw) {
+            try { args.raw_params = JSON.parse(paramsRaw); }
+            catch (e) { showBanner('error', 'params 不是合法 JSON：' + e.message); return; }
+        }
+        args.notification = !!f.rawNotif.checked || method.indexOf('notifications/') === 0;
+        runAction(args, '原始请求 ' + method);
     }
 
     // ===== 按钮绑定 =====
-    f.action.addEventListener('change', refreshActionHelp);
-
-    el.btnClear.addEventListener('click', function () {
-        el.empty.hidden = false;
-        el.summary.hidden = true;
-        el.overview.hidden = true;
-        el.steps.innerHTML = '';
-        el.steps.style.display = '';  // 恢复默认，让 :empty 规则生效
-        clearBanner();
-        showBanner('info', '结果面板已清空');
-    });
-
-    el.btnExamples.addEventListener('click', showExamples);
-
-    el.btnRun.addEventListener('click', function () {
-        var args = collectArgs();
-        if (!args.endpoint) { showBanner('error', '请填写目标端点 endpoint（例如 http://127.0.0.1:8080/mcp）'); return; }
-        if (!args.action)  { showBanner('error', '请选择调试动作 action'); return; }
-        if (!isLocalhost()) { showBanner('error', '本工具仅限本机浏览器访问（127.0.0.1 / localhost）'); return; }
-
-        // call_tool / read_resource / get_prompt / raw：校验额外必填
-        if (args.action === 'call_tool' && !args.tool_name) {
-            showBanner('error', 'call_tool 需要填写 tool_name'); return;
+    $('btn-connect').addEventListener('click', connectAndLoad);
+    $('btn-ping').addEventListener('click', doPing);
+    $('btn-refresh-tools').addEventListener('click', function () {
+        readConnArgs();
+        if (isStdioMode()) {
+            if (!state.command) { showBanner('error', '请填写启动命令'); return; }
+        } else {
+            if (!state.endpoint) { showBanner('error', '请填写目标端点'); return; }
         }
-        if (args.action === 'read_resource' && !args.resource_uri) {
-            showBanner('error', 'read_resource 需要填写 resource_uri'); return;
-        }
-        if (args.action === 'get_prompt' && !args.prompt_name) {
-            showBanner('error', 'get_prompt 需要填写 prompt_name'); return;
-        }
-        if (args.action === 'raw' && !args.raw_method) {
-            showBanner('error', 'raw 需要填写 raw_method'); return;
-        }
-
-        var oldLabel = el.btnRun.textContent;
-        el.btnRun.textContent = '请求中…';
-        el.btnRun.disabled = true;
-        clearBanner();
-
-        callMcpDebugTool(args).then(function (report) {
+        setBusy(true); clearBanner();
+        callProxy(baseArgs('tools_list')).then(function (report) {
+            if (report && Array.isArray(report.tools)) { state.tools = report.tools; renderToolList(); }
             renderResult(report);
-            if (report.error) {
-                showBanner('error', '参数错误：' + report.error);
-            } else if (report.ok) {
-                showBanner('success',
-                    '调试完成，共 ' + (report.steps ? report.steps.length : 0) + ' 步，总耗时 ' + report.__elapsedMs + ' ms');
-            } else {
-                showBanner('warn', '调试部分步骤失败，请查看失败步骤的 error / response 字段。');
-            }
+            if (report.ok) showBanner('success', '已加载 ' + state.tools.length + ' 个工具');
+            else showBanner('warn', '工具列表加载失败，详见结果');
         }).catch(function (err) {
-            // 后端 4xx 输入校验错误：err.report 已含 error/steps，渲染后展示
-            if (err && err.report) {
-                renderResult(err.report);
-                showBanner('error', '参数错误：' + (err.message || '未知错误'));
-            } else {
-                showBanner('error', '请求失败：' + (err && err.message ? err.message : err));
-            }
-        }).finally(function () {
-            el.btnRun.textContent = oldLabel;
-            el.btnRun.disabled = false;
-        });
+            showBanner('error', '请求失败：' + (err && err.message ? err.message : err));
+        }).finally(function () { setBusy(false); });
     });
+    $('btn-refresh-resources').addEventListener('click', function () {
+        readConnArgs();
+        if (isStdioMode()) {
+            if (!state.command) { showBanner('error', '请填写启动命令'); return; }
+        } else {
+            if (!state.endpoint) { showBanner('error', '请填写目标端点'); return; }
+        }
+        setBusy(true); clearBanner();
+        callProxy(baseArgs('resources_list')).then(function (report) {
+            if (report && Array.isArray(report.resources)) { state.resources = report.resources; renderResourceList(); }
+            renderResult(report);
+        }).catch(function (err) {
+            showBanner('error', '请求失败：' + (err && err.message ? err.message : err));
+        }).finally(function () { setBusy(false); });
+    });
+    $('btn-refresh-prompts').addEventListener('click', function () {
+        readConnArgs();
+        if (isStdioMode()) {
+            if (!state.command) { showBanner('error', '请填写启动命令'); return; }
+        } else {
+            if (!state.endpoint) { showBanner('error', '请填写目标端点'); return; }
+        }
+        setBusy(true); clearBanner();
+        callProxy(baseArgs('prompts_list')).then(function (report) {
+            if (report && Array.isArray(report.prompts)) { state.prompts = report.prompts; renderPromptList(); }
+            renderResult(report);
+        }).catch(function (err) {
+            showBanner('error', '请求失败：' + (err && err.message ? err.message : err));
+        }).finally(function () { setBusy(false); });
+    });
+    $('btn-raw-send').addEventListener('click', sendRaw);
+    el.btnCloseForm.addEventListener('click', hideActionForm);
+    el.btnClear.addEventListener('click', clearResults);
 
     // ===== 初始化 =====
     (function init() {
-        // 主机名非本机：隐藏按钮并展示告警
         if (!isLocalhost()) {
             var panel = document.querySelector('.md-layout');
             if (panel) panel.innerHTML =
                 '<div class="admin-empty" style="grid-column:1/-1;"><div class="icon">🚫</div>' +
                 '<h3>本页面仅限本机访问</h3><p>请在 127.0.0.1 / localhost 打开</p></div>';
-            el.btnRun.disabled = true;
             return;
         }
-        // 默认端口填当前页面的实际端口（方便调试自身服务）
-        if (!f.endpoint.value && location.port) {
+        if (location.port && !f.endpoint.value) {
             f.endpoint.value = 'http://127.0.0.1:' + location.port + '/mcp';
         }
-        refreshActionHelp();
+        updateTransportUI();
+        if (f.transport) f.transport.addEventListener('change', updateTransportUI);
+        renderToolList();
+        renderResourceList();
+        renderPromptList();
     })();
 })();

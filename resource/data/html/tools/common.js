@@ -1,18 +1,18 @@
-/* ===== Tools Module - Shared JavaScript =====
- * Provides:
- *   - Tool header rendering (renderToolHeader)
- *   - Clipboard copy with feedback (copyText)
- *   - Shorthand helpers ($, $$, el)
- *   - Banner show/hide (showBanner)
- *   - JSON syntax highlighting (highlightJson)
- *   - Back-to-top button
+/* ===== Tools JavaScript 工具模块 - 共享 JavaScript 代码 =====
+ * 提供：
+ *   - 工具标题渲染函数 (renderToolHeader)
+ *   - 复制文本到剪贴板函数 (copyText)
+ *   - 简单 DOM 操作助手函数 ($, $$, el)
+ *   - Banner 显示/隐藏函数 (showBanner)
+ *   - JSON 语法高亮函数 (highlightJson)
+ *   - 回到顶部按钮 (initBackToTop)
  */
 (function (window) {
     'use strict';
 
     var Tools = {};
 
-    // ===== Shorthand DOM helpers =====
+    // ===== 简单 DOM 操作助手函数 =====
     Tools.$ = function (id) { return document.getElementById(id); };
     Tools.$$ = function (sel, root) { return (root || document).querySelectorAll(sel); };
     Tools.el = function (tag, attrs, children) {
@@ -46,42 +46,18 @@
         return node;
     };
 
-    // ===== Compute relative backHref based on current URL depth =====
+    // ===== 计算返回链接的相对路径 =====
     // /tools/{code}.html -> ../tools.html
     // /tools/local/{code}.html -> ../../tools.html
     Tools.getBackHref = function () {
         var path = window.location.pathname;
-        // Count segments between /tools/ and the filename
+        // 统计当前 URL 中 /tools/ 到文件名之间的路径段数量
         if (path.indexOf('/tools/local/') !== -1) return '../../tools.html';
         if (path.indexOf('/tools/') !== -1) return '../tools.html';
         return '../tools.html';
     };
 
-    // ===== Tool header =====
-    // Renders the standard tool header into #tool-header-container.
-    // opts: { title, description, icon (emoji or char), backText, backHref }
-    Tools.renderToolHeader = function (opts) {
-        var container = Tools.$('tool-header-container');
-        if (!container) return;
-        opts = opts || {};
-        var backHref = opts.backHref || Tools.getBackHref();
-        var backText = opts.backText || '返回';
-        var icon = opts.icon || '🔧';
-        var title = opts.title || '';
-        var desc = opts.description || '';
-
-        container.innerHTML = '';
-        container.appendChild(Tools.el('header', { class: 'tool-header' }, [
-            Tools.el('a', { class: 'btn btn-outline btn-sm btn-back', href: backHref }, [backText]),
-            Tools.el('div', { class: 'tool-icon' }, [icon]),
-            Tools.el('div', {}, [
-                Tools.el('h1', { text: title }),
-                desc ? Tools.el('p', { class: 'tool-desc', text: desc }) : null
-            ])
-        ]));
-    };
-
-    // ===== Catalog cache for tool metadata =====
+    // ===== 工具元数据缓存 =====
     var _catalogPromise = null;
     var _catalogByFile = null; // { fileCode: {title, icon, desc} }
     var _catalogByCode = null; // { toolCode: {title, icon, desc} }
@@ -117,21 +93,18 @@
         return _catalogByFile[fileCode] || null;
     };
 
-    // Auto-inject tool header on detail pages (URL: /tools/{code}.html or /tools/local/{code}.html)
+    // 自动注入工具头信息
     Tools.autoInjectHeader = function () {
-        // Match both /tools/xxx.html and /tools/local/xxx.html
-        var m = window.location.pathname.match(/\/tools\/(?:local\/)?([^/]+)\.html?$/);
+        var m = window.location.pathname.match(/.*?\/([^/]+)\.html?$/);
         if (!m) return;
         var fileCode = m[1];
-        // Skip if already index/tools page
-        if (fileCode === 'index') return;
         var toolPage = document.querySelector('.tool-page');
         if (!toolPage) return;
-        // Skip if opted-out via data attribute (e.g. <body data-no-header> or .tool-page[data-no-header])
+        // 跳过已禁用头信息的页面 (e.g. <body data-no-header> or .tool-page[data-no-header])
         var noHeaderHost = document.querySelector('[data-no-header]');
         if (toolPage.hasAttribute('data-no-header')) return;
         if (noHeaderHost) return;
-        // Skip if a header already exists
+        // 跳过已存在头信息的页面
         if (toolPage.querySelector('.tool-header')) return;
 
         var backHref = Tools.getBackHref();
@@ -145,9 +118,12 @@
                 icon = meta.icon || icon;
                 desc = meta.desc || desc;
             }
+            var iconChild = (typeof icon === 'string' && icon.match(/\.svg$/i))
+                ? Tools.el('img', { src: icon, alt: title })
+                : icon;
             var header = Tools.el('header', { class: 'tool-header' }, [
                 Tools.el('a', { class: 'btn btn-outline btn-sm btn-back', href: backHref }, ['返回']),
-                Tools.el('div', { class: 'tool-icon' }, [icon]),
+                Tools.el('div', { class: 'tool-icon' }, [iconChild]),
                 Tools.el('div', {}, [
                     Tools.el('h1', { text: title }),
                     desc ? Tools.el('p', { class: 'tool-desc', text: desc }) : null
@@ -156,7 +132,7 @@
             toolPage.insertBefore(header, toolPage.firstChild);
         };
 
-        // Try cached first, then fetch
+        // 优先尝试从缓存中获取工具元数据
         var cached = Tools.lookupToolByFile(fileCode);
         if (cached) {
             inject(cached);
@@ -168,7 +144,7 @@
         }
     };
 
-    // ===== Clipboard =====
+    // ===== 复制文本到剪贴板 =====
     Tools.copyText = function (text, btnEl, feedbackText) {
         if (!text) return Promise.resolve(false);
         feedbackText = feedbackText || '已复制';
@@ -205,7 +181,7 @@
         });
     };
 
-    // ===== Banners =====
+    // ===== 通知条 =====
     Tools.showBanner = function (containerId, type, message, autoCloseMs) {
         var c = Tools.$(containerId);
         if (!c) return;
@@ -230,7 +206,7 @@
         if (c) c.innerHTML = '';
     };
 
-    // ===== JSON syntax highlighting =====
+    // ===== JSON 语法高亮 =====
     Tools.highlightJson = function (jsonStr) {
         if (!jsonStr) return '';
         var escaped = jsonStr
@@ -251,7 +227,7 @@
         );
     };
 
-    // ===== Back to top button =====
+    // ===== 回到顶部按钮 =====
     Tools.initBackToTop = function () {
         var btn = Tools.el('button', {
             class: 'tool-back-top',
@@ -266,7 +242,7 @@
         });
     };
 
-    // ===== Utility: escape HTML =====
+    // ===== 转义 HTML 特殊字符 =====
     Tools.escapeHtml = function (s) {
         if (s == null) return '';
         return String(s)
@@ -277,7 +253,7 @@
             .replace(/'/g, '&#39;');
     };
 
-    // ===== Utility: download text/blob =====
+    // ===== 下载文本/二进制文件 =====
     Tools.download = function (filename, content, mime) {
         var blob;
         if (content instanceof Blob) blob = content;
@@ -290,7 +266,7 @@
         setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
     };
 
-    // ===== Utility: read file as text/data-url/array-buffer =====
+    // ===== 读取文件内容 =====
     Tools.readFile = function (file, mode) {
         return new Promise(function (resolve, reject) {
             var reader = new FileReader();
@@ -302,11 +278,11 @@
         });
     };
 
-    // ===== API helpers (delegated to Api module) =====
+    // ===== API 帮助函数（委托给 Api 模块） =====
     Tools.apiGet = function (url) { return window.Api.get(url); };
     Tools.apiPost = function (url, body, isForm) { return window.Api.post(url, body); };
 
-    // Auto-init back to top on DOMContentLoaded
+    // ===== 初始化工具头信息 =====
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function () {
             Tools.autoInjectHeader();

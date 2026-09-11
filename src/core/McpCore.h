@@ -548,57 +548,34 @@ T getResult( const RpcNotification &n ) {
     return n.params->get<T>();
 }
 
-RpcRequest makeRequest( const RequestId &id, const std::string &method,
-                        std::optional<json> params = std::nullopt );
-
-RpcNotification makeNotification( const std::string &method, std::optional<json> params = std::nullopt );
-
 RpcResponse makeSuccessResponse( const RequestId &id, json result );
 RpcResponse makeErrorResponse( const RequestId &id, RpcError error );
 RpcResponse makeErrorResponse( const RequestId &id, ErrorCode code, const std::string &msg,
                                std::optional<json> data = std::nullopt );
+ToolCallResult makeTextResult( std::string text, bool isError = false );
+ToolCallResult makeJsonResult( const json &j, bool isError = false );
 
 // ---- MCP 标准请求封装 ----
-// initialize
+RpcRequest makeRequest( const RequestId &id, const std::string &method,
+                        std::optional<json> params = std::nullopt );
 RpcRequest makeInitializeRequest( const RequestId &id, const InitializeParams &params );
-
-// ping
 RpcRequest makePingRequest( const RequestId &id );
-
-// tools/list
 RpcRequest makeToolsListRequest( const RequestId &id,
                                  std::optional<std::string> cursor = std::nullopt );
-
-// tools/call
 RpcRequest makeToolsCallRequest( const RequestId &id, const std::string &name,
                                  std::optional<json> arguments = std::nullopt );
-
-// resources/list
 RpcRequest makeResourcesListRequest( const RequestId &id, std::optional<std::string> cursor = std::nullopt );
-
-// resources/read
 RpcRequest makeResourcesReadRequest( const RequestId &id, const std::string &uri );
-
-// prompts/list
 RpcRequest makePromptsListRequest( const RequestId &id, std::optional<std::string> cursor = std::nullopt );
-
-// prompts/get
 RpcRequest makePromptsGetRequest( const RequestId &id, const std::string &name,
                                   std::optional<json> arguments = std::nullopt );
-
-// logging/setLevel
 RpcRequest makeLoggingSetLevelRequest( const RequestId &id, LogLevel level );
-
-// roots/list
 RpcRequest makeRootsListRequest( const RequestId &id );
-
-// sampling/createMessage
 RpcRequest makeSamplingCreateMessageRequest( const RequestId &id, const CreateMessageParams &params );
-
-// completion/complete
 RpcRequest makeCompletionCompleteRequest( const RequestId &id, const CompletionCompleteParams &params );
 
 // ---- MCP 标准通知封装 ----
+RpcNotification makeNotification( const std::string &method, std::optional<json> params = std::nullopt );
 RpcNotification makeInitializedNotification();
 RpcNotification makeCancelRequestNotification( const RequestId &requestId );
 RpcNotification makeProgressNotification( const std::string &progressToken, std::optional<int32_t> progress = std::nullopt,

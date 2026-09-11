@@ -1,0 +1,10 @@
+<svg width="24" height="24" xmlns="http://www.w3.org/2000/svg" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" stroke="#ec4899" fill="none">
+
+ <g>
+  <title>Layer 1</title>
+  <rect id="svg_1" rx="2" height="18" width="18" y="3" x="3"/>
+  <circle id="svg_2" r="1.5" cy="7.89086" cx="7.48477"/>
+  <polyline id="svg_3" points="20.390862941741943,12.969543218612671 15.390862941741943,7.969543218612671 4.390862941741943,18.96954321861267 "/>
+  <text font-weight="bold" xml:space="preserve" text-anchor="start" font-family="monospace" font-size="5" stroke-width="0" id="svg_5" y="18.13487" x="10.81066" fill="#ec4899">B64</text>
+ </g>
+</svg>

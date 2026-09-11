@@ -116,7 +116,16 @@
 
             var iconBox = document.createElement('div');
             iconBox.className = 'icon-box';
-            iconBox.textContent = tool.icon || '🔧';
+            var iconVal = tool.icon || '🔧';
+            if (typeof iconVal === 'string' && iconVal.match(/\.svg$/i)) {
+                var img = document.createElement('img');
+                img.src = iconVal;
+                img.alt = tool.title || tool.code;
+                img.loading = 'lazy';
+                iconBox.appendChild(img);
+            } else {
+                iconBox.textContent = iconVal;
+            }
 
             var contentWrapper = document.createElement('div');
             contentWrapper.className = 'content-wrapper';

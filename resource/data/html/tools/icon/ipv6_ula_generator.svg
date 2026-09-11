@@ -1,0 +1,9 @@
+<svg width="24" height="24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+ <g>
+  <title>Layer 1</title>
+  <path d="m12,1.53869l-8.46309,4.70171l0,5.64206c0,4.9368 3.52629,9.52567 8.46309,10.57886c4.9368,-1.05318 8.46309,-5.64206 8.46309,-10.57886l0,-5.64206l-8.46309,-4.70171z" id="svg_1" stroke="null"/>
+  <path stroke="null" d="m7.79464,14.43335a4.90625,4.90625 0 1 1 8.41071,0" id="svg_3"/>
+  <text y="-3.35115" transform="matrix(0.432936 0 0 0.432936 4.78526 17.7814)" stroke="null" x="11.27819" id="svg_6" font-size="20" font-family="monospace" text-anchor="start" xml:space="preserve">6</text>
+ </g>
+
+</svg>

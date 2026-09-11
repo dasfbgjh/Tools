@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>消消乐</title>
+    <link rel="stylesheet" type="text/css" href="index.css">
+</head>
+
+<body>
+    <div class="game-wrapper">
+        <div class="game-container">
+            <div class="game-header">
+                <div class="title">消消乐</div>
+                <div class="subtitle">MATCH 3</div>
+            </div>
+            <div class="game-body">
+                <div class="left-panel">
+                    <div class="info-box">
+                        <div class="info-label">分数</div>
+                        <div class="info-value" id="score">0</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-label">连击</div>
+                        <div class="info-value" id="combo">0</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-label">步数</div>
+                        <div class="info-value" id="moves">30</div>
+                    </div>
+                    <button class="restart-btn" onclick="restartGame()">重新开始</button>
+                </div>
+                <div class="board-wrapper">
+                    <canvas id="gameCanvas" width="480" height="480"></canvas>
+                    <div class="board-overlay" id="boardOverlay">
+                        <div class="overlay-content">
+                            <div class="overlay-title" id="overlayTitle">消消乐</div>
+                            <div class="overlay-score" id="overlayScore">按回车或点击开始</div>
+                            <button class="overlay-btn" id="overlayBtn" onclick="restartGame()">开始游戏</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="right-panel">
+                    <div class="target-box">
+                        <div class="info-label">目标分数</div>
+                        <div class="info-value" id="target">1000</div>
+                    </div>
+                    <div class="progress-box">
+                        <div class="info-label">进度</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                    </div>
+                    <div class="controls-box">
+                        <div class="controls-title">操作</div>
+                        <div class="control-item">划过相同颜色方块</div>
+                        <div class="control-item">松手即消除并连锁扩散</div>
+                        <div class="control-item">至少划过2个方块</div>
+                        <div class="control-item"><span class="key">空格</span> 暂停</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="index.js"></script>
+</body>
+
+</html>

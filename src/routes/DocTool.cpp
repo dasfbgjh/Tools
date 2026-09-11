@@ -57,8 +57,7 @@ static bool isTextExt( const std::string &ext ) {
 static std::string normalizePath( const std::string &p ) {
     if ( p.empty() )
         return p;
-    std::string s = p;
-    std::replace( s.begin(), s.end(), '/', '\\' );
+    std::string s = utils::fs::toNative( p );
     while ( s.size() > 3 && ( s.back() == '\\' || s.back() == '/' ) )
         s.pop_back();
     return s;

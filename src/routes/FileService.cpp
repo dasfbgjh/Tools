@@ -263,20 +263,20 @@ void fileServiceDownload( const httplib::Request &req, httplib::Response &res ) 
             constexpr size_t CHUNK = 1024 * 1024;
             char buf[CHUNK];
             size_t toRead = std::min( CHUNK, length );
-            if ( toRead == 0 ) {
-                sink.done();
-                return true;
-            }
+            if ( toRead == 0 )
+                return false;
             // httplib 传入的 offset 已是相对于文件开头的绝对偏移，直接定位即可
             fseeko( fp, offset, SEEK_SET );
             size_t n = std::fread( buf, 1, toRead, fp );
             if ( n > 0 ) {
                 sink.write( buf, n );
                 TransferTracker::instance().update( tid, offset + n - rangeStart );
+                return true;
             } else {
-                sink.done();
+                return false;
             }
-            return true; },
+            //
+        },
         [fp, tid]( bool success ) {
             if ( fp )
                 std::fclose( fp );

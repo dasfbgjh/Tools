@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文本转义与反转义</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <style>
+        .esc-types {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .esc-type-btn {
+            padding: 0.375rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface);
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.8125rem;
+            transition: all 0.15s;
+        }
+
+        .esc-type-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .esc-type-btn.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        .esc-desc {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-top: 0.5rem;
+            padding: 0.625rem 0.875rem;
+            background: var(--bg-muted);
+            border-radius: var(--radius);
+        }
+
+        .esc-ref {
+            margin-top: 1.5rem;
+        }
+
+        .esc-ref h2 {
+            font-size: 0.9375rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .esc-ref-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8125rem;
+        }
+
+        .esc-ref-table th,
+        .esc-ref-table td {
+            padding: 0.375rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+
+        .esc-ref-table th {
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .esc-ref-table code {
+            background: var(--bg-muted);
+            padding: 0.125rem 0.375rem;
+            border-radius: 3px;
+            font-size: 0.8125rem;
+        }
+
+        #btn-escape,
+        #btn-unescape {
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-muted);
+        }
+
+        #btn-escape:hover,
+        #btn-unescape:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        #btn-escape.active,
+        #btn-unescape.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="tool-page">
+        <div class="tool-card">
+            <div id="banner"></div>
+            <div class="esc-types" id="esc-types"></div>
+            <div class="tool-toolbar">
+                <button class="btn btn-sm active" id="btn-escape">转义</button>
+                <button class="btn btn-sm" id="btn-unescape">反转义</button>
+                <button class="btn btn-ghost btn-sm" id="btn-copy">复制结果</button>
+                <button class="btn btn-ghost btn-sm" id="btn-swap">交换</button>
+                <span class="spacer"></span>
+                <button class="btn btn-outline btn-sm" id="btn-clear">清空</button>
+            </div>
+
+            <div class="tool-grid-2">
+                <div>
+                    <label class="tool-label" id="input-label">输入文本</label>
+                    <textarea class="tool-textarea" id="input-text" placeholder="输入要转义的文本..."></textarea>
+                </div>
+                <div>
+                    <label class="tool-label" id="output-label">转义结果</label>
+                    <textarea class="tool-textarea" id="output-text" readonly placeholder="结果将在这里显示..."></textarea>
+                </div>
+            </div>
+
+            <div class="esc-desc" id="esc-desc"></div>
+        </div>
+
+        <div class="tool-card esc-ref" id="esc-ref"></div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var TYPES = [
+                {
+                    id: 'js',
+                    label: 'JavaScript',
+                    desc: 'JavaScript 字符串转义：将换行、制表符、引号等转为 \\n、\\t、\\" 等转义序列，反转义则还原。',
+                    ref: [
+                        ['\\n', '换行 (LF)'],
+                        ['\\r', '回车 (CR)'],
+                        ['\\t', '水平制表符'],
+                        ['\\\\', '反斜杠'],
+                        ['\\"', '双引号'],
+                        ["\\'", '单引号'],
+                        ['\\0', '空字符 (NUL)'],
+                        ['\\b', '退格'],
+                        ['\\f', '换页'],
+                        ['\\v', '垂直制表符'],
+                        ['\\uXXXX', 'Unicode 字符'],
+                        ['\\xXX', 'Latin-1 字符']
+                    ]
+                },
+                {
+                    id: 'json',
+                    label: 'JSON',
+                    desc: 'JSON 字符串转义：JSON 规范要求转义双引号、反斜杠和控制字符（U+0000 ~ U+001F），不支持单引号转义。',
+                    ref: [
+                        ['\\"', '双引号'],
+                        ['\\\\', '反斜杠'],
+                        ['\\n', '换行'],
+                        ['\\r', '回车'],
+                        ['\\t', '制表符'],
+                        ['\\b', '退格'],
+                        ['\\f', '换页'],
+                        ['\\uXXXX', '控制字符 (U+0000~U+001F)']
+                    ]
+                },
+                {
+                    id: 'html',
+                    label: 'HTML属性',
+                    desc: 'HTML 属性值转义：将 <、>、&、" 转为 HTML 实体，防止 XSS 注入。适用于嵌入 HTML 属性或内联脚本场景。',
+                    ref: [
+                        ['&amp;', '& 符号'],
+                        ['&lt;', '< 小于号'],
+                        ['&gt;', '> 大于号'],
+                        ['&quot;', '" 双引号'],
+                        ['&#39;', "' 单引号"]
+                    ]
+                },
+                {
+                    id: 'css',
+                    label: 'CSS',
+                    desc: 'CSS 字符串转义：将特殊字符转为 CSS 反斜杠转义序列（\\XX 形式），用于 content 属性等场景。',
+                    ref: [
+                        ['\\\\', '反斜杠'],
+                        ['\\"', '双引号'],
+                        ["\\'", '单引号'],
+                        ['\\A', '换行'],
+                        ['\\0', '空字符'],
+                        ['\\XXXX', 'Unicode 转义（可带空格分隔）']
+                    ]
+                },
+                {
+                    id: 'sql',
+                    label: 'SQL',
+                    desc: 'SQL 字符串转义：将单引号加倍（\'\'）以防止 SQL 注入，同时转义反斜杠。适用于构造 SQL 字符串字面量。',
+                    ref: [
+                        ["''", "单引号加倍"],
+                        ['\\\\', '反斜杠'],
+                        ['\\0', 'NULL 字节 (MySQL)']
+                    ]
+                },
+                {
+                    id: 'csv',
+                    label: 'CSV',
+                    desc: 'CSV 字段转义：若字段包含逗号、双引号或换行，则整个字段用双引号包裹，字段内的双引号加倍。',
+                    ref: [
+                        ['""', '双引号加倍'],
+                        ['"field"', '含特殊字符时整体加引号']
+                    ]
+                },
+                {
+                    id: 'regex',
+                    label: '正则表达式',
+                    desc: '正则表达式特殊字符转义：将正则元字符（. * + ? ^ $ { } [ ] \\ | ( )）前加反斜杠，使其作为字面量匹配。',
+                    ref: [
+                        ['\\.', '点号'],
+                        ['\\*', '星号'],
+                        ['\\+', '加号'],
+                        ['\\?', '问号'],
+                        ['\\^', '脱字号'],
+                        ['\\$', '美元号'],
+                        ['\\\\', '反斜杠'],
+                        ['\\(', '\\)', '括号'],
+                        ['\\[', '\\]', '方括号'],
+                        ['\\{', '\\}', '花括号'],
+                        ['\\|', '竖线']
+                    ]
+                }
+            ];
+
+            var state = { type: 'js', action: 'escape', timer: null };
+
+            var typeBox = Tools.$('esc-types');
+            TYPES.forEach(function (t) {
+                var btn = Tools.el('button', {
+                    class: 'esc-type-btn' + (t.id === state.type ? ' active' : ''),
+                    'data-id': t.id,
+                    text: t.label,
+                    onclick: function () {
+                        state.type = t.id;
+                        Tools.$$('button', typeBox).forEach(function (b) { b.classList.remove('active'); });
+                        this.classList.add('active');
+                        updateDesc();
+                        updateRef();
+                        run();
+                    }
+                });
+                typeBox.appendChild(btn);
+            });
+
+            function getTypeDef() {
+                for (var i = 0; i < TYPES.length; i++) {
+                    if (TYPES[i].id === state.type) return TYPES[i];
+                }
+                return TYPES[0];
+            }
+
+            function updateDesc() {
+                Tools.$('esc-desc').textContent = getTypeDef().desc;
+            }
+
+            function updateRef() {
+                var t = getTypeDef();
+                var refDiv = Tools.$('esc-ref');
+                refDiv.innerHTML = '';
+                if (!t.ref || t.ref.length === 0) return;
+                var h2 = Tools.el('h2', { text: '转义规则参考' });
+                refDiv.appendChild(h2);
+                var table = Tools.el('table', { class: 'esc-ref-table' });
+                var thead = Tools.el('thead', {}, [
+                    Tools.el('tr', {}, [
+                        Tools.el('th', { text: '转义序列' }),
+                        Tools.el('th', { text: '说明' })
+                    ])
+                ]);
+                table.appendChild(thead);
+                var tbody = Tools.el('tbody');
+                t.ref.forEach(function (row) {
+                    var tr = Tools.el('tr', {}, [
+                        Tools.el('td', {}, [Tools.el('code', { text: row[0] })]),
+                        Tools.el('td', { text: row[1] })
+                    ]);
+                    tbody.appendChild(tr);
+                });
+                table.appendChild(tbody);
+                refDiv.appendChild(table);
+            }
+
+            function updateLabels() {
+                if (state.action === 'escape') {
+                    Tools.$('input-label').textContent = '输入原始文本';
+                    Tools.$('output-label').textContent = '转义结果';
+                    Tools.$('input-text').placeholder = '输入要转义的文本...';
+                    Tools.$('output-text').placeholder = '转义结果将显示在这里...';
+                } else {
+                    Tools.$('input-label').textContent = '输入转义文本';
+                    Tools.$('output-label').textContent = '反转义结果';
+                    Tools.$('input-text').placeholder = '输入要反转义的文本...';
+                    Tools.$('output-text').placeholder = '反转义结果将显示在这里...';
+                }
+            }
+
+            function updateActionButtons() {
+                Tools.$('btn-escape').classList.toggle('active', state.action === 'escape');
+                Tools.$('btn-unescape').classList.toggle('active', state.action === 'unescape');
+            }
+
+            function escapeJS(str) {
+                var out = '';
+                for (var i = 0; i < str.length; i++) {
+                    var c = str.charAt(i);
+                    switch (c) {
+                        case '\\': out += '\\\\'; break;
+                        case "'": out += "\\'"; break;
+                        case '"': out += '\\"'; break;
+                        case '\n': out += '\\n'; break;
+                        case '\r': out += '\\r'; break;
+                        case '\t': out += '\\t'; break;
+                        case '\b': out += '\\b'; break;
+                        case '\f': out += '\\f'; break;
+                        case '\v': out += '\\v'; break;
+                        case '\0': out += '\\0'; break;
+                        default:
+                            var code = c.charCodeAt(0);
+                            if (code < 0x20 || code === 0x7F) {
+                                out += '\\x' + ('00' + code.toString(16)).slice(-2);
+                            } else {
+                                out += c;
+                            }
+                    }
+                }
+                return out;
+            }
+
+            function unescapeJS(str) {
+                var out = '';
+                var i = 0;
+                while (i < str.length) {
+                    if (str.charAt(i) === '\\' && i + 1 < str.length) {
+                        var next = str.charAt(i + 1);
+                        switch (next) {
+                            case 'n': out += '\n'; i += 2; break;
+                            case 'r': out += '\r'; i += 2; break;
+                            case 't': out += '\t'; i += 2; break;
+                            case 'b': out += '\b'; i += 2; break;
+                            case 'f': out += '\f'; i += 2; break;
+                            case 'v': out += '\v'; i += 2; break;
+                            case '0': out += '\0'; i += 2; break;
+                            case '\\': out += '\\'; i += 2; break;
+                            case "'": out += "'"; i += 2; break;
+                            case '"': out += '"'; i += 2; break;
+                            case 'x':
+                                if (i + 3 < str.length) {
+                                    var hex = str.substr(i + 2, 2);
+                                    var code = parseInt(hex, 16);
+                                    if (!isNaN(code)) { out += String.fromCharCode(code); i += 4; break; }
+                                }
+                                out += '\\'; i++; break;
+                            case 'u':
+                                if (i + 5 < str.length) {
+                                    var uni = str.substr(i + 2, 4);
+                                    var ucode = parseInt(uni, 16);
+                                    if (!isNaN(ucode)) { out += String.fromCharCode(ucode); i += 6; break; }
+                                }
+                                if (str.charAt(i + 2) === '{') {
+                                    var endBrace = str.indexOf('}', i + 3);
+                                    if (endBrace !== -1) {
+                                        var uniBraced = str.substring(i + 3, endBrace);
+                                        var ucodeB = parseInt(uniBraced, 16);
+                                        if (!isNaN(ucodeB)) {
+                                            out += String.fromCodePoint(ucodeB);
+                                            i = endBrace + 1;
+                                            break;
+                                        }
+                                    }
+                                }
+                                out += '\\'; i++; break;
+                            default:
+                                out += '\\'; i++; break;
+                        }
+                    } else {
+                        out += str.charAt(i);
+                        i++;
+                    }
+                }
+                return out;
+            }
+
+            function escapeJSON(str) {
+                var out = '';
+                for (var i = 0; i < str.length; i++) {
+                    var c = str.charAt(i);
+                    switch (c) {
+                        case '\\': out += '\\\\'; break;
+                        case '"': out += '\\"'; break;
+                        case '\n': out += '\\n'; break;
+                        case '\r': out += '\\r'; break;
+                        case '\t': out += '\\t'; break;
+                        case '\b': out += '\\b'; break;
+                        case '\f': out += '\\f'; break;
+                        default:
+                            var code = c.charCodeAt(0);
+                            if (code < 0x20) {
+                                out += '\\u' + ('0000' + code.toString(16)).slice(-4);
+                            } else {
+                                out += c;
+                            }
+                    }
+                }
+                return out;
+            }
+
+            function unescapeJSON(str) {
+                return unescapeJS(str);
+            }
+
+            function escapeHTML(str) {
+                return str
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            function unescapeHTML(str) {
+                var ta = document.createElement('textarea');
+                ta.innerHTML = str;
+                return ta.value;
+            }
+
+            function escapeCSS(str) {
+                var out = '';
+                for (var i = 0; i < str.length; i++) {
+                    var c = str.charAt(i);
+                    var code = c.charCodeAt(0);
+                    if (c === '\\') {
+                        out += '\\\\';
+                    } else if (c === '"') {
+                        out += '\\"';
+                    } else if (c === "'") {
+                        out += "\\'";
+                    } else if (c === '\n') {
+                        out += '\\A ';
+                    } else if (code < 0x20 || code === 0x7F) {
+                        out += '\\' + code.toString(16).toUpperCase() + ' ';
+                    } else {
+                        out += c;
+                    }
+                }
+                return out;
+            }
+
+            function unescapeCSS(str) {
+                var out = '';
+                var i = 0;
+                while (i < str.length) {
+                    if (str.charAt(i) === '\\' && i + 1 < str.length) {
+                        var hexStr = '';
+                        var j = i + 1;
+                        while (j < str.length && j < i + 7 && /[0-9a-fA-F]/.test(str.charAt(j))) {
+                            hexStr += str.charAt(j);
+                            j++;
+                        }
+                        if (hexStr.length > 0) {
+                            var code = parseInt(hexStr, 16);
+                            if (!isNaN(code) && code > 0) {
+                                out += String.fromCodePoint(code);
+                                if (j < str.length && str.charAt(j) === ' ') j++;
+                                i = j;
+                                continue;
+                            }
+                        }
+                        out += str.charAt(i + 1);
+                        i += 2;
+                    } else {
+                        out += str.charAt(i);
+                        i++;
+                    }
+                }
+                return out;
+            }
+
+            function escapeSQL(str) {
+                return str
+                    .replace(/\\/g, '\\\\')
+                    .replace(/'/g, "''")
+                    .replace(/\0/g, '\\0');
+            }
+
+            function unescapeSQL(str) {
+                return str
+                    .replace(/''/g, "'")
+                    .replace(/\\\\/g, '\\')
+                    .replace(/\\0/g, '\0');
+            }
+
+            function escapeCSV(str) {
+                if (str.indexOf(',') !== -1 || str.indexOf('"') !== -1 ||
+                    str.indexOf('\n') !== -1 || str.indexOf('\r') !== -1) {
+                    return '"' + str.replace(/"/g, '""') + '"';
+                }
+                return str;
+            }
+
+            function unescapeCSV(str) {
+                if (str.length >= 2 && str.charAt(0) === '"' && str.charAt(str.length - 1) === '"') {
+                    return str.substring(1, str.length - 1).replace(/""/g, '"');
+                }
+                return str;
+            }
+
+            function escapeRegex(str) {
+                return str.replace(/[.*+?^${}()[\]\\|]/g, '\\$&');
+            }
+
+            function unescapeRegex(str) {
+                return str.replace(/\\([.*+?^${}()[\]\\|])/g, '$1');
+            }
+
+            function process(text) {
+                var type = state.type;
+                var action = state.action;
+                if (!text) return '';
+                switch (type) {
+                    case 'js': return action === 'escape' ? escapeJS(text) : unescapeJS(text);
+                    case 'json': return action === 'escape' ? escapeJSON(text) : unescapeJSON(text);
+                    case 'html': return action === 'escape' ? escapeHTML(text) : unescapeHTML(text);
+                    case 'css': return action === 'escape' ? escapeCSS(text) : unescapeCSS(text);
+                    case 'sql': return action === 'escape' ? escapeSQL(text) : unescapeSQL(text);
+                    case 'csv': return action === 'escape' ? escapeCSV(text) : unescapeCSV(text);
+                    case 'regex': return action === 'escape' ? escapeRegex(text) : unescapeRegex(text);
+                    default: return text;
+                }
+            }
+
+            function run() {
+                var input = Tools.$('input-text').value;
+                var out = Tools.$('output-text');
+                Tools.clearBanner('banner');
+                if (!input) { out.value = ''; return; }
+                try {
+                    out.value = process(input);
+                } catch (e) {
+                    out.value = '';
+                    Tools.showBanner('banner', 'error', '处理失败：' + e.message);
+                }
+            }
+
+            function debouncedRun() {
+                clearTimeout(state.timer);
+                state.timer = setTimeout(run, 200);
+            }
+
+            Tools.$('input-text').addEventListener('input', debouncedRun);
+
+            Tools.$('btn-escape').addEventListener('click', function () {
+                state.action = 'escape';
+                updateActionButtons();
+                updateLabels();
+                run();
+            });
+
+            Tools.$('btn-unescape').addEventListener('click', function () {
+                state.action = 'unescape';
+                updateActionButtons();
+                updateLabels();
+                run();
+            });
+
+            Tools.$('btn-clear').addEventListener('click', function () {
+                Tools.$('input-text').value = '';
+                Tools.$('output-text').value = '';
+                Tools.clearBanner('banner');
+            });
+
+            Tools.$('btn-copy').addEventListener('click', function () {
+                var out = Tools.$('output-text').value;
+                if (!out) return;
+                Tools.copyText(out, this, '已复制');
+            });
+
+            Tools.$('btn-swap').addEventListener('click', function () {
+                var inp = Tools.$('input-text');
+                var out = Tools.$('output-text');
+                if (!out.value) return;
+                inp.value = out.value;
+                state.action = state.action === 'escape' ? 'unescape' : 'escape';
+                updateActionButtons();
+                updateLabels();
+                run();
+            });
+
+            updateDesc();
+            updateRef();
+            updateActionButtons();
+            updateLabels();
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>俄罗斯方块</title>
+    <link rel="stylesheet" type="text/css" href="index.css">
+</head>
+
+<body>
+    <div class="game-wrapper">
+        <div class="game-container">
+            <div class="game-header">
+                <div class="title">俄罗斯方块</div>
+                <div class="subtitle">TETRIS</div>
+            </div>
+            <div class="game-body">
+                <div class="left-panel">
+                    <div class="info-box">
+                        <div class="info-label">分数</div>
+                        <div class="info-value" id="score">0</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-label">等级</div>
+                        <div class="info-value" id="level">1</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-label">行数</div>
+                        <div class="info-value" id="lines">0</div>
+                    </div>
+                    <button class="restart-btn" onclick="restartGame()">重新开始</button>
+                </div>
+                <div class="board-wrapper">
+                    <canvas id="gameCanvas" width="300" height="600"></canvas>
+                    <div class="board-overlay" id="boardOverlay">
+                        <div class="overlay-content">
+                            <div class="overlay-title" id="overlayTitle">游戏结束</div>
+                            <div class="overlay-score" id="overlayScore"></div>
+                            <button class="overlay-btn" id="overlayBtn" onclick="restartGame()">重新开始</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="right-panel">
+                    <div class="next-box">
+                        <div class="info-label">下一个</div>
+                        <canvas id="nextCanvas" width="120" height="120"></canvas>
+                    </div>
+                    <div class="hold-box">
+                        <div class="info-label">暂存</div>
+                        <canvas id="holdCanvas" width="120" height="120"></canvas>
+                    </div>
+                    <div class="controls-box">
+                        <div class="controls-title">操作</div>
+                        <div class="control-item"><span class="key">←→AD</span> 移动</div>
+                        <div class="control-item"><span class="key">↑W</span> 旋转</div>
+                        <div class="control-item"><span class="key">↓S</span> 软降</div>
+                        <div class="control-item"><span class="key">回车</span> 硬降</div>
+                        <div class="control-item"><span class="key">C</span> 暂存</div>
+                        <div class="control-item"><span class="key">空格</span> 暂停</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="index.js"></script>
+</body>
+
+</html>

@@ -11,10 +11,6 @@
 #include "common/Logger.hpp"
 #include "common/EventLoop.h"
 
-#ifdef _WIN32
-#include <windows.h>
-#endif
-
 // ===========================================================================
 // MCP 客户端实现
 //  - Client::Error            : 异常类型
@@ -240,13 +236,15 @@ public:
     void close() override {
         std::lock_guard<std::mutex> lk( m_mtx );
         m_sseEndpoint.clear();
+        m_sessionId.clear();
     }
 
 private:
     Client::HttpOptions m_opts;
     ParsedUrl m_parsed;
     mutable std::mutex m_mtx;
-    std::string m_sseEndpoint;           // legacy SSE 模式下从 endpoint 事件获取的 POST 路径
+    std::string m_sseEndpoint; // legacy SSE 模式下从 endpoint 事件获取的 POST 路径
+    std::string m_sessionId;   // Streamable HTTP 模式下从 initialize 响应头获取的会话 ID
     MessageHandler m_messageHandler;
 
     std::shared_ptr<httplib::Client> makeClient() const {
@@ -274,6 +272,11 @@ private:
             h.emplace( kv.first, kv.second );
         if ( !m_opts.authToken.empty() )
             h.emplace( "Authorization", "Bearer " + m_opts.authToken );
+        {
+            std::lock_guard<std::mutex> lk( m_mtx );
+            if ( !m_sessionId.empty() )
+                h.emplace( "Mcp-Session-Id", m_sessionId );
+        }
         return h;
     }
 
@@ -329,6 +332,18 @@ private:
     core::RpcResponse processReply( int status, const std::string &body,
                                     const httplib::Headers &headers,
                                     const core::RequestId &expectedId ) {
+        // 提取并保存服务器返回的会话 ID (Streamable HTTP 模式)
+        {
+            auto it = headers.find( "Mcp-Session-Id" );
+            if ( it != headers.end() && !it->second.empty() ) {
+                std::lock_guard<std::mutex> lk( m_mtx );
+                if ( m_sessionId != it->second ) {
+                    m_sessionId = it->second;
+                    LOG_DEBUG << "MCP client: 会话 ID 已保存: " << m_sessionId;
+                }
+            }
+        }
+
         bool isSse = false;
         {
             auto it = headers.find( "Content-Type" );
@@ -417,65 +432,56 @@ private:
 // 关闭: cancel 读 -> 退出 io 线程 -> 退出回调线程 -> 终止子进程 -> 失败所有 pending
 // =========================================================================
 class StdioTransport : public Client::Transport {
+private:
+    Client::StdioOptions m_opts;
+    std::shared_ptr<EventLoop::pipe_write> m_in;
+    std::shared_ptr<EventLoop::pipe_read> m_out;
+    std::shared_ptr<EventLoop::process> m_proc;
+
+    std::thread m_loopThread;
+
+    std::atomic<bool> m_closing{ false };
+    std::mutex m_writeMtx;
+    std::mutex m_pendingMtx;
+    std::map<std::string, std::shared_ptr<std::promise<core::RpcResponse>>> m_pending;
+
+    std::mutex m_handlerMtx;
+    MessageHandler m_handler;
+
+    std::mutex m_cbMtx;
+    std::condition_variable m_cbCv;
+    std::deque<std::function<void()>> m_cbQueue;
+
+    std::mutex m_outPendingMtx;
+    std::string m_outPending;
+
 public:
     using error_code = boost::system::error_code;
 
     explicit StdioTransport( const Client::StdioOptions &opts )
-        : m_opts( opts ),
-          m_work( boost::asio::make_work_guard( m_io ) ) {
+        : m_opts( opts ) {
         if ( opts.command.empty() )
             throw Client::Error( "stdio command 为空", 0 );
-
-        std::string exe = EventLoop::processPath( opts.command.front() );
-        if ( exe.empty() )
-            throw Client::Error( "找不到可执行文件: " + opts.command.front(), 0 );
-        std::vector<std::string> argv( opts.command.begin() + 1, opts.command.end() );
-
+        LOG_INFO << "MCP stdio:" << opts.command.front();
         auto env = EventLoop::currentEnv();
         for ( const auto &kv : opts.env )
             env[kv.first] = kv.second;
-        std::vector<std::string> envVec;
-        envVec.reserve( env.size() );
-        for ( const auto &e : env )
-            envVec.push_back( e.first + "=" + e.second );
-        if ( envVec.empty() )
-            envVec.push_back( "" );
 
-        m_in = std::make_shared<EventLoop::pipe_write>( m_io );
-        m_out = std::make_shared<EventLoop::pipe_read>( m_io );
-
-        EventLoop::process_stdio io;
-        io.in = *m_in;   // 创建管道, 子进程 stdin 读端; m_in 拿写端
-        io.out = *m_out; // 创建管道, 子进程 stdout 写端; m_out 拿读端
-        // err: 默认继承父进程 stderr
+        m_in = EventLoop::instance().createPipeWrite();
+        m_out = EventLoop::instance().createPipeRead();
 
         const std::string cwdStr = opts.workingDirectory.empty()
                                        ? std::filesystem::current_path().string()
                                        : opts.workingDirectory.string();
-        EventLoop::process_startdir cwd( cwdStr );
 
-        try {
-#if defined( _WIN32 )
-            namespace bpw = boost::process::v2::windows;
-            constexpr auto noWinFlags = bpw::process_creation_flags<CREATE_NO_WINDOW>{};
-            m_proc = std::make_shared<EventLoop::process>(
-                m_io, exe, argv, cwd,
-                EventLoop::process_env( envVec ), io, noWinFlags );
-#else
-            m_proc = std::make_shared<EventLoop::process>(
-                m_io, exe, argv, cwd,
-                EventLoop::process_env( envVec ), io );
-#endif
-        } catch ( const std::exception &e ) {
-            throw Client::Error( std::string( "启动 stdio 子进程失败: " ) + e.what(), 0 );
+        std::string errorMsg;
+        m_proc = EventLoop::instance().runProcess(
+            opts.command, cwdStr, env, m_out, m_in, nullptr, &errorMsg );
+        if ( !m_proc ) {
+            throw Client::Error( std::string( "启动 stdio 子进程失败: " ) + errorMsg, 0 );
         }
 
-        // 启动 io 线程 / 回调线程 / 读取循环
-        startRead();
-        m_ioThread = std::thread( [this] {
-            m_io.run();
-        } );
-        m_cbThread = std::thread( [this] { callbackLoop(); } );
+        m_loopThread = std::thread( [this] { loop(); } );
     }
 
     ~StdioTransport() override {
@@ -487,6 +493,7 @@ public:
     }
 
     StdioTransport( const StdioTransport & ) = delete;
+
     StdioTransport &operator=( const StdioTransport & ) = delete;
 
     core::RpcResponse sendRequest( const core::RpcRequest &req ) override {
@@ -546,67 +553,29 @@ public:
         if ( m_closing.exchange( true ) )
             return;
 
-        // 1. 取消异步读, 释放 work_guard, 等 io 线程退出
-        error_code ec;
-        if ( m_out )
-            m_out->cancel( ec );
-        if ( m_in )
-            m_in->cancel( ec );
-        m_work.reset();
-        if ( m_ioThread.joinable() )
-            m_ioThread.join();
-
-        // 2. 停止回调线程
-        {
-            std::lock_guard<std::mutex> lk( m_cbMtx );
-            m_cbStop = true;
-        }
-        m_cbCv.notify_all();
-        if ( m_cbThread.joinable() )
-            m_cbThread.join();
-
-        // 3. 终止并回收子进程
+        // 1. 终止并回收子进程
         if ( m_proc ) {
-            error_code e2;
-            m_proc->terminate( e2 );
-            m_proc->wait( e2 );
+            error_code ec;
+            m_proc->terminate( ec );
         }
 
-        // 4. 关闭管道
+        // 2. 关闭管道
+        error_code ec;
         if ( m_out )
             m_out->close( ec );
         if ( m_in )
             m_in->close( ec );
 
-        // 5. 唤醒所有等待中的请求
+        // 3. 停止回调线程
+        m_cbCv.notify_all();
+        if ( m_loopThread.joinable() )
+            m_loopThread.join();
+
+        // 4. 唤醒所有等待中的请求
         failPending( Client::Error( "stdio 传输已关闭", 0 ) );
     }
 
 private:
-    Client::StdioOptions m_opts;
-    boost::asio::io_context m_io;
-    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work;
-    std::shared_ptr<EventLoop::pipe_write> m_in;
-    std::shared_ptr<EventLoop::pipe_read> m_out;
-    std::shared_ptr<EventLoop::process> m_proc;
-    boost::asio::streambuf m_readBuf; // 仅 io 线程访问
-
-    std::thread m_ioThread;
-    std::thread m_cbThread;
-
-    std::atomic<bool> m_closing{ false };
-    std::mutex m_writeMtx;
-    std::mutex m_pendingMtx;
-    std::map<std::string, std::shared_ptr<std::promise<core::RpcResponse>>> m_pending;
-
-    std::mutex m_handlerMtx;
-    MessageHandler m_handler;
-
-    std::mutex m_cbMtx;
-    std::condition_variable m_cbCv;
-    std::deque<std::function<void()>> m_cbQueue;
-    std::atomic<bool> m_cbStop{ false };
-
     static std::string idKey( const core::RequestId &id ) {
         if ( id.is_int() )
             return "i:" + std::to_string( id.as_int() );
@@ -615,36 +584,45 @@ private:
         return "n:";
     }
 
-    void startRead() {
-        auto out = m_out;
-        boost::asio::async_read_until( *out, m_readBuf, '\n',
-            [this, out]( const error_code &ec, std::size_t /*n*/ ) {
-                onRead( ec );
-            } );
-    }
-
-    void onRead( const error_code &ec ) {
-        if ( ec ) {
-            if ( !m_closing ) {
-                LOG_WARN << "MCP stdio: 读取子进程 stdout 结束: " << ec.message();
-                failPending( Client::Error( "stdio 子进程 stdout 已关闭", 0 ) );
+    std::string preprocessingOutput( const std::string &text ) {
+        std::lock_guard<std::mutex> lk( m_outPendingMtx );
+        if ( m_outPending.empty() ) {
+            int pos = text.find( '{' );
+            if ( pos == std::string::npos ) {
+                LOG_WARN << "no { in line: " << text << "\n";
+                return "";
             }
-            return;
+            m_outPending = text.substr( pos );
+        } else {
+            m_outPending += text;
         }
-        std::istream is( &m_readBuf );
+
+        int n1 = 0;
+        int n2 = 0;
         std::string line;
-        std::getline( is, line );
-        if ( !line.empty() && line.back() == '\r' )
-            line.pop_back();
-        if ( !line.empty() )
-            processLine( line );
-        startRead();
+        for ( int i = 0; i < m_outPending.size(); i++ ) {
+            if ( m_outPending[i] == '{' )
+                n1++;
+            else if ( m_outPending[i] == '}' )
+                n2++;
+            if ( n1 != n2 )
+                continue;
+
+            line = m_outPending.substr( 0, i + 1 );
+            int pos = m_outPending.find( '{', i + 1 );
+            if ( pos == std::string::npos )
+                m_outPending.clear();
+            else
+                m_outPending = m_outPending.substr( pos );
+            break;
+        }
+        return line;
     }
 
-    void processLine( const std::string &line ) {
+    void parseMessage( const std::string &str ) {
         core::Message msg;
         try {
-            msg = core::Message::parseMessage( line );
+            msg = core::Message::parseMessage( str );
         } catch ( const std::exception &e ) {
             LOG_WARN << "MCP stdio: 无法解析 JSON 行: " << e.what();
             return;
@@ -702,7 +680,7 @@ private:
         if ( m_closing || !m_in )
             throw Client::Error( "stdio 传输已关闭", 0 );
         error_code ec;
-        boost::asio::write( *m_in, boost::asio::buffer( s ), ec );
+        EventLoop::writePipe( *m_in, s, ec );
         if ( ec )
             throw Client::Error( std::string( "写入子进程 stdin 失败: " ) + ec.message(), 0 );
     }
@@ -710,21 +688,32 @@ private:
     void enqueueCallback( std::function<void()> task ) {
         {
             std::lock_guard<std::mutex> lk( m_cbMtx );
-            if ( m_cbStop )
+            if ( m_closing )
                 return;
             m_cbQueue.push_back( std::move( task ) );
         }
         m_cbCv.notify_one();
     }
 
-    void callbackLoop() {
-        for ( ;; ) {
+    void loop() {
+        auto outBuf = std::make_shared<std::vector<char>>( 1024 );
+        EventLoop::readPipe( m_out, outBuf,
+                             [this]( EventLoop::error_code ec, EventLoop::buffer_ptr buf, std::size_t s ) -> bool {
+                                 if ( ec || s == 0 || m_closing.load() )
+                                     return false;
+                                 std::string line = preprocessingOutput( std::string( buf->data(), s ) );
+                                 if ( !line.empty() )
+                                     parseMessage( line );
+                                 return true;
+                             } );
+
+        while ( true ) {
             std::function<void()> task;
             {
                 std::unique_lock<std::mutex> lk( m_cbMtx );
-                m_cbCv.wait( lk, [this] { return m_cbStop || !m_cbQueue.empty(); } );
+                m_cbCv.wait( lk, [this] { return m_closing || !m_cbQueue.empty(); } );
                 if ( m_cbQueue.empty() )
-                    return; // m_cbStop 且队列空
+                    return; // m_closing 且队列空
                 task = std::move( m_cbQueue.front() );
                 m_cbQueue.pop_front();
             }

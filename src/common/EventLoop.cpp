@@ -81,8 +81,16 @@ void EventLoop::readPipe(
         } );
 }
 
+size_t EventLoop::writePipe( pipe_write &pipe, const std::string &str, error_code &ec ) {
+    return boost::asio::write( pipe, boost::asio::buffer( str ), ec );
+}
+
 std::shared_ptr<EventLoop::pipe_read> EventLoop::createPipeRead() {
     return std::make_shared<pipe_read>( m_context );
+}
+
+std::shared_ptr<EventLoop::pipe_write> EventLoop::createPipeWrite() {
+    return std::make_shared<pipe_write>( m_context );
 }
 
 std::string EventLoop::processPath( const std::string &exe ) {
@@ -140,6 +148,7 @@ std::shared_ptr<EventLoop::process> EventLoop::runProcess(
     const std::filesystem::path &workDir,
     const std::map<std::string, std::string> &env,
     const std::shared_ptr<EventLoop::pipe_read> &out,
+    const std::shared_ptr<EventLoop::pipe_write> &in,
     const std::shared_ptr<EventLoop::pipe_read> &err,
     std::string *errorMsg ) {
     if ( cmd.empty() ) {
@@ -170,6 +179,8 @@ std::shared_ptr<EventLoop::process> EventLoop::runProcess(
     io.in = nullptr;
     if ( out )
         io.out = *out;
+    if ( in )
+        io.in = *in;
     if ( err )
         io.err = *err;
 
@@ -198,6 +209,16 @@ std::shared_ptr<EventLoop::process> EventLoop::runProcess(
         LOG_WARN << "启动进程" << exePath << "失败:" << msg;
         return nullptr;
     }
+}
+
+std::shared_ptr<EventLoop::process> EventLoop::runProcess(
+    const std::vector<std::string> &cmd,
+    const std::filesystem::path &workDir,
+    const std::map<std::string, std::string> &env,
+    const std::shared_ptr<EventLoop::pipe_read> &out,
+    const std::shared_ptr<EventLoop::pipe_read> &err,
+    std::string *errorMsg ) {
+    return runProcess( cmd, workDir, env, out, nullptr, err, errorMsg );
 }
 
 EventLoop::ProcessResult EventLoop::runProcessSync(

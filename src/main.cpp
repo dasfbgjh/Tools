@@ -54,7 +54,7 @@ int main( int argc, char *argv[] ) {
 
     LOG_INFO << "进入主事件循环";
     int code = app.exec();
-    LOG_INFO << "应用退出，返回码:" << code;
+    LOG_INFO << "应用退出，退出码:" << code;
 
     if ( app.isReboot() ) {
         LOG_INFO << "应用重启";

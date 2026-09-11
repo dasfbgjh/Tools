@@ -80,6 +80,35 @@ const RequestId &Message::idOrEmpty() const {
     return kEmpty;
 }
 
+RpcResponse makeSuccessResponse( const RequestId &id, json result ) {
+    return RpcResponse::makeSuccess( id, std::move( result ) );
+}
+
+RpcResponse makeErrorResponse( const RequestId &id, RpcError error ) {
+    return RpcResponse::makeError( id, std::move( error ) );
+}
+
+RpcResponse makeErrorResponse( const RequestId &id, ErrorCode code,
+                               const std::string &msg, std::optional<json> data ) {
+    return RpcResponse::makeError( id, RpcError{ code, msg, std::move( data ) } );
+}
+
+ToolCallResult makeTextResult( std::string text, bool isError ) {
+    mcp::core::ToolCallResult r;
+    r.isError = isError;
+    mcp::core::Content::Text tc;
+    tc.text = std::move( text );
+    r.content.emplace_back( std::move( tc ) );
+    return r;
+}
+
+ToolCallResult makeJsonResult( const json &j, bool isError ) {
+    std::ostringstream os;
+    os << std::setw( 2 ) << j;
+    return makeTextResult( os.str(), isError );
+}
+
+// ---- MCP 标准请求 ----
 RpcRequest makeRequest( const RequestId &id,
                         const std::string &method,
                         std::optional<json> params ) {
@@ -90,34 +119,12 @@ RpcRequest makeRequest( const RequestId &id,
     return r;
 }
 
-RpcNotification makeNotification( const std::string &method, std::optional<json> params ) {
-    RpcNotification n;
-    n.method = method;
-    n.params = std::move( params );
-    return n;
-}
-
-RpcResponse makeSuccessResponse( const RequestId &id, json result ) {
-    return RpcResponse::makeSuccess( id, std::move( result ) );
-}
-
-RpcResponse makeErrorResponse( const RequestId &id, RpcError error ) {
-    return RpcResponse::makeError( id, std::move( error ) );
-}
-
-RpcResponse makeErrorResponse( const RequestId &id, ErrorCode code,
-                               const std::string &msg,
-                               std::optional<json> data ) {
-    return RpcResponse::makeError( id, RpcError{ code, msg, std::move( data ) } );
-}
-
-// ---- MCP 标准请求 ----
 RpcRequest makeInitializeRequest( const RequestId &id, const InitializeParams &params ) {
     return makeRequest( id, methods::Initialize, json( params ) );
 }
 
 RpcRequest makePingRequest( const RequestId &id ) {
-    return makeRequest( id, methods::Ping, std::nullopt );
+    return makeRequest( id, methods::Ping, json::object() );
 }
 
 RpcRequest makeToolsListRequest( const RequestId &id, std::optional<std::string> cursor ) {
@@ -178,7 +185,7 @@ RpcRequest makeLoggingSetLevelRequest( const RequestId &id, LogLevel level ) {
 }
 
 RpcRequest makeRootsListRequest( const RequestId &id ) {
-    return makeRequest( id, methods::RootsList, std::nullopt );
+    return makeRequest( id, methods::RootsList, json::object() );
 }
 
 RpcRequest makeSamplingCreateMessageRequest( const RequestId &id,
@@ -192,8 +199,15 @@ RpcRequest makeCompletionCompleteRequest( const RequestId &id,
 }
 
 // ---- MCP 标准通知 ----
+RpcNotification makeNotification( const std::string &method, std::optional<json> params ) {
+    RpcNotification n;
+    n.method = method;
+    n.params = std::move( params );
+    return n;
+}
+
 RpcNotification makeInitializedNotification() {
-    return makeNotification( methods::InitializedNotification, std::nullopt );
+    return makeNotification( methods::InitializedNotification, json::object() );
 }
 
 RpcNotification makeCancelRequestNotification( const RequestId &requestId ) {

@@ -9,6 +9,7 @@
 #include "core/ProcManager.h"
 #include "routes/CertTool.h"
 #include "routes/DocTool.h"
+#include "routes/MusicTool.h"
 #include "routes/SysMonitor.h"
 
 #include <filesystem>
@@ -998,6 +999,7 @@ void registerLocalTools( httplib::Server &svr ) {
 
     routes::cert::registerCertRoutes( svr );             // 注册自签名证书工具路由
     routes::docs::registerDocRoutes( svr );              // 注册文档阅读工具路由
+    routes::music::registerMusicRoutes( svr );           // 注册音乐播放器路由
     routes::sysmonitor::registerSysMonitorRoutes( svr ); // 注册系统监测工具路由（仅限本机）
 
     LOG_DEBUG << "本机工具路由已注册";

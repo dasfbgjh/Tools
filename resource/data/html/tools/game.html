@@ -25,6 +25,19 @@
                 <span class="game-zoom-label" id="game-zoom-label">100%</span>
                 <input type="range" class="game-zoom-slider" id="game-zoom-slider" min="25" max="200" value="100" step="5">
             </div>
+            <div class="game-move-row">
+                <div class="game-move-grid">
+                    <span></span>
+                    <button class="game-move-btn" id="move-up" title="上移">▲</button>
+                    <span></span>
+                    <button class="game-move-btn" id="move-left" title="左移">◀</button>
+                    <button class="game-move-btn" id="move-reset" title="重置位置">⊙</button>
+                    <button class="game-move-btn" id="move-right" title="右移">▶</button>
+                    <span></span>
+                    <button class="game-move-btn" id="move-down" title="下移">▼</button>
+                    <span></span>
+                </div>
+            </div>
             <div class="game-search">
                 <input type="text" id="game-search-input" placeholder="搜索游戏..." autocomplete="off">
             </div>
@@ -32,7 +45,7 @@
         </div>
         <div class="game-main">
             <button class="game-sidebar-expand" id="sidebar-expand" title="展开侧栏">▶</button>
-            <div class="game-area pc-mode" id="game-area">
+            <div class="game-area" id="game-area">
                 <div class="game-empty">
                     <div class="game-empty-icon">🎮</div>
                     <div class="game-empty-text">从左侧列表选择一个游戏开始</div>

@@ -65,12 +65,26 @@ public:
     static void readPipe( const std::shared_ptr<pipe_read> &pipe,
                           const buffer_ptr &buffer, const read_callback &callback );
 
-    // 创建一个绑定到主事件循环 io_context 的读管道
-    std::shared_ptr<pipe_read> createPipeRead();
+    static size_t writePipe( pipe_write &pipe, const std::string &str, error_code &ec );
 
     static std::string processPath( const std::string &exe );
 
+    // 创建一个绑定到主事件循环 io_context 的读管道
+    std::shared_ptr<pipe_read> createPipeRead();
+
+    // 创建一个绑定到主事件循环 io_context 的写管道
+    std::shared_ptr<pipe_write> createPipeWrite();
+
     // 运行一个进程，返回进程对象
+    std::shared_ptr<process> runProcess(
+        const std::vector<std::string> &cmd,
+        const std::filesystem::path &workDir = std::filesystem::current_path(),
+        const std::map<std::string, std::string> &env = currentEnv(),
+        const std::shared_ptr<pipe_read> &out = nullptr,
+        const std::shared_ptr<pipe_write> &in = nullptr,
+        const std::shared_ptr<pipe_read> &err = nullptr,
+        std::string *errorMsg = nullptr );
+
     std::shared_ptr<process> runProcess(
         const std::vector<std::string> &cmd,
         const std::filesystem::path &workDir = std::filesystem::current_path(),

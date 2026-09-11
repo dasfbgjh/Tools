@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>扫雷</title>
+    <link rel="stylesheet" type="text/css" href="index.css">
+</head>
+
+<body>
+    <div class="game-container">
+        <div class="menu-bar">
+            <button class="menu-btn" onclick="resetGame()">新游戏</button>
+            <div class="menu-separator"></div>
+            <div class="menu-group">
+                <label class="menu-label" for="difficultySelect">等级</label>
+                <select class="menu-select" id="difficultySelect" onchange="setDifficulty(this.value)">
+                    <option value="beginner">初级</option>
+                    <option value="intermediate">中级</option>
+                    <option value="expert">高级</option>
+                </select>
+            </div>
+            <div class="menu-separator"></div>
+            <label class="menu-checkbox-label">
+                <input type="checkbox" class="menu-checkbox" id="questionCheckbox" onchange="toggleQuestionMark()">
+                标记?
+            </label>
+        </div>
+
+        <div class="header-panel">
+            <div class="led-group">
+                <div class="led-label">🚩</div>
+                <div class="led-display" id="mineCounter">010</div>
+            </div>
+            <div class="face-btn" id="faceBtn" onclick="resetGame()">🙂</div>
+            <div class="led-group">
+                <div class="led-label">⏱</div>
+                <div class="led-display" id="timerDisplay">000</div>
+            </div>
+        </div>
+
+        <div class="mine-field" id="mineField">
+            <table class="mine-field-table" id="mineTable"></table>
+        </div>
+
+        <div class="status-bar">
+            左键揭开 · 右键标记 · 双键快开
+        </div>
+    </div>
+
+    <script src="index.js"></script>
+</body>
+
+</html>

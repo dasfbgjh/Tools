@@ -172,3 +172,23 @@ CREATE TABLE IF NOT EXISTS doc_sources (
     updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_doc_sources_updated ON doc_sources(updated_at DESC);
+
+-- 音乐扫描目录表
+CREATE TABLE IF NOT EXISTS music_sources (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    path TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_music_sources_updated ON music_sources(updated_at DESC);
+
+-- 音乐黑名单表（与目录关联，被拉黑的歌曲不参与扫描/播放）
+CREATE TABLE IF NOT EXISTS music_blacklist (
+    id TEXT PRIMARY KEY,
+    source_id TEXT NOT NULL,
+    path TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_music_blacklist_source ON music_blacklist(source_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_music_blacklist_source_path ON music_blacklist(source_id, path);

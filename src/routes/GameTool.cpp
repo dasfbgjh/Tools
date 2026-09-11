@@ -3,12 +3,14 @@
 #include "common/Logger.hpp"
 #include "core/Server.h"
 #include "core/Utils.h"
+#include "resource.h"
 
 #include <algorithm>
 #include <atomic>
 #include <filesystem>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <string>
 #include <thread>
 #include <vector>
@@ -19,18 +21,36 @@ namespace routes::game {
 
 // ===== 游戏目录扫描 =====
 
+struct ScanDir {
+    std::string path;
+    bool embedded;
+};
+
 struct GameEntry {
     std::string id;
     std::string name;
     std::string entryFile;
+    std::string baseDir;
+    bool embedded;
 };
 
-static std::string gameDataDir() {
+struct ResolvedFile {
+    std::string diskPath;
+    std::string resName;
+    bool embedded;
+};
+
+static std::vector<ScanDir> gameDataDirs() {
+    std::vector<ScanDir> dirs;
 #ifdef RESOURCE_PATH
-    return std::string( RESOURCE_PATH ) + "/html/game";
+    dirs.push_back( { std::string( RESOURCE_PATH ) + "/games", false } );
+    dirs.push_back( { std::string( RESOURCE_PATH ) + "/games1", false } );
 #else
-    return "";
+    dirs.push_back( { "/games", true } );
+    dirs.push_back( { "/games1", true } );
 #endif
+    dirs.push_back( { Config::getAppPath() + "/games", false } );
+    return dirs;
 }
 
 static std::string guessGameName( const std::string &id ) {
@@ -50,46 +70,142 @@ static std::string guessGameName( const std::string &id ) {
     return name;
 }
 
-static std::vector<GameEntry> scanGames() {
-    std::string base = gameDataDir();
-    if ( base.empty() )
-        return {};
+static bool resourceReadFile( const std::string &resName, std::string &out ) {
+    const unsigned char *data = nullptr;
+    int size = resource_get( resName.c_str(), &data );
+    if ( size < 0 || !data )
+        return false;
+    out.assign( reinterpret_cast<const char *>( data ), static_cast<size_t>( size ) );
+    return true;
+}
 
-    std::error_code ec;
-    if ( !fs::is_directory( base, ec ) )
-        return {};
-
-    static const char *entryNames[] = { "index.html", "index.htm" };
-    std::vector<GameEntry> games;
-
-    for ( auto &entry : fs::directory_iterator( base, ec ) ) {
-        if ( ec )
-            break;
-        if ( !entry.is_directory( ec ) )
+static std::set<std::string> resourceListDirs( const std::string &prefix ) {
+    std::set<std::string> dirs;
+    std::string p = prefix;
+    if ( p.back() != '/' )
+        p += '/';
+    int count = resource_count();
+    for ( int i = 0; i < count; ++i ) {
+        const char *name = resource_name( i );
+        if ( !name )
             continue;
-        std::string dirName = entry.path().filename().string();
-        if ( !dirName.empty() && dirName[0] == '.' )
+        std::string n( name );
+        if ( n.size() <= p.size() || n.substr( 0, p.size() ) != p )
             continue;
+        auto pos = n.find( '/', p.size() );
+        if ( pos != std::string::npos )
+            dirs.insert( n.substr( p.size(), pos - p.size() ) );
+    }
+    return dirs;
+}
 
-        std::string found;
-        for ( auto &en : entryNames ) {
-            if ( fs::is_regular_file( entry.path() / en, ec ) ) {
-                found = en;
-                break;
-            }
+static void parseGamesJson( const std::string &content, const std::string &baseDir,
+                            bool embedded, std::vector<GameEntry> &games,
+                            std::set<std::string> &seenIds ) {
+    try {
+        auto j = Server::json::parse( content );
+        if ( !j.is_array() )
+            return;
+        for ( auto &item : j ) {
+            std::string path = item.value( "path", "" );
+            std::string name = item.value( "name", "" );
+            if ( path.empty() )
+                continue;
+
+            fs::path p( path );
+            std::string id = p.parent_path().string();
+            std::string entryFile = p.filename().string();
+            std::replace( id.begin(), id.end(), '\\', '/' );
+            if ( id.empty() || entryFile.empty() )
+                continue;
+
+            if ( seenIds.count( id ) )
+                continue;
+            seenIds.insert( id );
+
+            GameEntry g;
+            g.id = id;
+            g.name = name.empty() ? guessGameName( id ) : name;
+            g.entryFile = entryFile;
+            g.baseDir = baseDir;
+            g.embedded = embedded;
+            games.push_back( std::move( g ) );
         }
-        if ( found.empty() )
-            continue;
+    } catch ( const std::exception &e ) {
+        LOG_WARN << "解析 games.json 失败: " << baseDir << "/games.json - " << e.what();
+    }
+}
 
-        GameEntry g;
-        g.id = dirName;
-        g.name = guessGameName( dirName );
-        g.entryFile = found;
-        games.push_back( std::move( g ) );
+static void scanEmbeddedDir( const ScanDir &sd, std::vector<GameEntry> &games,
+                             std::set<std::string> &seenIds ) {
+    std::string jsonResName = sd.path + "/games.json";
+    if ( resource_exists( jsonResName.c_str() ) ) {
+        std::string content;
+        if ( resourceReadFile( jsonResName, content ) )
+            parseGamesJson( content, sd.path, true, games, seenIds );
+        return;
     }
 
-    std::sort( games.begin(), games.end(),
-               []( const GameEntry &a, const GameEntry &b ) { return a.id < b.id; } );
+    auto subDirs = resourceListDirs( sd.path );
+    for ( auto &dirName : subDirs ) {
+        if ( dirName.empty() || dirName[0] == '.' || seenIds.count( dirName ) )
+            continue;
+        std::string resName = sd.path + "/" + dirName + "/index.html";
+        if ( !resource_exists( resName.c_str() ) )
+            continue;
+        seenIds.insert( dirName );
+        games.push_back( { dirName, guessGameName( dirName ), "index.html", sd.path, true } );
+    }
+}
+
+static void scanDiskDir( const ScanDir &sd, std::vector<GameEntry> &games,
+                         std::set<std::string> &seenIds ) {
+    std::error_code ec;
+    if ( !fs::is_directory( sd.path, ec ) )
+        return;
+
+    fs::path jsonPath = fs::path( sd.path ) / "games.json";
+    if ( fs::is_regular_file( jsonPath, ec ) ) {
+        std::string content;
+        if ( utils::fs::readFile( jsonPath.string(), content ) )
+            parseGamesJson( content, sd.path, false, games, seenIds );
+        return;
+    }
+
+    for ( auto &entry : fs::directory_iterator( sd.path, ec ) ) {
+        if ( !entry.is_directory( ec ) ) {
+            ec.clear();
+            continue;
+        }
+        std::string dirName = entry.path().filename().string();
+        if ( !dirName.empty() && dirName[0] == '.' || seenIds.count( dirName ) )
+            continue;
+        if ( !fs::is_regular_file( entry.path() / "index.html", ec ) ) {
+            ec.clear();
+            continue;
+        }
+        seenIds.insert( dirName );
+        games.push_back( { dirName, guessGameName( dirName ), "index.html", sd.path, false } );
+    }
+}
+
+static std::vector<GameEntry> scanGames() {
+    auto dirs = gameDataDirs();
+    if ( dirs.empty() )
+        return {};
+
+    std::vector<GameEntry> games;
+    std::set<std::string> seenIds;
+
+    for ( auto &sd : dirs ) {
+        if ( sd.embedded )
+            scanEmbeddedDir( sd, games, seenIds );
+        else
+            scanDiskDir( sd, games, seenIds );
+    }
+
+    LOG_LOG << "Scanned " << games.size() << " games";
+    std::sort( games.begin(), games.end(), []( const GameEntry &a, const GameEntry &b ) { return a.id < b.id; } );
     return games;
 }
 
@@ -98,7 +214,7 @@ namespace {
 
 struct GameServerState {
     std::mutex mtx;
-    std::string gameDir;
+    std::vector<ScanDir> scanDirs;
     bool set = false;
 };
 
@@ -110,35 +226,47 @@ std::atomic<int> g_port{ 0 };
 std::atomic<bool> g_running{ false };
 std::string g_baseUrl;
 
-static fs::path resolveFile( const std::string &urlPath ) {
+static ResolvedFile resolveFile( const std::string &urlPath ) {
     std::string decoded = utils::urlDecode( urlPath );
     while ( !decoded.empty() && ( decoded.front() == '/' || decoded.front() == '\\' ) )
         decoded.erase( decoded.begin() );
     if ( decoded.empty() )
         return {};
 
-    std::string rootStr;
+    std::vector<ScanDir> roots;
     {
         std::lock_guard<std::mutex> lock( g_state.mtx );
-        if ( !g_state.set || g_state.gameDir.empty() )
+        if ( !g_state.set || g_state.scanDirs.empty() )
             return {};
-        rootStr = g_state.gameDir;
+        roots = g_state.scanDirs;
     }
 
-    std::error_code ec;
-    fs::path rootCanonical = fs::weakly_canonical( fs::path( rootStr ), ec );
-    if ( ec )
-        return {};
-    fs::path filePath = fs::weakly_canonical( rootCanonical / decoded, ec );
-    if ( ec )
-        return {};
+    for ( auto &sd : roots ) {
+        if ( sd.embedded ) {
+            std::string resName = sd.path + "/" + decoded;
+            if ( resource_exists( resName.c_str() ) )
+                return { {}, resName, true };
+            continue;
+        }
 
-    std::string absStr = filePath.string();
-    std::string rootCanonStr = rootCanonical.string();
-    if ( !utils::fs::isWithin( rootCanonStr, absStr ) )
-        return {};
+        std::error_code ec;
+        fs::path rootCanonical = fs::weakly_canonical( fs::path( sd.path ), ec );
+        if ( ec )
+            continue;
+        fs::path filePath = fs::weakly_canonical( rootCanonical / decoded, ec );
+        if ( ec )
+            continue;
 
-    return filePath;
+        std::string absStr = filePath.string();
+        std::string rootCanonStr = rootCanonical.string();
+        if ( !utils::fs::isWithin( rootCanonStr, absStr ) )
+            continue;
+
+        if ( fs::is_regular_file( filePath, ec ) )
+            return { filePath.string(), {}, false };
+    }
+
+    return {};
 }
 
 static void setupGameServerRoutes( httplib::Server &svr ) {
@@ -147,30 +275,36 @@ static void setupGameServerRoutes( httplib::Server &svr ) {
     } );
 
     svr.Get( R"(.*)", []( const httplib::Request &req, httplib::Response &res ) {
-        if ( req.path == "/__health" )
-            return;
-
-        fs::path filePath = resolveFile( req.path );
-        if ( filePath.empty() ) {
-            res.status = 404;
-            res.set_content( "Not Found", "text/plain; charset=utf-8" );
+        auto resolved = resolveFile( req.path );
+        if ( resolved.embedded ) {
+            if ( resolved.resName.empty() ) {
+                res.status = 404;
+                res.set_content( "Not Found", "text/plain; charset=utf-8" );
+                return;
+            }
+            std::string content;
+            if ( !resourceReadFile( resolved.resName, content ) ) {
+                res.status = 500;
+                res.set_content( "Read Error", "text/plain; charset=utf-8" );
+                return;
+            }
+            res.set_content( content, Server::contentType( fs::path( resolved.resName ) ) );
             return;
         }
 
-        std::error_code ec;
-        if ( !fs::is_regular_file( filePath, ec ) ) {
+        if ( resolved.diskPath.empty() ) {
             res.status = 404;
             res.set_content( "Not Found", "text/plain; charset=utf-8" );
             return;
         }
 
         std::string content;
-        if ( !utils::fs::readFile( filePath.string(), content ) ) {
+        if ( !utils::fs::readFile( resolved.diskPath, content ) ) {
             res.status = 500;
             res.set_content( "Read Error", "text/plain; charset=utf-8" );
             return;
         }
-        res.set_content( content, Server::contentType( filePath ) );
+        res.set_content( content, Server::contentType( fs::path( resolved.diskPath ) ) );
     } );
 }
 
@@ -216,7 +350,7 @@ static void stopGameHttpServerLocked() {
     {
         std::lock_guard<std::mutex> lock( g_state.mtx );
         g_state.set = false;
-        g_state.gameDir.clear();
+        g_state.scanDirs.clear();
     }
 }
 
@@ -249,13 +383,19 @@ static void startServer( const httplib::Request &req, httplib::Response &res ) {
     if ( Server::guardLocalhost( req, res ) )
         return;
 
-    std::string base = gameDataDir();
-    if ( base.empty() )
-        return Server::sendError( res, "游戏数据目录不可用", 500 );
-
-    std::error_code ec;
-    if ( !fs::is_directory( base, ec ) )
-        return Server::sendError( res, "游戏数据目录不存在", 400 );
+    auto dirs = gameDataDirs();
+    std::vector<ScanDir> validDirs;
+    for ( auto &sd : dirs ) {
+        if ( sd.embedded ) {
+            validDirs.push_back( sd );
+        } else {
+            std::error_code ec;
+            if ( fs::is_directory( sd.path, ec ) )
+                validDirs.push_back( sd );
+        }
+    }
+    if ( validDirs.empty() )
+        return Server::sendError( res, "没有可用的游戏数据目录", 400 );
 
     {
         std::lock_guard<std::mutex> lock( g_lifecycleMtx );
@@ -268,7 +408,7 @@ static void startServer( const httplib::Request &req, httplib::Response &res ) {
         }
         {
             std::lock_guard<std::mutex> sl( g_state.mtx );
-            g_state.gameDir = base;
+            g_state.scanDirs = validDirs;
             g_state.set = true;
         }
     }

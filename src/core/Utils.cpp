@@ -677,7 +677,7 @@ bool readFile( const std::string &path, std::string &out ) {
     std::ifstream ifs( utf8ToLocal( path ), std::ios::binary );
     if ( !ifs )
         return false;
-    out.assign( ( std::istreambuf_iterator<char>( ifs ) ), std::istreambuf_iterator<char>() );
+    out.assign( std::istreambuf_iterator<char>( ifs ), std::istreambuf_iterator<char>() );
     return true;
 }
 

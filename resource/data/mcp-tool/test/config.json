@@ -1,0 +1,7 @@
+{
+    "name": "test",
+    "desc": "测试http请求",
+    "method": "get",
+    "entry": "http://www.baidu.com",
+    "extension": {}
+}

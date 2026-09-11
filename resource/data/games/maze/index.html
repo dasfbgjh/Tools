@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <title>迷宫</title>
+    <link rel="stylesheet" type="text/css" href="index.css">
+</head>
+
+<body>
+    <div class="game-wrapper">
+        <div class="game-container">
+            <div class="game-body">
+                <div class="left-panel">
+                    <div class="info-box">
+                        <div class="info-label">算法</div>
+                        <select class="algo-select" id="algoSelect">
+                            <option value="dfs">递归回溯</option>
+                            <option value="prim">随机Prim</option>
+                            <option value="kruskal">随机Kruskal</option>
+                            <option value="eller">Eller</option>
+                            <option value="division">递归分割</option>
+                        </select>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-label">大小</div>
+                        <select class="algo-select" id="sizeSelect">
+                            <option value="11">小 (11×11)</option>
+                            <option value="21" selected>中 (21×21)</option>
+                            <option value="31">大 (31×31)</option>
+                            <option value="41">超大 (41×41)</option>
+                        </select>
+                    </div>
+                    <button class="action-btn generate-btn" onclick="generateNewMaze()">生成迷宫</button>
+
+                    <div style="height: 16px;"></div>
+
+                    <div class="info-box">
+                        <div class="info-label">步数</div>
+                        <div class="info-value" id="stepCount">0</div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-label">用时</div>
+                        <div class="info-value" id="timeDisplay">0:00</div>
+                    </div>
+
+                    <div class="info-box">
+                        <div class="info-label">寻路</div>
+                        <select class="algo-select" id="solveAlgoSelect">
+                            <option value="bfs">广度优先(BFS)</option>
+                            <option value="dfs">深度优先(DFS)</option>
+                        </select>
+                    </div>
+                    <button class="action-btn solve-btn" id="solveBtn" onclick="startAutoSolve()">自动寻路</button>
+                    <button class="action-btn stop-btn" id="stopBtn" onclick="stopAutoSolve()"
+                        style="display:none">停止寻路</button>
+                </div>
+                <div class="board-wrapper">
+                    <canvas id="mazeCanvas"></canvas>
+                    <div class="board-overlay" id="boardOverlay" style="display:none">
+                        <div class="overlay-content">
+                            <div class="overlay-title" id="overlayTitle">恭喜通关！</div>
+                            <div class="overlay-detail" id="overlayDetail"></div>
+                            <button class="overlay-btn" onclick="generateNewMaze()">再来一局</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="right-panel">
+                    <div class="controls-box">
+                        <div class="controls-title">操作</div>
+                        <div class="control-item"><span class="key">↑↓←→</span> 移动</div>
+                        <div class="control-item"><span class="key">WASD</span> 移动</div>
+                        <div class="control-item"><span class="key">R</span> 重新生成</div>
+                        <div class="control-item"><span class="key">F</span> 自动寻路</div>
+                    </div>
+                    <div class="legend-box">
+                        <div class="controls-title">图例</div>
+                        <div class="legend-item"><span class="legend-color" style="background:#00e5ff"></span> 起点</div>
+                        <div class="legend-item"><span class="legend-color" style="background:#ff6b6b"></span> 终点</div>
+                        <div class="legend-item"><span class="legend-color" style="background:#ffd93d"></span> 玩家</div>
+                        <div class="legend-item"><span class="legend-color" style="background:#6bcb77"></span> 寻路路径
+                        </div>
+                        <div class="legend-item"><span class="legend-color"
+                                style="background:rgba(107,203,119,0.25)"></span> 已探索</div>
+                    </div>
+                    <div class="algo-info-box">
+                        <div class="controls-title">算法说明</div>
+                        <div class="algo-desc" id="algoDesc">深度优先搜索，随机选择未访问邻居打通墙壁，生成具有长走廊特征的迷宫。</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="index.js"></script>
+</body>
+
+</html>

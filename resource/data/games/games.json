@@ -1,0 +1,22 @@
+[
+    {
+        "name": "扫雷",
+        "path": "minesweeper/index.html"
+    },
+    {
+        "name": "俄罗斯方块",
+        "path": "tetris/index.html"
+    },
+    {
+        "name": "消消乐",
+        "path": "match3/index.html"
+    },
+    {
+        "name": "迷宫",
+        "path": "maze/index.html"
+    },
+    {
+        "name": "五子棋",
+        "path": "gomoku/index.html"
+    }
+]

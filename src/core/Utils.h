@@ -92,7 +92,7 @@ struct DirEntry {
     std::string modified; // ISO 8601 UTC
 };
 
-std::string toNative( const std::string &p );
+std::string toNative( const std::string &path );
 
 std::string safeJoin( const std::string &base, const std::string &relative );
 

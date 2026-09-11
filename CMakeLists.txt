@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 project(Tools
-    VERSION 1.0.1
+    VERSION 1.0.2
     DESCRIPTION "Tools - A collection of useful tools for developers"
     HOMEPAGE_URL "https://github.com/dasfbgjh/Tools"
 )
@@ -30,7 +30,7 @@ if(WIN32)
 endif()
 
 # 导入 boost 库
-find_package(Boost REQUIRED CONFIG COMPONENTS process filesystem)
+find_package(Boost REQUIRED CONFIG COMPONENTS process filesystem regex)
 
 # 导入 hwinfo 库
 set(HWINFO_SHARED OFF)
@@ -64,6 +64,7 @@ add_executable(${APP_FILE_NAME} ${WIN_GUI}
     src/core/McpCore.cpp
     src/core/McpServer.cpp
     src/core/McpClient.cpp
+    src/core/McpTools.cpp
     src/routes/Admin.cpp
     src/routes/Auth.cpp
     src/routes/Clipboard.cpp
@@ -76,6 +77,7 @@ add_executable(${APP_FILE_NAME} ${WIN_GUI}
     src/routes/FfmpegTool.cpp
     src/routes/CertTool.cpp
     src/routes/DocTool.cpp
+    src/routes/MusicTool.cpp
     src/routes/GameTool.cpp
     src/routes/SysMonitor.cpp
     src/routes/OcrTools.cpp
@@ -126,6 +128,7 @@ target_link_libraries(${APP_FILE_NAME} PRIVATE
     # boost
     Boost::process
     Boost::filesystem
+    Boost::regex
 
     # hwinfo
     hwinfo_cpu
@@ -151,8 +154,6 @@ endif()
 
 # ----------------------------------------------------------------
 add_executable(test
-
-    # WIN32
     test/test.cpp
 )
 target_include_directories(test PRIVATE
@@ -164,4 +165,5 @@ target_compile_definitions(test PRIVATE
 target_link_libraries(test PRIVATE
     Boost::process
     Boost::filesystem
+    Boost::regex
 )

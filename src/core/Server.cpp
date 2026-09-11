@@ -1,7 +1,6 @@
 #include "Server.h"
 #include "common/Config.h"
 #include "routes/Admin.h"
-#include "routes/LocalTools.h"
 #include "routes/Auth.h"
 #include "routes/Teams.h"
 #include "routes/Clipboard.h"
@@ -40,8 +39,6 @@ void Server::registerhRoutes( httplib::Server &server ) {
 
     LOG_DEBUG << "注册管理员路由...";
     routes::admin::registerAdminRoutes( server ); // 注册管理员路由
-    LOG_DEBUG << "注册本机工具路由...";
-    routes::localTools::registerLocalTools( server ); // 注册本机工具路由（仅限本机访问）
     LOG_DEBUG << "注册授权路由...";
     routes::auth::registerAuthRoutes( server ); // 注册授权路由
     LOG_DEBUG << "注册团队路由...";
@@ -96,7 +93,8 @@ void Server::registerhRoutes( httplib::Server &server ) {
 
     // 服务静态文件路由  (catch-all, must be last)
     server.Get( R"(/(.*))", [this]( const httplib::Request &req, httplib::Response &res ) {
-        serveStatic( req, res, "/" + std::string( req.matches[1] ) );
+        const std::string path = "/" + std::string( req.matches[1] );
+        serveStatic( req, res, utils::urlDecode( path ) );
     } );
 
     server.set_pre_routing_handler( []( const httplib::Request &req, httplib::Response &res )
@@ -258,7 +256,7 @@ void Server::serveStatic( const httplib::Request &req, httplib::Response &res, c
 void Server::sendJson( httplib::Response &res, const json &j, int status ) {
     try {
         res.status = status;
-        res.set_content( j.dump(), "application/json; charset=utf-8" );
+        res.set_content( j.dump( -1, 32, false, json::error_handler_t::replace ), "application/json; charset=utf-8" );
     } catch ( const std::exception &e ) {
         json err( { { "success", false }, { "error", e.what() } } );
         res.status = 500;
@@ -342,20 +340,38 @@ std::string Server::contentType( const std::filesystem::path &path ) {
         return "audio/wav";
     if ( ext == ".ogg" )
         return "audio/ogg";
+    if ( ext == ".flac" )
+        return "audio/flac";
+    if ( ext == ".m4a" || ext == ".aac" )
+        return "audio/mp4";
+    if ( ext == ".opus" )
+        return "audio/ogg";
+    if ( ext == ".wma" )
+        return "audio/x-ms-wma";
     return "application/octet-stream";
+}
+
+std::string Server::staticResourcePath( const std::string &resName, const std::string &prefix, bool forceEmbedded ) {
+#ifdef RESOURCE_PATH
+    if ( forceEmbedded )
+        return prefix + resName;
+    return RESOURCE_PATH + prefix + resName;
+#else
+    return prefix + resName;
+#endif
 }
 
 std::string Server::staticResource( const std::string &resName, const std::string &prefix ) {
 #ifdef RESOURCE_PATH
-    std::string fullPath = RESOURCE_PATH + prefix + resName;
+    std::string fullPath = staticResourcePath( resName, prefix );
     std::string content;
     if ( utils::fs::readFile( fullPath, content ) )
         return content;
     return "";
 #else
-    const std::string name = prefix + resName;
+    std::string fullPath = staticResourcePath( resName, prefix );
     const unsigned char *data = nullptr;
-    int size = resource_get( name.c_str(), &data );
+    int size = resource_get( fullPath.c_str(), &data );
     if ( size < 0 || !data )
         return "";
     return std::string( data, data + size );

@@ -237,7 +237,7 @@ public:
         std::string fullText;
         for ( unsigned long long i = 0; i < result.textBlocksLength; i++ ) {
             const TEXT_BLOCK &tb = result.textBlocks[i];
-            std::string text = utils::sanitizeUtf8( std::string( tb.text, tb.text + tb.textLength ) );
+            std::string text = std::string( tb.text, tb.text + tb.textLength );
             Server::json box = Server::json::array();
             for ( unsigned long long j = 0; j < tb.boxPointLength; j++ )
                 box.push_back( { { "x", tb.boxPoint[j].x }, { "y", tb.boxPoint[j].y } } );

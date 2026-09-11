@@ -5,7 +5,8 @@
 
     var PHONE_W_TO_H = 9 / 16;
     var BORDER = 3;
-    var FRAME_PAD = 12;
+    var FRAME_PAD = 0;
+    var MOVE_STEP = 30;
 
     var state = {
         games: [],
@@ -14,7 +15,9 @@
         mode: localStorage.getItem('game-mode') || 'pc',
         zoom: parseInt(localStorage.getItem('game-zoom'), 10) || 100,
         sidebarCollapsed: localStorage.getItem('game-sidebar-collapsed') === '1',
-        searchQuery: ''
+        searchQuery: '',
+        offsetX: 0,
+        offsetY: 0
     };
 
     function $(sel) { return document.querySelector(sel); }
@@ -31,15 +34,38 @@
             var li = document.createElement('li');
             li.className = 'game-list-item' + (state.activeGame && state.activeGame.id === g.id ? ' active' : '');
             li.innerHTML = '<span class="game-list-idx">' + idx + '.' + '</span><span class="game-list-name">' + g.name + '</span>';
-            li.addEventListener('click', function () { selectGame(g); });
+            li.addEventListener('click', function (e) {
+                if (e.ctrlKey || e.metaKey) {
+                    var url = buildGameUrl(g);
+                    if (url) window.open(url, '_blank');
+                    return;
+                }
+                selectGame(g);
+            });
             list.appendChild(li);
         });
     }
 
     function selectGame(game) {
+        var isFirst = !state.activeGame;
         state.activeGame = game;
         renderSidebar();
         renderGameArea();
+        if (isFirst) {
+            resetPosition();
+        } else {
+            applyIframeSize();
+        }
+        focusIframe();
+    }
+
+    function focusIframe() {
+        var area = $('#game-area');
+        if (!area) return;
+        var iframe = area.querySelector('iframe');
+        if (iframe) {
+            try { iframe.contentWindow.focus(); } catch (e) { iframe.focus(); }
+        }
     }
 
     function renderModeButtons() {
@@ -61,12 +87,64 @@
         state.zoom = val;
         try { localStorage.setItem('game-zoom', String(val)); } catch (e) { }
         renderZoomLabel();
-        renderGameArea();
+        applyIframeSize();
     }
 
     function buildGameUrl(game) {
         if (!state.baseUrl) return '';
         return state.baseUrl + game.id + '/' + game.entryFile;
+    }
+
+    function applyIframeSize() {
+        var area = $('#game-area');
+        if (!area || !state.activeGame) return;
+
+        var scale = state.zoom / 100;
+        var container = area.querySelector('.game-iframe-container');
+        if (!container) return;
+
+        if (state.mode === 'pc') {
+            var iframe = container.querySelector('iframe');
+            if (!iframe) return;
+            var areaW = area.clientWidth;
+            var areaH = area.clientHeight;
+            iframe.style.width = Math.round(areaW * scale) + 'px';
+            iframe.style.height = Math.round(areaH * scale) + 'px';
+            iframe.style.left = state.offsetX + 'px';
+            iframe.style.top = state.offsetY + 'px';
+        } else {
+            var phoneFrame = container.querySelector('.phone-frame');
+            if (!phoneFrame) return;
+            var availW = area.clientWidth - FRAME_PAD * 2;
+            var availH = area.clientHeight - FRAME_PAD * 2;
+
+            var frameHFromW = availW / PHONE_W_TO_H + BORDER * 2;
+            var frameWFromH = (availH - BORDER * 2) * PHONE_W_TO_H + BORDER * 2;
+
+            var frameW, frameH;
+            if (frameHFromW <= availH) {
+                frameW = availW + BORDER * 2;
+                frameH = frameHFromW;
+            } else {
+                frameH = availH + BORDER * 2;
+                frameW = frameWFromH;
+            }
+            frameW = Math.floor(frameW * scale);
+            frameH = Math.floor(frameH * scale);
+
+            var screenW = frameW - BORDER * 2;
+            var screenH = frameH - BORDER * 2;
+
+            phoneFrame.style.width = frameW + 'px';
+            phoneFrame.style.height = frameH + 'px';
+            var iframe = phoneFrame.querySelector('iframe');
+            if (iframe) {
+                iframe.style.width = screenW + 'px';
+                iframe.style.height = screenH + 'px';
+            }
+            phoneFrame.style.left = state.offsetX + 'px';
+            phoneFrame.style.top = state.offsetY + 'px';
+        }
     }
 
     function renderGameArea() {
@@ -75,50 +153,75 @@
 
         if (!state.activeGame) {
             area.innerHTML = '<div class="game-empty"><div class="game-empty-icon">🎮</div><div class="game-empty-text">从左侧列表选择一个游戏开始</div></div>';
-            area.className = 'game-area pc-mode';
+            area.className = 'game-area';
             return;
         }
 
         var url = buildGameUrl(state.activeGame);
         if (!url) {
             area.innerHTML = '<div class="game-empty"><div class="game-empty-icon">⚠️</div><div class="game-empty-text">游戏服务未启动</div></div>';
-            area.className = 'game-area pc-mode';
+            area.className = 'game-area';
             return;
         }
 
         area.className = 'game-area ' + state.mode + '-mode';
 
-        var scale = state.zoom / 100;
-
         if (state.mode === 'pc') {
-            area.innerHTML = '<div class="game-iframe-wrap" style="transform:scale(' + scale + ')"><iframe src="' + url + '" allowfullscreen allow="autoplay; fullscreen"></iframe></div>';
+            area.innerHTML =
+                '<div class="game-iframe-container">' +
+                '<iframe src="' + url + '" allowfullscreen allow="autoplay; fullscreen"></iframe>' +
+                '</div>';
+        } else {
+            area.innerHTML =
+                '<div class="game-iframe-container">' +
+                '<div class="phone-frame">' +
+                '<iframe src="' + url + '" allowfullscreen allow="autoplay; fullscreen"></iframe>' +
+                '</div>' +
+                '</div>';
+        }
+
+        applyIframeSize();
+    }
+
+    function moveIframe(dx, dy) {
+        state.offsetX += dx;
+        state.offsetY += dy;
+        applyIframeSize();
+    }
+
+    function resetPosition() {
+        var area = $('#game-area');
+        if (!area || !state.activeGame) {
+            state.offsetX = 0;
+            state.offsetY = 0;
+            applyIframeSize();
             return;
         }
 
-        var availW = area.clientWidth - FRAME_PAD * 2;
-        var availH = area.clientHeight - FRAME_PAD * 2;
+        var scale = state.zoom / 100;
+        var areaW = area.clientWidth;
+        var areaH = area.clientHeight;
 
-        var frameHFromW = availW / PHONE_W_TO_H + BORDER * 2;
-        var frameWFromH = (availH - BORDER * 2) * PHONE_W_TO_H + BORDER * 2;
-
-        var frameW, frameH;
-        if (frameHFromW <= availH) {
-            frameW = availW + BORDER * 2;
-            frameH = frameHFromW;
+        if (state.mode === 'pc') {
+            var iframeW = Math.round(areaW * scale);
+            var iframeH = Math.round(areaH * scale);
+            state.offsetX = Math.round((areaW - iframeW) / 2);
+            state.offsetY = Math.round((areaH - iframeH) / 2);
         } else {
-            frameH = availH + BORDER * 2;
-            frameW = frameWFromH;
+            var container = area.querySelector('.game-iframe-container');
+            var phoneFrame = container ? container.querySelector('.phone-frame') : null;
+            if (phoneFrame) {
+                var frameW = phoneFrame.offsetWidth;
+                var frameH = phoneFrame.offsetHeight;
+                state.offsetX = Math.round((areaW - frameW) / 2);
+                state.offsetY = Math.round((areaH - frameH) / 2);
+            } else {
+                state.offsetX = 0;
+                state.offsetY = 0;
+            }
         }
-        frameW = Math.floor(frameW);
-        frameH = Math.floor(frameH);
 
-        var screenW = frameW - BORDER * 2;
-        var screenH = frameH - BORDER * 2;
-
-        area.innerHTML =
-            '<div class="phone-frame" style="width:' + frameW + 'px;height:' + frameH + 'px;transform:scale(' + scale + ')">' +
-            '<iframe src="' + url + '" style="width:' + screenW + 'px;height:' + screenH + 'px" allowfullscreen allow="autoplay; fullscreen"></iframe>' +
-            '</div>';
+        applyIframeSize();
     }
 
     function setMode(mode) {
@@ -126,6 +229,7 @@
         try { localStorage.setItem('game-mode', mode); } catch (e) { }
         renderModeButtons();
         renderGameArea();
+        resetPosition();
     }
 
     function toggleSidebar() {
@@ -165,6 +269,17 @@
             });
         }
 
+        var moveUp = $('#move-up');
+        var moveDown = $('#move-down');
+        var moveLeft = $('#move-left');
+        var moveRight = $('#move-right');
+        var moveReset = $('#move-reset');
+        if (moveUp) moveUp.addEventListener('click', function () { moveIframe(0, -MOVE_STEP); });
+        if (moveDown) moveDown.addEventListener('click', function () { moveIframe(0, MOVE_STEP); });
+        if (moveLeft) moveLeft.addEventListener('click', function () { moveIframe(-MOVE_STEP, 0); });
+        if (moveRight) moveRight.addEventListener('click', function () { moveIframe(MOVE_STEP, 0); });
+        if (moveReset) moveReset.addEventListener('click', resetPosition);
+
         renderModeButtons();
 
         Api.localTools.game.start().then(function (r) {
@@ -187,7 +302,7 @@
         window.addEventListener('resize', function () {
             clearTimeout(resizeTimer);
             resizeTimer = setTimeout(function () {
-                if (state.activeGame && state.mode === 'mobile') renderGameArea();
+                if (state.activeGame) applyIframeSize();
             }, 200);
         });
     }

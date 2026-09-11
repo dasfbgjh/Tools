@@ -216,6 +216,8 @@
                 allowOverwrite: !!allowOverwrite
             });
         },
+        // MCP 调试代理（使用 McpClient 连接目标 MCP 服务，仅本机可访问）
+        mcpDebug: function (data) { return Api.post('/local/mcp_debug', data); },
         // HTTP 服务器（路径挂载/请求代理）
         httpServers: {
             list: function () { return Api.get('/local/http/servers'); },
@@ -288,6 +290,29 @@
             list: function () { return Api.get('/game/list'); },
             start: function () { return Api.post('/game/start', {}); },
             status: function () { return Api.get('/game/status'); }
+        },
+        // 音乐播放器
+        music: {
+            listSources: function () { return Api.get('/local/music/sources'); },
+            createSource: function (data) { return Api.post('/local/music/sources', data); },
+            removeSource: function (id) { return Api.delete('/local/music/sources/' + encodeURIComponent(id)); },
+            scan: function (sourceId) {
+                var url = '/local/music/scan';
+                if (sourceId) url += '?sourceId=' + encodeURIComponent(sourceId);
+                return Api.get(url);
+            },
+            audioUrl: function (path) { return '/api/local/music/audio?path=' + encodeURIComponent(path); },
+            coverUrl: function (path) { return '/api/local/music/cover?path=' + encodeURIComponent(path); },
+            lyrics: function (path) { return Api.get('/local/music/lyrics?path=' + encodeURIComponent(path)); },
+            blacklist: {
+                list: function (sourceId) {
+                    var url = '/local/music/blacklist';
+                    if (sourceId) url += '?sourceId=' + encodeURIComponent(sourceId);
+                    return Api.get(url);
+                },
+                add: function (data) { return Api.post('/local/music/blacklist', data); },
+                remove: function (data) { return Api.delete('/local/music/blacklist', data); }
+            }
         }
     };
 
