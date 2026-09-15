@@ -45,11 +45,8 @@ void EventLoop::delayBoot( const std::string &cmd, int seconds ) {
     context ctx;
     std::string delay = "/usr/bin/sleep " + std::to_string( seconds );
 
-    namespace bpw = boost::process::v2::windows;
-    constexpr auto noWinFlags = bpw::process_creation_flags<CREATE_NO_WINDOW>{};
-
     process p( ctx, R"(/usr/bin/bash)",
-               { "-c \"", delay, "&&", utils::fs::toNative( cmd ), "\"" }, noWinFlags );
+               { "-c \"", delay, "&&", utils::fs::toNative( cmd ), "\"" } );
     p.detach();
 #endif
 }
@@ -101,6 +98,28 @@ std::string EventLoop::processPath( const std::string &exe ) {
     if ( std::filesystem::path( exe ).is_absolute() )
         return "";
 
+    auto checkPath = [&exe]( const std::string &path ) -> std::string {
+        std::filesystem::path prefix( path );
+        prefix /= exe;
+        if ( std::filesystem::exists( prefix ) && !std::filesystem::is_directory( prefix ) )
+            return utils::fs::toNative( prefix.string() );
+
+#ifdef _WIN32
+        if ( prefix.extension() != "" )
+            return "";
+        prefix += ".exe";
+        if ( std::filesystem::exists( prefix ) && !std::filesystem::is_directory( prefix ) )
+            return utils::fs::toNative( prefix.string() );
+#endif
+        return "";
+    };
+
+    {
+        std::string path = checkPath( Config::getAppPath() );
+        if ( !path.empty() )
+            return path;
+    }
+
     std::string envPath = "";
     auto envs = boost::process::environment::current();
     for ( auto it : envs ) {
@@ -118,27 +137,15 @@ std::string EventLoop::processPath( const std::string &exe ) {
 #else
     const char sep = ':';
 #endif
-
     int pos = 0;
     while ( pos < envPath.size() ) {
         int nextPos = envPath.find( sep, pos );
         if ( nextPos == std::string::npos )
             nextPos = envPath.size();
-        std::string sub = envPath.substr( pos, nextPos - pos );
+        std::string path = checkPath( envPath.substr( pos, nextPos - pos ) );
+        if ( !path.empty() )
+            return path;
         pos = nextPos + 1;
-
-        std::filesystem::path prefix( sub );
-        prefix /= exe;
-        if ( std::filesystem::exists( prefix ) && !std::filesystem::is_directory( prefix ) )
-            return utils::fs::toNative( prefix.string() );
-
-#ifdef _WIN32
-        if ( prefix.extension() != "" )
-            continue;
-        prefix += ".exe";
-        if ( std::filesystem::exists( prefix ) && !std::filesystem::is_directory( prefix ) )
-            return utils::fs::toNative( prefix.string() );
-#endif
     }
     return "";
 }

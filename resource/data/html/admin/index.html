@@ -67,7 +67,10 @@
                 <div class="section">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
                         <h3 style="margin:0;">⚙️ 应用设置</h3>
-                        <button class="btn btn-sm" id="save-config-btn">保存配置</button>
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn btn-sm" id="save-config-btn">保存配置</button>
+                            <button class="btn btn-sm btn-primary" id="save-reboot-btn">保存并重启</button>
+                        </div>
                     </div>
                     <p class="text-muted" style="font-size:13px;margin-bottom:16px;">修改配置后需<span
                             style="color:var(--primary);font-weight:600;">重启程序</span>生效。未修改的字段保持原值不变。</p>
@@ -128,6 +131,12 @@
             </div>
         </div>
     </div>
+
+    <div class="reboot-overlay" id="reboot-overlay" hidden>
+        <div class="reboot-spinner"></div>
+        <div class="reboot-text">正在重启，请稍候...</div>
+    </div>
+
     <script src="./../api.js"></script>
     <script src="./../fs_browser.js"></script>
     <script src="./../app.js"></script>

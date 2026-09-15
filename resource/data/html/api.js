@@ -165,7 +165,8 @@
         deleteShare: function (id) { return Api.delete('/admin/shares/' + id); },
         parameterPaths: function (id) { return Api.get('/admin/shares/parameter/paths?id=' + encodeURIComponent(id)); },
         getConfig: function () { return Api.get('/admin/config'); },
-        updateConfig: function (data) { return Api.put('/admin/config', data); }
+        updateConfig: function (data) { return Api.put('/admin/config', data); },
+        reboot: function (config) { return Api.post('/admin/reboot', config || []); }
     };
 
     Api.tools = {
@@ -313,6 +314,24 @@
                 add: function (data) { return Api.post('/local/music/blacklist', data); },
                 remove: function (data) { return Api.delete('/local/music/blacklist', data); }
             }
+        },
+        adb: {
+            info: function () { return Api.get('/local/adb/info'); },
+            devices: function () { return Api.get('/local/adb/devices'); },
+            connect: function (target) { return Api.post('/local/adb/connect', { target: target }); },
+            disconnect: function (target) { return Api.post('/local/adb/disconnect', { target: target }); },
+            forwardList: function (serial, reverse) {
+                var url = '/local/adb/forward/list';
+                var params = [];
+                if (serial) params.push('serial=' + encodeURIComponent(serial));
+                if (reverse) params.push('reverse=true');
+                if (params.length) url += '?' + params.join('&');
+                return Api.get(url);
+            },
+            forwardAdd: function (data) { return Api.post('/local/adb/forward/add', data); },
+            forwardRemove: function (data) { return Api.post('/local/adb/forward/remove', data); },
+            forwardRemoveAll: function (data) { return Api.post('/local/adb/forward/removeAll', data); },
+            shell: function (data) { return Api.post('/local/adb/shell', data); }
         }
     };
 

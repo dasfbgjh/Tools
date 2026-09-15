@@ -128,11 +128,6 @@ Server::json FfmpegManager::info() {
             m_cachedInfo["error"] = "未配置 ffmpeg 路径(--ffmpeg 或 config.ffmpegPath)";
             return;
         }
-        std::error_code ec;
-        if ( !fs::exists( ffmpeg, ec ) ) {
-            m_cachedInfo["error"] = "ffmpeg 不存在: " + ffmpeg;
-            return;
-        }
 
         // 调用 ffmpeg -version
         auto verResult = EventLoop::runProcessSync(

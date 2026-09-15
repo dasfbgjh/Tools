@@ -53,6 +53,7 @@
 
         document.getElementById('add-share-btn').addEventListener('click', window.AdminShares.showAddModal);
         document.getElementById('save-config-btn').addEventListener('click', window.AdminSettings.saveConfig);
+        document.getElementById('save-reboot-btn').addEventListener('click', window.AdminSettings.saveAndReboot);
         document.getElementById('add-user-btn').addEventListener('click', function () { window.AdminUsers.showUserModal(null); });
     }
 

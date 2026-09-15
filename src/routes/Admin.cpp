@@ -205,6 +205,21 @@ void adminConfigPut( const httplib::Request &req, httplib::Response &res ) {
     Server::sendJson( res, { { "success", true }, { "message", "配置已保存，重启后生效" } } );
 }
 
+void reboot( const httplib::Request &req, httplib::Response &res ) {
+    if ( Server::guardLocalhost( req, res ) )
+        return;
+    auto body = Server::parseBody( req );
+    if ( !body.is_null() && body.is_array() ) {
+        auto arr = body.get<Server::json::array_t>();
+        App::getInstance()->getDatabase().saveAppConfig( arr );
+        LOG_INFO << "重启前保存配置，字段数: " << arr.size();
+    }
+    Server::sendJson( res, { { "success", true }, { "message", "正在重启" } } );
+    App::getInstance()->postEvent( []( App *app ) {
+        app->reboot();
+    } );
+}
+
 // 创建用户
 void adminUserCreate( const httplib::Request &req, httplib::Response &res ) {
     if ( Server::guardLocalhost( req, res ) )
@@ -334,7 +349,9 @@ void registerAdminRoutes( httplib::Server &svr ) {
     svr.Get( "/api/admin/config", adminConfigGet );
     svr.Put( "/api/admin/config", adminConfigPut );
 
-    LOG_DEBUG << "已注册 12 个管理员路由";
+    svr.Post( "/api/admin/reboot", reboot );
+
+    LOG_DEBUG << "已注册 13 个管理员路由";
 }
 
 } // namespace routes::admin

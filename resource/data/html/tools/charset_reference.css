@@ -1,0 +1,302 @@
+.tab-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 1.5rem;
+}
+
+.tab-btn {
+    padding: 0.5rem 1.25rem;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.tab-btn:hover {
+    color: var(--text);
+}
+
+.tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+.ascii-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.ascii-controls label {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.ascii-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.ascii-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+.ascii-table th {
+    background: var(--bg-muted);
+    color: var(--text-muted);
+    font-weight: 600;
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    white-space: nowrap;
+}
+
+.ascii-table td {
+    padding: 0.375rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.ascii-table tr:hover td {
+    background: var(--primary-light);
+}
+
+.ascii-table .char-cell {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text);
+    text-align: left;
+    min-width: 3rem;
+}
+
+.ascii-table .ctrl-row td {
+    color: var(--text-light);
+}
+
+.ascii-table .ctrl-row .char-cell {
+    color: var(--text-light);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 0.8125rem;
+}
+
+.ascii-table .print-row .char-cell {
+    color: var(--primary);
+}
+
+.ascii-table .ext-row td {
+    color: var(--text-muted);
+}
+
+.ascii-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.ascii-legend span {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.ascii-legend .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    display: inline-block;
+}
+
+.unicode-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.unicode-input-group {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.unicode-input-group .input-wrap {
+    flex: 1;
+    min-width: 200px;
+}
+
+.unicode-input-group .input-wrap label {
+    display: block;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+}
+
+.unicode-input-group .input-wrap input,
+.unicode-input-group .input-wrap textarea {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.875rem;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+.unicode-input-group .input-wrap input:focus,
+.unicode-input-group .input-wrap textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary-light);
+}
+
+.unicode-result-card {
+    background: var(--bg-muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+}
+
+.unicode-result-card h3 {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 0.75rem;
+}
+
+.unicode-result-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+}
+
+.unicode-result-table th {
+    text-align: left;
+    padding: 0.375rem 0.75rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.unicode-result-table td {
+    padding: 0.375rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    word-break: break-all;
+}
+
+.unicode-result-table .char-preview {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary);
+    text-align: center;
+    line-height: 1.2;
+}
+
+.unicode-result-table .label-col {
+    color: var(--text-muted);
+    font-weight: 500;
+    white-space: nowrap;
+    width: 1%;
+}
+
+.unicode-char-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+    gap: 0.25rem;
+    margin-top: 0.75rem;
+}
+
+.unicode-char-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.375rem 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    min-height: 52px;
+}
+
+.unicode-char-cell:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.unicode-char-cell .char-glyph {
+    font-size: 1.25rem;
+    line-height: 1;
+    color: var(--text);
+}
+
+.unicode-char-cell .char-code {
+    font-size: 0.625rem;
+    color: var(--text-light);
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    margin-top: 0.125rem;
+}
+
+.unicode-range-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.unicode-range-btn {
+    padding: 0.25rem 0.625rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.unicode-range-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.unicode-range-btn.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+.unicode-detail-row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.unicode-detail-row > * {
+    flex: 1;
+    min-width: 240px;
+}

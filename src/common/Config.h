@@ -21,6 +21,7 @@ private:
     static std::pair<std::string, std::vector<std::string>> pathParameter;
 
     // 可配置项
+    static bool onlyLocalhost;
     static std::string tempPath;
     static std::string uploadFilePath;
     static size_t maxUploadFileSize;
@@ -38,6 +39,7 @@ private:
     static std::string pdfToolPath;
     static std::string ffmpegPath;
     static std::string opensslPath;
+    static std::string adbPath;
 
     static int parseConfig( int argc, char *argv[] );
 
@@ -54,6 +56,8 @@ public:
     static const std::string &getDatabasePath();
     static const std::string &getTempPath();
     static const std::string &getUploadFilePath();
+
+    static bool getOnlyLocalhost();
 
     static size_t getMaxUploadFileSize();
 
@@ -86,6 +90,7 @@ public:
     static const std::string &getPdfToolPath();
     static const std::string &getFfmpegPath();
     static const std::string &getOpensslPath();
+    static const std::string &getAdbPath();
 };
 
 #endif // CONFIG_H

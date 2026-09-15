@@ -11,6 +11,7 @@
 #include "routes/DocTool.h"
 #include "routes/MusicTool.h"
 #include "routes/SysMonitor.h"
+#include "routes/ADBTool.h"
 
 #include <filesystem>
 #include <random>
@@ -1001,8 +1002,9 @@ void registerLocalTools( httplib::Server &svr ) {
     routes::docs::registerDocRoutes( svr );              // 注册文档阅读工具路由
     routes::music::registerMusicRoutes( svr );           // 注册音乐播放器路由
     routes::sysmonitor::registerSysMonitorRoutes( svr ); // 注册系统监测工具路由（仅限本机）
+    routes::adb::registerADBRoutes( svr );               // 注册ADB工具工具路由（仅限本机）
 
     LOG_DEBUG << "本机工具路由已注册";
 }
 
-} // namespace routes::LocalTools
+} // namespace routes::localTools

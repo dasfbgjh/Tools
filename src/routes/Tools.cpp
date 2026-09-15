@@ -842,6 +842,9 @@ void toolCatalog( const httplib::Request &req, httplib::Response &res ) {
     pushTool( "unicode_converter", "unicode_converter.svg", { "encoding" }, "Unicode转换", "中文与Unicode编码互转",
               { "unicode", "中文", "编码" }, "/tools/unicode_converter.html" );
 
+    pushTool( "charset_reference", "charset_reference.svg", { "encoding", "common" }, "编码对照表", "ASCII码表对照查询，Unicode码点与字符互查，UTF-8/UTF-16编码详情",
+              { "ascii", "unicode", "码表", "编码", "对照", "UTF-8", "UTF-16", "码点" }, "/tools/charset_reference.html" );
+
     pushTool( "jwt_decoder", "jwt_decoder.svg", { "encoding" }, "JWT解析", "解析JWT令牌的Header与Payload",
               { "jwt", "token", "令牌", "解析" }, "/tools/jwt_decoder.html" );
 
@@ -1110,6 +1113,9 @@ void toolCatalog( const httplib::Request &req, httplib::Response &res ) {
 
         pushTool( "music-player", "music-player.svg", { "local", "common" }, "音乐播放器", "扫描本机目录中的音频文件，支持合并/按目录浏览、歌词显示与内嵌封面",
                   { "音乐", "播放器", "music", "mp3", "flac", "歌词", "封面" }, "/tools/local/music_player.html" );
+
+        pushTool( "adb", "adb.svg", { "local", "common" }, "ADB 调试工具", "通过 ADB 管理安卓设备：查看/连接设备、端口转发管理、Shell 命令",
+                  { "adb", "android", "安卓", "设备", "调试", "端口转发" }, "/tools/local/adb_tool.html" );
     }
 
     Server::sendJson( res, { { "categories", categories }, { "tools", tools } } );

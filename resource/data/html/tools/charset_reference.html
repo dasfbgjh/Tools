@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>编码对照表</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="./../theme.js"></script>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./charset_reference.css">
+</head>
+
+<body>
+    <div class="tool-page">
+        <div class="tool-card">
+            <div id="banner"></div>
+
+            <div class="tab-bar">
+                <button class="tab-btn active" data-tab="ascii">ASCII 码表</button>
+                <button class="tab-btn" data-tab="unicode">Unicode 查询</button>
+            </div>
+
+            <div id="tab-ascii">
+                <div class="ascii-controls">
+                    <label>
+                        <input type="checkbox" id="chk-extended"> 显示扩展 ASCII (128-255)
+                    </label>
+                    <label>
+                        <input type="text" id="ascii-filter" placeholder="搜索码值/字符/描述..." style="padding:0.25rem 0.5rem;border:1px solid var(--border);border-radius:var(--radius);font-size:0.8125rem;width:220px;background:var(--surface);color:var(--text);">
+                    </label>
+                </div>
+                <div id="ascii-table-container"></div>
+            </div>
+
+            <div id="tab-unicode" style="display:none;">
+                <div class="unicode-section" id="unicode-section"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./../api.js"></script>
+    <script src="./common.js"></script>
+    <script src="./charset_reference.js"></script>
+    <script>
+        'use strict';
+        document.addEventListener('DOMContentLoaded', function () {
+            var tabBtns = document.querySelectorAll('.tab-btn');
+            var tabAscii = document.getElementById('tab-ascii');
+            var tabUnicode = document.getElementById('tab-unicode');
+            var asciiContainer = document.getElementById('ascii-table-container');
+            var chkExtended = document.getElementById('chk-extended');
+            var asciiFilter = document.getElementById('ascii-filter');
+
+            tabBtns.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    tabBtns.forEach(function (b) { b.classList.remove('active'); });
+                    btn.classList.add('active');
+                    var tab = btn.getAttribute('data-tab');
+                    tabAscii.style.display = tab === 'ascii' ? '' : 'none';
+                    tabUnicode.style.display = tab === 'unicode' ? '' : 'none';
+                });
+            });
+
+            function refreshAscii() {
+                CharsetReference.renderAsciiTable(
+                    asciiContainer,
+                    chkExtended.checked,
+                    asciiFilter.value
+                );
+            }
+
+            chkExtended.addEventListener('change', refreshAscii);
+
+            var filterTimer = null;
+            asciiFilter.addEventListener('input', function () {
+                clearTimeout(filterTimer);
+                filterTimer = setTimeout(refreshAscii, 200);
+            });
+
+            refreshAscii();
+
+            CharsetReference.renderUnicodeLookup(document.getElementById('unicode-section'));
+        });
+    </script>
+</body>
+
+</html>

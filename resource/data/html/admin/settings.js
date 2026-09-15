@@ -176,10 +176,8 @@
         });
     }
 
-    function saveConfig() {
+    function getConfig() {
         var formEl = document.getElementById('config-form');
-        // 后端 saveAppConfig 签名：Database::saveAppConfig(json::array_t config)，每个元素按 {name,value,...} 读
-        // 所以这里拼成数组，字段名统一为 'name'，value 的类型按 rawtype 修正
         var body = [];
         formEl.querySelectorAll('[data-config]').forEach(function (el) {
             var key = el.getAttribute('data-config');
@@ -206,12 +204,15 @@
             }
             body.push({ name: key, value: value });
         });
+        return body;
+    }
 
+    function saveConfig() {
         var btn = document.getElementById('save-config-btn');
         var originalText = btn.textContent;
         btn.disabled = true;
         btn.textContent = '保存中...';
-        Api.admin.updateConfig(body).then(function (data) {
+        Api.admin.updateConfig(getConfig()).then(function (data) {
             btn.disabled = false;
             btn.textContent = originalText;
             if (data.success) {
@@ -226,8 +227,48 @@
         });
     }
 
+    function saveAndReboot() {
+        var btn = document.getElementById('save-reboot-btn');
+        var originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = '保存并重启中...';
+
+        Api.admin.reboot(getConfig()).then(function () {
+            showRebootOverlay();
+            pollUntilReady();
+        }).catch(function () {
+            showRebootOverlay();
+            pollUntilReady();
+        });
+    }
+
+    function showRebootOverlay() {
+        document.getElementById('reboot-overlay').hidden = false;
+    }
+
+    function hideRebootOverlay() {
+        document.getElementById('reboot-overlay').hidden = true;
+        var btn = document.getElementById('save-reboot-btn');
+        btn.disabled = false;
+        btn.textContent = '保存并重启';
+    }
+
+    function pollUntilReady() {
+        var interval = setInterval(function () {
+            Api.admin.getConfig().then(function (data) {
+                if (data.success) {
+                    clearInterval(interval);
+                    hideRebootOverlay();
+                    loadConfig();
+                }
+            }).catch(function () {
+            });
+        }, 2000);
+    }
+
     window.AdminSettings = {
         loadConfig: loadConfig,
-        saveConfig: saveConfig
+        saveConfig: saveConfig,
+        saveAndReboot: saveAndReboot
     };
 })();

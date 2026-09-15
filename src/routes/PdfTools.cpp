@@ -39,7 +39,6 @@ std::string runPdfTool( const std::vector<std::string> &args,
 
     if ( !result.started ) {
         error = "启动进程失败";
-        LOG_ERROR << error;
         return "";
     }
 

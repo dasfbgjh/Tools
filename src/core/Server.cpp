@@ -109,6 +109,10 @@ void Server::registerhRoutes( httplib::Server &server ) {
                       << "(来自:" << req.remote_addr << ")"
                       << "参数:" << req.params;
         }
+        if ( Config::getOnlyLocalhost() ) {
+            if ( guardLocalhost( req, res ) )
+                return httplib::Server::HandlerResponse::Handled;
+        }
         return httplib::Server::HandlerResponse::Unhandled;
     } );
 }

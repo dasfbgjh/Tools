@@ -19,7 +19,8 @@ bool Config::enableContextmenu = false;                                      // 
 bool Config::enableAutoBoot = false;                                         // 是否自动启动
 std::pair<std::string, std::vector<std::string>> Config::pathParameter = {}; // 路径参数
 
-// 启动参数可配置项
+// 可配置项
+bool Config::onlyLocalhost = false;                   // 是否仅127.0.0.1地址可访问
 std::string Config::tempPath = "";                    // 临时目录
 std::string Config::uploadFilePath = "";              // 上传文件目录
 size_t Config::maxUploadFileSize = 500 * 1024 * 1024; // 最大上传文件大小（字节）
@@ -34,9 +35,10 @@ std::vector<std::string> Config::bootParameter = {};  // 启动参数
 int Config::logLevel = 0;                             // 日志等级 0=DEBUG 1=INFO 2=WARN 3=ERR
 int Config::logFileMode = 0;                          // 日志文件模式 0=off 1=single 2=multi
 std::string Config::logFilePath = "log.txt";          // 日志文件路径（single=文件路径；multi=目录路径）
-std::string Config::pdfToolPath = "";                 // PDF工具路径
+std::string Config::pdfToolPath = "pdf_tool";         // PDF工具路径
 std::string Config::ffmpegPath = "ffmpeg";            // FFmpeg路径
-std::string Config::opensslPath = "";                 // OpenSSL路径
+std::string Config::opensslPath = "openssl";          // OpenSSL路径
+std::string Config::adbPath = "adb";                  // ADB路径
 
 int Config::parseConfig( int argc, char *argv[] ) {
     CLI::App app{ "工具箱" };
@@ -60,8 +62,6 @@ int Config::parseConfig( int argc, char *argv[] ) {
     if ( tempPath.empty() ) {
         tempPath = utils::fs::toNative( getAppPath() + "/temp" );
     }
-    if ( pdfToolPath.empty() )
-        pdfToolPath = utils::fs::toNative( getAppPath() + "/pdf_tool.exe" );
 
     // 创建临时目录
     std::error_code ecTemp;
@@ -168,6 +168,7 @@ void Config::configJson( json::array_t &config, char flag ) {
     json bootParameter( Config::bootParameter );
     TransformConfig( bootParameter, array, "启动参数列表", "", true, json() );
 
+    TransformConfig( onlyLocalhost, boolean, "是否仅在本地运行", "仅在127.0.0.1地址可访问", false, json() );
     TransformConfig( databasePath, file, "数据库文件", "", true, json() );
     TransformConfig( enableContextmenu, boolean, "是否启用右键菜单", "", true, json() );
     TransformConfig( enableAutoBoot, boolean, "是否自动启动", "", true, json() );
@@ -182,6 +183,7 @@ void Config::configJson( json::array_t &config, char flag ) {
     TransformConfig( pdfToolPath, file, "pdf工具路径", "pdf处理工具调用的处理程序", false, json() );
     TransformConfig( ffmpegPath, file, "ffmpeg路径", "ffmpeg调用的处理程序", false, json() );
     TransformConfig( opensslPath, file, "openssl路径", "openssl调用的处理程序", false, json() );
+    TransformConfig( adbPath, file, "adb路径", "Android Debug Bridge 可执行文件路径", false, json() );
     TransformConfig( inviteCodeDurationSEC, number, "邀请码过期时间", "剪切板团队邀请码最大刷新间隔", false,
                      json( {
                          { "unit", "秒" },
@@ -242,6 +244,10 @@ const std::string &Config::getTempPath() {
 
 const std::string &Config::getUploadFilePath() {
     return uploadFilePath;
+}
+
+bool Config::getOnlyLocalhost() {
+    return onlyLocalhost;
 }
 
 size_t Config::getMaxUploadFileSize() {
@@ -497,4 +503,7 @@ const std::string &Config::getFfmpegPath() {
 }
 const std::string &Config::getOpensslPath() {
     return opensslPath;
+}
+const std::string &Config::getAdbPath() {
+    return adbPath;
 }

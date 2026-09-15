@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADB 调试工具</title>
+    <link rel="stylesheet" href="../../style.css">
+    <script src="../../theme.js"></script>
+    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="./adb_tool.css">
+</head>
+
+<body>
+    <div class="tool-page">
+        <div id="adb-banner"></div>
+
+        <div class="adb-info-bar" id="adb-info-bar">
+            <span class="pill">ADB: 检测中...</span>
+        </div>
+
+        <div class="adb-tabs">
+            <button class="adb-tab active" data-tab="devices">设备管理</button>
+            <button class="adb-tab" data-tab="forward">端口转发</button>
+            <button class="adb-tab" data-tab="shell">Shell</button>
+        </div>
+
+        <div class="adb-panel" id="panel-devices">
+            <div class="tool-card" style="margin-bottom:1rem;">
+                <div class="tool-toolbar" style="margin:0;">
+                    <h2 style="margin:0;flex:0 0 auto;">设备列表</h2>
+                    <span class="spacer"></span>
+                    <button class="btn btn-sm" id="btn-refresh-devices">刷新</button>
+                </div>
+            </div>
+            <div class="adb-device-list" id="adb-device-list"></div>
+
+            <div class="adb-connect-section">
+                <h3>连接 / 断开设备</h3>
+                <div class="adb-connect-row">
+                    <input type="text" class="ui-form-input" id="adb-target"
+                        placeholder="host:port 例如 192.168.1.100:5555" style="flex:1;">
+                    <button class="btn btn-primary btn-sm" id="btn-adb-connect">连接</button>
+                    <button class="btn btn-outline btn-sm" id="btn-adb-disconnect">断开</button>
+                </div>
+                <p class="adb-hint">无线连接需先在设备上执行 <code>adb tcpip 5555</code>，然后通过 IP:端口 连接</p>
+            </div>
+        </div>
+
+        <div class="adb-panel" id="panel-forward" hidden>
+            <div class="tool-card" style="margin-bottom:1rem;">
+                <div class="tool-toolbar" style="margin:0;gap:1rem;">
+                    <h2 style="margin:0;flex:0 0 auto;">端口转发列表</h2>
+                    <span class="spacer"></span>
+                    <select class="ui-form-input" id="fwd-serial" style="max-width:200px;">
+                        <option value="">所有设备</option>
+                    </select>
+                    <label class="adb-reverse-toggle"><input type="checkbox" id="fwd-reverse"> 反向转发</label>
+                    <button class="btn btn-sm" id="btn-refresh-forward">刷新</button>
+                    <button class="btn btn-primary btn-sm" id="btn-forward-add">+</button>
+                    <span class="spacer" style="max-width:30px;"></span>
+                    <button class="btn btn-danger-outline btn-sm" id="btn-forward-remove-all">全部移除</button>
+                </div>
+            </div>
+            <div class="adb-forward-list" id="adb-forward-list"></div>
+        </div>
+
+        <div class="adb-panel" id="panel-shell" hidden>
+            <div class="adb-shell-section">
+                <div class="adb-field">
+                    <label class="adb-label">设备</label>
+                    <select class="ui-form-input" id="shell-serial" style="flex:1;">
+                        <option value="">默认设备</option>
+                    </select>
+                </div>
+                <div class="adb-shell-input-row">
+                    <input type="text" class="ui-form-input" id="shell-cmd"
+                        placeholder="输入 Shell 命令，例如 getprop ro.build.version.release"
+                        style="flex:1;font-family:ui-monospace,monospace;">
+                    <button class="btn btn-primary" id="btn-shell-exec">执行</button>
+                </div>
+                <div class="adb-shell-output" id="shell-output">
+                    <div class="adb-shell-placeholder">执行 Shell 命令查看输出结果</div>
+                </div>
+                <div class="adb-shell-history">
+                    <h4>快捷命令</h4>
+                    <div class="adb-quick-cmds" id="adb-quick-cmds"></div>
+                </div>
+                <div class="adb-cmd-history">
+                    <h4>历史命令</h4>
+                    <div class="adb-cmd-history-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="fwd-modal" hidden>
+        <div class="modal" style="max-width:460px;">
+            <div class="modal-header">
+                <span class="modal-title" id="fwd-modal-title">添加端口转发</span>
+                <button class="btn btn-ghost" data-modal-close>&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="adb-field" style="margin-bottom:0.75rem;">
+                    <label class="adb-label">设备</label>
+                    <select class="ui-form-input" id="fwd-add-serial">
+                        <option value="">默认设备</option>
+                    </select>
+                </div>
+                <div class="adb-field" style="margin-bottom:0.75rem;">
+                    <label class="adb-label">本地端口</label>
+                    <input type="text" class="ui-form-input" id="fwd-local" placeholder="例如 tcp:8080"
+                        style="font-family:ui-monospace,monospace;">
+                </div>
+                <div class="adb-field" style="margin-bottom:0.75rem;">
+                    <label class="adb-label">远程端口</label>
+                    <input type="text" class="ui-form-input" id="fwd-remote" placeholder="例如 tcp:8080"
+                        style="font-family:ui-monospace,monospace;">
+                </div>
+                <p class="adb-hint">格式: <code>tcp:PORT</code>、<code>localabstract:NAME</code>、<code>jdwp:PID</code> 等
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" data-modal-close>取消</button>
+                <button class="btn btn-primary" id="btn-forward-add-confirm">添加</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../app.js"></script>
+    <script src="../../api.js"></script>
+    <script src="../common.js"></script>
+    <script src="./adb_tool.js"></script>
+</body>
+
+</html>

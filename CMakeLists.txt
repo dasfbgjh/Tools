@@ -65,6 +65,7 @@ add_executable(${APP_FILE_NAME} ${WIN_GUI}
     src/core/McpServer.cpp
     src/core/McpClient.cpp
     src/core/McpTools.cpp
+    src/routes/ADBTool.cpp
     src/routes/Admin.cpp
     src/routes/Auth.cpp
     src/routes/Clipboard.cpp

@@ -1,0 +1,14 @@
+<svg width="24" height="24" xmlns="http://www.w3.org/2000/svg" stroke-linejoin="round" stroke-linecap="round" stroke-width="2" stroke="#8b5cf6" fill="none">
+
+ <g>
+  <title>Layer 1</title>
+  <rect id="svg_1" rx="1" height="7" width="7" y="3" x="3"/>
+  <rect id="svg_2" rx="1" height="7" width="7" y="3" x="14"/>
+  <rect id="svg_3" rx="1" height="7" width="7" y="14" x="3"/>
+  <rect id="svg_4" rx="1" height="7" width="7" y="14" x="14"/>
+  <text transform="matrix(0.181928 0 0 0.181928 2.41033 11.0061)" stroke="null" id="svg_5" dominant-baseline="middle" text-anchor="middle" font-family="monospace" fill="#8b5cf6" font-size="20" y="-23" x="22">A</text>
+  <text transform="matrix(0.125039 0 0 0.125039 12.9124 8.50235)" stroke="null" id="svg_6" dominant-baseline="middle" text-anchor="middle" font-family="monospace" fill="#8b5cf6" font-size="20" y="-15" x="37">41</text>
+  <text transform="matrix(0.111352 0 0 0.111352 6.37946 15.774)" stroke="null" id="svg_7" dominant-baseline="middle" text-anchor="middle" font-family="monospace" fill="#8b5cf6" font-size="20" y="18" x="3">U+</text>
+  <text transform="matrix(0.137315 0 0 0.137315 7.06825 5.68609)" stroke="null" id="svg_8" dominant-baseline="middle" text-anchor="middle" font-family="monospace" fill="#8b5cf6" font-size="20" y="88" x="77">中</text>
+ </g>
+</svg>

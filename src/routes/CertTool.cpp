@@ -29,12 +29,6 @@ static Server::json getOpensslInfo() {
         return j;
     }
 
-    std::error_code ec;
-    if ( !fs::exists( openssl, ec ) ) {
-        j["error"] = "openssl 不存在: " + openssl;
-        return j;
-    }
-
     auto ver = EventLoop::runProcessSync( { openssl, "version" }, fs::current_path() );
     if ( !ver.started ) {
         j["error"] = "启动 openssl 失败";

@@ -601,10 +601,15 @@ private:
         int n2 = 0;
         std::string line;
         for ( int i = 0; i < m_outPending.size(); i++ ) {
-            if ( m_outPending[i] == '{' )
+            if ( m_outPending[i] == '{' ) {
+                if ( i > 0 && m_outPending[i - 1] == '\\' )
+                    continue;
                 n1++;
-            else if ( m_outPending[i] == '}' )
+            } else if ( m_outPending[i] == '}' ) {
+                if ( i > 0 && m_outPending[i - 1] == '\\' )
+                    continue;
                 n2++;
+            }
             if ( n1 != n2 )
                 continue;
 
