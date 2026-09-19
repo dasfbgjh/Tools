@@ -1,9 +1,153 @@
 /* ============================================================
-   OCR 专属上传预览区（覆盖 upload-preview 的基础样式）
+   全屏布局：去除 tool-page 宽度限制，tool-card 占满页面高度
+   ============================================================ */
+.tool-page {
+    max-width: none;
+    padding: 0.5rem;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.tool-card.ocr-layout {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    gap: 0.75rem;
+    align-items: stretch;
+    overflow: hidden;
+    position: relative;
+}
+
+.tool-card.ocr-layout > #banner {
+    position: absolute;
+    top: 0.5rem;
+    left: 33.333%;
+    right: 0;
+    z-index: 20;
+    pointer-events: none;
+}
+
+/* ============================================================
+   左侧参数 1/3 宽 | 右侧图片+结果 2/3 宽
+   ============================================================ */
+
+.ocr-left-panel {
+    flex: 0 0 33.333%;
+    max-width: 33.333%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-card);
+    overflow-y: auto;
+}
+
+.ocr-right-panel {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.ocr-image-section {
+    flex: 1 1 50%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    border-radius: var(--radius);
+}
+
+.ocr-result-section {
+    flex: 1 1 50%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.ocr-start-btn {
+    width: 100%;
+    justify-content: center;
+}
+
+.ocr-param-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.ocr-fieldset {
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    padding: 0.5rem 0.625rem 0.375rem;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.ocr-legend {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding: 0 0.3rem;
+    margin: 0;
+    float: none;
+    width: auto;
+}
+
+.ocr-image-row {
+    display: flex;
+    gap: 0.5rem;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.ocr-image-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.ocr-image-actions {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    justify-content: flex-start;
+    padding-top: 0.25rem;
+}
+
+.ocr-image-actions .btn {
+    white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+    .ocr-layout {
+        flex-direction: column;
+    }
+    .ocr-left-panel {
+        flex: none;
+        max-width: none;
+        width: 100%;
+    }
+}
+
+/* ============================================================
+   OCR 专属上传预览区
    ============================================================ */
 .ocr-upload {
     position: relative;
-    min-height: 280px;
+    min-height: 120px;
+    flex: 1 1 auto;
     border: 2px dashed transparent;
     border-radius: var(--radius);
     background:
@@ -15,7 +159,6 @@
     align-items: center;
     justify-content: center;
     transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
-    margin-bottom: 0.875rem;
     isolation: isolate;
 }
 
@@ -44,7 +187,6 @@
     box-shadow: 0 16px 48px -12px rgba(99, 102, 241, 0.35);
 }
 
-/* 默认（空状态）：file input 铺满整个 drop-zone，点击任意处打开选图 */
 .ocr-upload input[type=file] {
     position: absolute;
     inset: 0;
@@ -54,7 +196,6 @@
     z-index: 5;
 }
 
-/* 有预览时：取消 file input 的覆盖，避免点击图片/框时意外触发选图 */
 .ocr-upload:has(.preview-image-wrap.visible) input[type=file] {
     inset: auto;
     width: 0;
@@ -64,36 +205,9 @@
     z-index: 0;
 }
 
-/* 有预览时出现的「更换图片」按钮（舞台右上角） */
-.ocr-reupload-btn {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    z-index: 12;
-    display: none;
-    align-items: center;
-    gap: 4px;
-    padding: 5px 9px;
-    font-size: 0.7rem;
-    font-weight: 500;
-    color: #fff;
-    background: rgba(0, 0, 0, 0.58);
-    backdrop-filter: blur(4px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: calc(var(--radius) - 4px);
-    cursor: pointer;
-    transition: background 0.18s, transform 0.15s;
-    box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.4);
-}
-
-.ocr-upload:has(.preview-image-wrap.visible) .ocr-reupload-btn {
-    display: inline-flex;
-}
-
 .ocr-reupload-btn:hover {
     background: var(--primary);
     border-color: var(--primary);
-    transform: translateY(-1px);
 }
 
 .ocr-upload .preview-empty {
@@ -103,10 +217,10 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 1.1rem;
-    padding: 2rem 1.5rem;
+    gap: 0.75rem;
+    padding: 1.25rem 1rem;
     color: var(--text-muted);
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     text-align: center;
     pointer-events: none;
 }
@@ -116,11 +230,10 @@
     color: var(--primary);
 }
 
-/* 图标组：外圈光环 + 内圆 + SVG */
 .ocr-drop-icons {
     position: relative;
-    width: 88px;
-    height: 88px;
+    width: 64px;
+    height: 64px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -152,8 +265,8 @@
 .ocr-drop-icon-inner {
     position: relative;
     z-index: 1;
-    width: 56px;
-    height: 56px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--primary-light), rgba(139, 92, 246, 0.15));
     color: var(--primary);
@@ -173,8 +286,8 @@
 }
 
 .ocr-drop-svg {
-    width: 28px;
-    height: 28px;
+    width: 22px;
+    height: 22px;
     transition: transform 0.3s;
 }
 
@@ -183,40 +296,30 @@
 }
 
 @keyframes ocr-bounce {
-
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-
-    50% {
-        transform: translateY(-3px);
-    }
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
 }
 
 @keyframes ocr-drop-spin {
-    to {
-        transform: rotate(360deg);
-    }
+    to { transform: rotate(360deg); }
 }
 
-/* 文字内容 */
 .ocr-drop-text {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.25rem;
 }
 
 .ocr-drop-title {
-    font-size: 1rem;
+    font-size: 0.875rem;
     font-weight: 600;
     color: var(--text);
     letter-spacing: 0.02em;
 }
 
 .ocr-drop-sub {
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     color: var(--text-muted);
 }
 
@@ -225,15 +328,15 @@
     align-items: center;
     justify-content: center;
     flex-wrap: wrap;
-    gap: 0.35rem;
-    margin-top: 0.25rem;
-    font-size: 0.7rem;
+    gap: 0.25rem;
+    margin-top: 0.125rem;
+    font-size: 0.65rem;
 }
 
 .ocr-drop-chip {
     display: inline-flex;
     align-items: center;
-    padding: 0.15rem 0.5rem;
+    padding: 0.1rem 0.4rem;
     border-radius: 999px;
     background: var(--bg);
     border: 1px solid var(--border);
@@ -248,17 +351,20 @@
     margin-left: 0.25rem;
 }
 
-/* 图片预览容器（统一坐标系：img/SVG/交互层全部 absolute 对齐 stage） */
+/* ============================================================
+   图片预览容器
+   ============================================================ */
 .ocr-upload .preview-image-wrap {
     display: none;
     position: relative;
     z-index: 1;
     width: 100%;
-    min-height: 280px;
-    align-items: flex-start;
+    height: 100%;
+    align-items: center;
     justify-content: center;
-    padding: 0.875rem;
+    padding: 0.5rem;
     pointer-events: none;
+    box-sizing: border-box;
 }
 
 .ocr-upload .preview-image-wrap.visible {
@@ -266,11 +372,13 @@
     pointer-events: auto;
 }
 
-/* 图片舞台：img / svg / div 都在这个坐标系下绝对定位，保证坐标一致 */
 .ocr-img-stage {
     position: relative;
-    max-width: 100%;
-    display: inline-block;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     line-height: 0;
     user-select: none;
 }
@@ -278,10 +386,10 @@
 .ocr-preview-img {
     display: block;
     max-width: 100%;
-    max-height: 520px;
+    max-height: 100%;
     object-fit: contain;
     border-radius: calc(var(--radius) - 2px);
-    box-shadow: 0 8px 32px -12px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 4px 16px -8px rgba(0, 0, 0, 0.2);
     pointer-events: none;
 }
 
@@ -315,15 +423,7 @@
 }
 
 @keyframes ocr-frame-dash {
-    to {
-        stroke-dashoffset: -10;
-    }
-}
-
-/* 选区内十字参考线，辅助定位 */
-.ocr-crop-frame::before,
-.ocr-crop-frame::after {
-    content: "";
+    to { stroke-dashoffset: -10; }
 }
 
 .ocr-crop-move-area {
@@ -344,43 +444,15 @@
     ry: 2px;
 }
 
-.ocr-crop-handle[data-handle="nw"],
-.ocr-crop-handle[data-handle="n"],
-.ocr-crop-handle[data-handle="ne"] {}
+.ocr-crop-handle[data-handle="nw"] { cursor: nwse-resize; }
+.ocr-crop-handle[data-handle="n"]  { cursor: ns-resize; }
+.ocr-crop-handle[data-handle="ne"] { cursor: nesw-resize; }
+.ocr-crop-handle[data-handle="e"]  { cursor: ew-resize; }
+.ocr-crop-handle[data-handle="se"] { cursor: nwse-resize; }
+.ocr-crop-handle[data-handle="s"]  { cursor: ns-resize; }
+.ocr-crop-handle[data-handle="sw"] { cursor: nesw-resize; }
+.ocr-crop-handle[data-handle="w"]  { cursor: ew-resize; }
 
-.ocr-crop-handle[data-handle="nw"] {
-    cursor: nwse-resize;
-}
-
-.ocr-crop-handle[data-handle="n"] {
-    cursor: ns-resize;
-}
-
-.ocr-crop-handle[data-handle="ne"] {
-    cursor: nesw-resize;
-}
-
-.ocr-crop-handle[data-handle="e"] {
-    cursor: ew-resize;
-}
-
-.ocr-crop-handle[data-handle="se"] {
-    cursor: nwse-resize;
-}
-
-.ocr-crop-handle[data-handle="s"] {
-    cursor: ns-resize;
-}
-
-.ocr-crop-handle[data-handle="sw"] {
-    cursor: nesw-resize;
-}
-
-.ocr-crop-handle[data-handle="w"] {
-    cursor: ew-resize;
-}
-
-/* 选区坐标信息（右下角） */
 .ocr-crop-hint {
     position: absolute;
     right: 8px;
@@ -402,10 +474,7 @@
     display: inline-block;
 }
 
-/* 三层叠加：
-   ocr-box-overlay (SVG): 绘制半透明多边形/边框（pointer-events:none，让鼠标事件落在上层可交互div）
-   ocr-box-layer      : 放置可交互的框 div
-*/
+/* ================= 识别框叠加层 ================= */
 .ocr-box-overlay {
     position: absolute;
     left: 0;
@@ -435,7 +504,6 @@
     stroke-width: 2;
 }
 
-/* 可交互 DOM 层：每块一个 index chip + 选中 hover 效果 */
 .ocr-box-layer {
     position: absolute;
     left: 0;
@@ -494,74 +562,19 @@
     background: var(--primary);
 }
 
-/* 拖拽中样式 */
 .ocr-box.dragging {
     opacity: 0.55;
     transform: scale(0.97);
 }
 
-/* ================= 参数面板（内容宽度合并行） ================= */
-.ocr-options-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 0.625rem;
-    padding: 0.75rem 0.875rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--bg-card);
-}
-
-.ocr-params-row {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-    align-items: flex-end;
-}
-
-/* 第一行：短项（最大边长 + 方向检测 + 按钮组）横排合并，用 spacer 把按钮推到右边 */
-.ocr-params-row-flex {
-    align-items: center;
-}
-
-.ocr-param-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-}
-
-.ocr-param-item-spacer {
-    flex: 1 1 auto;
-    min-width: 0;
-}
-
-.ocr-param-actions {
-    flex-direction: row;
-    align-items: center;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-}
-
-/* 第二行：两个滑块各占一列（响应式：宽屏两列，窄屏各占一行） */
-.ocr-params-row-2col {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    align-items: end;
-}
-
-@media (max-width: 720px) {
-    .ocr-params-row-2col {
-        grid-template-columns: 1fr;
-    }
-}
-
+/* ================= 参数控件 ================= */
 .ocr-param-label {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--text-muted);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.5rem;
+    gap: 0.375rem;
     white-space: nowrap;
 }
 
@@ -571,17 +584,22 @@
     font-variant-numeric: tabular-nums;
 }
 
+.ocr-param-select {
+    width: 100%;
+    font-size: 0.8125rem;
+}
+
 .ocr-param-number {
-    padding: 0.35rem 0.625rem;
+    padding: 0.3rem 0.5rem;
     border: 1px solid var(--border);
     border-radius: calc(var(--radius) - 2px);
     font-size: 0.8125rem;
     background: var(--bg);
     color: var(--text);
-    width: 9rem;
+    width: 100%;
 }
 
-.ocr-param-item input[type="range"] {
+.ocr-param-group input[type="range"] {
     width: 100%;
     height: 4px;
     -webkit-appearance: none;
@@ -591,11 +609,11 @@
     outline: none;
 }
 
-.ocr-param-item input[type="range"]::-webkit-slider-thumb {
+.ocr-param-group input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
     background: var(--primary);
     cursor: pointer;
@@ -604,158 +622,193 @@
 .ocr-checkbox {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
-    font-size: 0.8125rem;
+    gap: 0.35rem;
+    font-size: 0.75rem;
     cursor: pointer;
-    padding: 0.3rem 0;
-}
-
-.ocr-checkbox-inline {
-    flex-direction: row;
+    padding: 0.2rem 0;
 }
 
 .ocr-checkbox input[type="checkbox"] {
     accent-color: var(--primary);
-    width: 14px;
-    height: 14px;
+    width: 13px;
+    height: 13px;
 }
 
 /* ================= 识别结果区域 ================= */
 .ocr-result-area {
+    flex: 1 1 auto;
+    min-height: 0;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--bg-card);
-    min-height: 220px;
-    max-height: 540px;
     overflow-y: auto;
-    padding: 0.75rem;
+    padding: 0.5rem;
 }
 
 .ocr-result-empty {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 180px;
+    min-height: 60px;
     color: var(--text-muted);
     font-size: 0.8125rem;
+}
+
+.ocr-result-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.375rem;
+}
+
+.ocr-result-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    flex: 1;
+}
+
+.ocr-result-toolbar .spacer {
+    flex: 1;
 }
 
 .ocr-stats {
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     color: var(--text-muted);
-    margin-bottom: 0.5rem;
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-}
-
-.ocr-stats span {
     font-variant-numeric: tabular-nums;
 }
 
-.ocr-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
-}
-
-.ocr-toolbar .spacer {
-    flex: 1;
-}
-
-.ocr-block-count {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-}
-
-.ocr-fulltext {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: calc(var(--radius) - 2px);
-    padding: 0.625rem 0.75rem;
+.ocr-rich-editor {
+    outline: none;
     font-size: 0.8125rem;
+    line-height: 1.6;
     white-space: pre-wrap;
     word-break: break-all;
-    line-height: 1.6;
-    max-height: 220px;
-    overflow-y: auto;
+    min-height: 80px;
+    padding: 0.125rem 0;
 }
 
-/* 文本块列表 */
-.ocr-blocks {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+.ocr-rich-editor:focus {
+    outline: none;
 }
 
-.ocr-block-item {
-    display: flex;
-    gap: 0.625rem;
-    padding: 0.5rem 0.625rem;
-    border: 1px solid var(--border);
-    border-radius: calc(var(--radius) - 2px);
-    background: var(--bg);
-    align-items: center;
-}
-
-.ocr-block-index {
-    min-width: 1.5rem;
-    height: 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--primary-light);
-    color: var(--primary);
+.ocr-rich-editor [data-idx] {
+    padding: 0.2rem 0.375rem;
     border-radius: calc(var(--radius) - 4px);
-    font-size: 0.7rem;
-    font-weight: 600;
-    flex-shrink: 0;
+    cursor: text;
+    transition: background 0.15s;
+}
+
+.ocr-rich-editor [data-idx]:hover {
+    background: var(--primary-light);
+}
+
+.ocr-rich-editor [data-idx].ocr-selected {
+    background: var(--primary-light);
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+}
+
+.ocr-block-title {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    margin: 0.5rem 0 0.125rem;
+    line-height: 1.4;
 }
 
 .ocr-block-text {
-    flex: 1;
     font-size: 0.8125rem;
-    line-height: 1.5;
-    word-break: break-all;
+    line-height: 1.6;
+    margin: 0.125rem 0;
 }
 
-.ocr-block-score {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    font-variant-numeric: tabular-nums;
-    flex-shrink: 0;
-}
-
-/* 文本块行内复制按钮 */
-.ocr-block-copy {
-    flex-shrink: 0;
-    display: inline-flex;
+.ocr-block-figure {
+    display: flex;
     align-items: center;
     justify-content: center;
-    width: 1.75rem;
-    height: 1.75rem;
-    padding: 0;
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    cursor: pointer;
+    min-height: 2rem;
+    margin: 0.375rem 0;
+    border: 1px dashed var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    background: var(--bg);
+}
+
+.ocr-figure-placeholder {
     font-size: 0.7rem;
-    white-space: nowrap;
-    transition: color 0.15s, transform 0.1s;
+    color: var(--text-muted);
 }
 
-.ocr-block-copy:hover {
-    color: var(--primary);
+.ocr-block-table {
+    margin: 0.375rem 0;
+    overflow-x: auto;
 }
 
-.ocr-block-copy:active {
-    transform: scale(0.92);
+.ocr-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.8125rem;
+    line-height: 1.4;
 }
 
-.ocr-block-copy:disabled {
-    cursor: default;
-    opacity: 0.85;
+.ocr-table td,
+.ocr-table th {
+    border: 1px solid var(--border);
+    padding: 0.2rem 0.375rem;
+    text-align: left;
+    min-width: 1.5rem;
+    outline: none;
+}
+
+.ocr-table td:focus,
+.ocr-table th:focus {
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+}
+
+.ocr-table tr:first-child td,
+.ocr-table tr:first-child th {
+    font-weight: 600;
+    background: var(--bg);
+}
+
+.ocr-block-header,
+.ocr-block-footer {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+    margin: 0.0625rem 0;
+}
+
+.ocr-block-list {
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    margin: 0.125rem 0;
+    padding-left: 0.75rem;
+}
+
+.ocr-block-caption {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+    margin: 0.0625rem 0;
+    text-align: center;
+}
+
+.ocr-block-reference {
+    font-size: 0.7rem;
+    line-height: 1.4;
+    margin: 0.125rem 0;
+    padding-left: 0.75rem;
+}
+
+.ocr-block-equation {
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    margin: 0.375rem 0;
+    padding: 0.25rem 0.375rem;
+    text-align: center;
+    background: var(--bg);
+    border-radius: calc(var(--radius) - 2px);
 }
 
 .ocr-loading {
@@ -763,8 +816,8 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 180px;
-    gap: 0.75rem;
+    min-height: 60px;
+    gap: 0.5rem;
     color: var(--text-muted);
     font-size: 0.8125rem;
     text-align: center;
@@ -774,13 +827,13 @@
     font-variant-numeric: tabular-nums;
     color: var(--primary);
     font-weight: 500;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     min-height: 1.2em;
 }
 
 .ocr-spinner {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     border: 3px solid var(--border);
     border-top-color: var(--primary);
     border-radius: 50%;
@@ -788,7 +841,5 @@
 }
 
 @keyframes ocr-spin {
-    to {
-        transform: rotate(360deg);
-    }
+    to { transform: rotate(360deg); }
 }

@@ -37,7 +37,6 @@ int Config::logFileMode = 0;                          // 日志文件模式 0=of
 std::string Config::logFilePath = "log.txt";          // 日志文件路径（single=文件路径；multi=目录路径）
 std::string Config::pdfToolPath = "pdf_tool";         // PDF工具路径
 std::string Config::ffmpegPath = "ffmpeg";            // FFmpeg路径
-std::string Config::opensslPath = "openssl";          // OpenSSL路径
 std::string Config::adbPath = "adb";                  // ADB路径
 
 int Config::parseConfig( int argc, char *argv[] ) {
@@ -182,7 +181,6 @@ void Config::configJson( json::array_t &config, char flag ) {
     TransformConfig( logFilePath, file, "日志文件路径", "单文件时为日志文件路径，多个文件时为日志文件存储路径", false, json() );
     TransformConfig( pdfToolPath, file, "pdf工具路径", "pdf处理工具调用的处理程序", false, json() );
     TransformConfig( ffmpegPath, file, "ffmpeg路径", "ffmpeg调用的处理程序", false, json() );
-    TransformConfig( opensslPath, file, "openssl路径", "openssl调用的处理程序", false, json() );
     TransformConfig( adbPath, file, "adb路径", "Android Debug Bridge 可执行文件路径", false, json() );
     TransformConfig( inviteCodeDurationSEC, number, "邀请码过期时间", "剪切板团队邀请码最大刷新间隔", false,
                      json( {
@@ -500,9 +498,6 @@ const std::string &Config::getPdfToolPath() {
 }
 const std::string &Config::getFfmpegPath() {
     return ffmpegPath;
-}
-const std::string &Config::getOpensslPath() {
-    return opensslPath;
 }
 const std::string &Config::getAdbPath() {
     return adbPath;

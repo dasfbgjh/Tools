@@ -8,10 +8,7 @@
 |---------|------|-----------|
 | **文本识别 (OCR)** | 文本检测 → 角度分类 → 文本识别完整管线 | `ocr_` |
 | **车牌识别** | 车牌检测 + 车牌文本识别 | `plate_` |
-| **版面分析** | PP-Structure 版面检测（CDLA/PublayNet） | `layout_` |
-| **文档版面分析** | pp_doclayoutv2 文档版面检测（含阅读顺序） | `doc_layout_` |
-| **YOLOv8 版面分析** | YOLOv8 版面检测（Paper/Report/PublayNet/General6） | `yolov8_layout_` |
-| **DocLayout YOLO 版面分析** | DocLayout YOLO 文档版面检测（DocStructBench/D4LA/DocSynth） | `doclayout_yolo_` |
+| **版面分析（统一）** | PP-Structure / pp_doclayoutv2 / YOLOv8 / DocLayout YOLO 版面检测 | `doclayout_yolo_` |
 | **表格识别** | SLANet+/PP-Structure/UNet 表格结构识别 | `table_` |
 | **Markdown 生成** | 版面分析 + OCR + 表格识别 → Markdown | `MarkdownGenerator` |
 
@@ -22,7 +19,7 @@
 - **RAII 资源管理**：`OcrHandleGuard`/`OcrResultGuard` 等守卫类自动释放资源
 - **GPU 加速**：可选 CUDA 后端（所有模块均支持）
 - **PaddleOCR 兼容**：支持 PPOCRv4 / PPOCRv5 模型
-- **多版面分析引擎**：PP-Structure / pp_doclayoutv2 / YOLOv8 / DocLayout YOLO
+- **多版面分析引擎**：PP-Structure / pp_doclayoutv2 / YOLOv8 / DocLayout YOLO（统一接口）
 - **多表格识别引擎**：SLANet+（无线表格）/ UNet（有线表格）/ 自动分类模式
 - **图像显示辅助**：`image_show_rects` / `image_show_rects_file` 可视化调试
 
@@ -50,7 +47,7 @@ OCR/
 │   │   ├── text_detector.h/.cpp        #   DB 文本检测器
 │   │   ├── text_recognizer.h/.cpp      #   CTC 文本识别器
 │   │   ├── text_classifier.h/.cpp      #   角度分类器（0°/180°）
-│   │   ├── rapid_orientation.h/.cpp    #   4方向方向分类器（0°/90°/180°/270°）
+│   │   ├── rapid_orientation.h/.cpp    #   4方向分类器（0°/90°/180°/270°，内部使用）
 │   │   ├── text_system.h/.cpp          #   OCR 管线编排
 │   │   └── db_post_process.h/.cpp      #   DB 后处理
 │   ├── plate/                          # 车牌识别模块
@@ -60,13 +57,12 @@ OCR/
 │   │   ├── table_cls.h/.cpp            #   表格分类器（有线/无线）
 │   │   └── unet_table_rec.h/.cpp       #   UNet 有线表格识别
 │   └── layout/                         # 版面分析模块
-│       ├── layout_analyzer.h/.cpp      #   PP-Structure 版面分析
-│       ├── doc_layout_analyzer.h/.cpp  #   pp_doclayoutv2 文档版面分析
-│       ├── yolov8_layout_analyzer.h/.cpp  # YOLOv8 版面分析
-│       └── doclayout_yolo_analyzer.h/.cpp # DocLayout YOLO 版面分析
+│       ├── layout_analyzer.h/.cpp      #   PP-Structure 版面分析（内部使用）
+│       ├── doc_layout_analyzer.h/.cpp  #   pp_doclayoutv2 文档版面分析（内部使用）
+│       └── doclayout_yolo_analyzer.h/.cpp # 版面分析统一入口（PP-Structure+pp_doclayoutv2+YOLOv8+DocLayout YOLO）
 ├── models/                             # 模型文件目录
-│   ├── MODELS.md                       # 模型说明文档
 │   ├── text/                           # 文本识别模型
+│   ├── text_cls/                       # 文本分类器模型
 │   ├── plate/                          # 车牌识别模型
 │   ├── table/                          # 表格识别模型
 │   └── layout/                         # 版面分析模型
@@ -118,7 +114,7 @@ int main() {
     config.det_model_path       = "models/text/ppocr-ch-mobile-v4/det.onnx";
     config.rec_model_path       = "models/text/ppocr-ch-mobile-v4/rec.onnx";
     config.rec_char_dict_path   = "models/text/ppocr-ch-mobile-v4/keys.txt";
-    config.cls_model_path       = "models/text/ppocr-ch-mobile-v4/cls.onnx";
+    config.cls_model_path       = "models/text_cls/angle/paddle-v4.onnx";
 
     OcrHandle* handle = ocr_create(&config);
     if (!handle) { printf("Error: %s\n", ocr_last_error()); return 1; }
@@ -151,56 +147,25 @@ plate_free_results(&results);
 plate_destroy(handle);
 ```
 
-### 版面分析 (PP-Structure)
+### 版面分析
+
+PP-Structure、pp_doclayoutv2、YOLOv8 版面和 DocLayout YOLO 版面已合并为统一接口，通过 `model_type` 区分。
 
 ```cpp
-LayoutConfig cfg = {};
-cfg.model_path = "models/layout/layout_cdla.onnx";
-cfg.model_type = LAYOUT_MODEL_CDLA;  // 中文文档
-
-LayoutHandle* handle = layout_create(&cfg);
-LayoutItemList results = {};
-layout_run_file(handle, "doc.jpg", &results);
-for (int i = 0; i < results.count; ++i)
-    printf("[%d] %s (%.3f)\n", results.items[i].class_id, results.items[i].class_name, results.items[i].score);
-layout_free_results(&results);
-layout_destroy(handle);
-```
-
-### 文档版面分析 (pp_doclayoutv2)
-
-```cpp
-DocLayoutConfig cfg = {};
-cfg.model_path = "models/layout/doclayout_pp_v2.onnx";
-
-DocLayoutHandle* handle = doc_layout_create(&cfg);
-DocLayoutItemList results = {};
-doc_layout_run_file(handle, "doc.jpg", &results);
-for (int i = 0; i < results.count; ++i)
-    printf("[%d] %s order=%d (%.3f)\n",
-           results.items[i].class_id, results.items[i].class_name,
-           results.items[i].order, results.items[i].score);
-doc_layout_free_results(&results);
-doc_layout_destroy(handle);
-```
-
-### YOLOv8 版面分析
-
-```cpp
-YOLOv8LayoutConfig cfg = {};
-cfg.model_path = "models/yolov8_layout_paper.onnx";
-cfg.model_type = YOLOV8_LAYOUT_PAPER;
-
-YOLOv8LayoutHandle* handle = yolov8_layout_create(&cfg);
-LayoutItemList results = {};
-yolov8_layout_run_file(handle, "doc.jpg", &results);
-yolov8_layout_destroy(handle);
-```
-
-### DocLayout YOLO 版面分析
-
-```cpp
+// PP-Structure CDLA（中文文档）
 DocLayoutYOLOConfig cfg = {};
+cfg.model_path = "models/layout/pp_layout_cdla/layout_cdla.onnx";
+cfg.model_type = PP_LAYOUT_CDLA;
+
+// pp_doclayoutv2（含阅读顺序）
+cfg.model_path = "models/layout/pp_doclayout_v2/doclayout_pp_v2.onnx";
+cfg.model_type = PP_DOCLAYOUT_V2;
+
+// YOLOv8-paper 版面分析
+cfg.model_path = "models/yolov8_layout_paper.onnx";
+cfg.model_type = YOLO_LAYOUT_PAPER;
+
+// DocLayout YOLO 版面分析
 cfg.model_path = "models/doclayout_yolo.onnx";
 cfg.model_type = DOCLAYOUT_YOLO_DOCSTRUCTBENCH;
 cfg.conf_thresh = 0.2f;
@@ -208,6 +173,11 @@ cfg.conf_thresh = 0.2f;
 DocLayoutYOLOHandle* handle = doclayout_yolo_create(&cfg);
 DocLayoutItemList results = {};
 doclayout_yolo_run_file(handle, "doc.jpg", &results);
+for (int i = 0; i < results.count; ++i)
+    printf("[%d] %s order=%d (%.3f)\n",
+           results.items[i].class_id, results.items[i].class_name,
+           results.items[i].order, results.items[i].score);
+doc_layout_free_results(&results);
 doclayout_yolo_destroy(handle);
 ```
 
@@ -216,18 +186,18 @@ doclayout_yolo_destroy(handle);
 ```cpp
 // SLANet+ 无线表格
 TableConfig cfg = {};
-cfg.model_path = "models/table/slanet_plus.onnx";
+cfg.model_path = "models/table/slanet_plus/slanet_plus.onnx";
 cfg.model_type = TABLE_MODEL_SLANET_PLUS;
 
 // UNet 有线表格
-cfg.model_path = "models/table/unet.onnx";
+cfg.model_path = "models/table/unet/unet.onnx";
 cfg.model_type = TABLE_MODEL_UNET;
 
 // 自动分类模式（先分类再选模型）
 cfg.model_type = TABLE_MODEL_UNET_SLANET_PLUS;
-cfg.cls_model_path    = "models/table/q_cls.onnx";
-cfg.unet_model_path   = "models/table/unet.onnx";
-cfg.slanet_model_path = "models/table/slanet_plus.onnx";
+cfg.model_path      = "models/table/slanet_plus/slanet_plus.onnx";  // SLANet+模型
+cfg.unet_model_path = "models/table/unet/unet.onnx";
+cfg.cls_model_path  = "models/table/cls/cls.onnx";
 
 TableHandle* handle = table_create(&cfg);
 TableResult result = {};
@@ -272,20 +242,10 @@ ocr_free_results(&results);
 | `plate_create` / `plate_destroy` | 创建/销毁车牌识别器 |
 | `plate_run` / `plate_run_file` | 识别车牌 |
 | `plate_free_results` | 释放结果列表 |
-| **版面分析 (PP-Structure)** | |
-| `layout_create` / `layout_destroy` | 创建/销毁版面分析器 |
-| `layout_run` / `layout_run_file` | 分析版面 |
-| `layout_free_results` | 释放结果列表 |
-| **文档版面分析 (pp_doclayoutv2)** | |
-| `doc_layout_create` / `doc_layout_destroy` | 创建/销毁文档版面分析器 |
-| `doc_layout_run` / `doc_layout_run_file` | 分析文档版面（含阅读顺序） |
-| `doc_layout_free_results` | 释放结果列表 |
-| **YOLOv8 版面分析** | |
-| `yolov8_layout_create` / `yolov8_layout_destroy` | 创建/销毁 YOLOv8 版面分析器 |
-| `yolov8_layout_run` / `yolov8_layout_run_file` | 分析版面 |
-| **DocLayout YOLO 版面分析** | |
-| `doclayout_yolo_create` / `doclayout_yolo_destroy` | 创建/销毁 DocLayout YOLO 分析器 |
+| **版面分析** | |
+| `doclayout_yolo_create` / `doclayout_yolo_destroy` | 创建/销毁版面分析器 |
 | `doclayout_yolo_run` / `doclayout_yolo_run_file` | 分析文档版面 |
+| `doc_layout_free_results` | 释放结果列表 |
 | **表格识别** | |
 | `table_create` / `table_destroy` | 创建/销毁表格识别器 |
 | `table_run` / `table_run_file` | 识别表格结构 |
@@ -301,8 +261,8 @@ ocr_free_results(&results);
 | `det_model_path` | string | — | 检测 ONNX 模型路径（必填） |
 | `rec_model_path` | string | — | 识别 ONNX 模型路径（必填） |
 | `rec_char_dict_path` | string | — | 字符字典路径（必填） |
-| `cls_model_path` | string | NULL | 角度分类模型路径（NULL 禁用） |
-| `orientation_model_path` | string | NULL | 4方向方向分类模型路径（优先于cls） |
+| `cls_model_path` | string | NULL | 方向分类模型路径（NULL 禁用） |
+| `cls_model_type` | int | 0 | `ClsModelType`枚举值：0=2类角度(0°/180°)，1=4类方向(0°/90°/180°/270°) |
 | `use_gpu` | int | 0 | 0=CPU, 1=CUDA |
 | `gpu_id` | int | 0 | GPU 设备号 |
 | `det_limit_side_len` | float | 960 | 检测图像长边限制 |
@@ -316,53 +276,27 @@ ocr_free_results(&results);
 | `rec_batch_num` | int | 6 | 识别批大小 |
 | `rec_image_h` / `rec_image_w` | int | 48 / 320 | 识别输入图像尺寸 |
 | `drop_score` | float | 0.5 | 丢弃低于此分数的结果 |
-| `cls_thresh` | float | 0.9 | 角度分类阈值 |
-| `orientation_thresh` | float | 0.9 | 方向分类阈值 |
+| `cls_thresh` | float | 0.9 | 分类置信度阈值 |
 
 ### 结果结构
 
 ```c
+// 基础几何类型
+typedef struct { float x; float y; } PointF;              // 二维点
+typedef struct { int x1, y1, x2, y2; } RectBox;           // 矩形区域
+
 // OCR 结果：4角点 + 文本 + 置信度
-typedef struct { float box[4][2]; const char* text; float score; } OcrResult;
+typedef struct { PointF box[4]; const char* text; float score; } OcrResult;
 
 // 车牌结果：框 + 置信度 + 车牌号 + 类型 + 关键点
-typedef struct { int box[4]; float score; const char* plate; const char* type; float landmarks[4][2]; } PlateResult;
+typedef struct { RectBox box; float score; const char* plate; const char* type; PointF landmarks[4]; } PlateResult;
 
-// 版面结果：框 + 置信度 + 类别
-typedef struct { float box[4]; float score; int class_id; const char* class_name; } LayoutItem;
-
-// 文档版面结果：版面结果 + 阅读顺序
+// 版面结果：框 + 置信度 + 类别 + 阅读顺序
 typedef struct { float box[4]; float score; int class_id; const char* class_name; int order; } DocLayoutItem;
 
 // 表格结果：单元格 + 逻辑位置
-typedef struct { float bbox[8]; } TableCell;
-typedef struct { int row_start, row_end, col_start, col_end; } TableLogicPoint;
-```
-
-## 模型文件
-
-模型文件存放于 `models/` 目录，详细说明见 [models/MODELS.md](models/MODELS.md)。
-
-```
-models/
-├── text/                              # 文本识别模型
-│   ├── ppocr-ch-mobile-v4/            #   PPOCRv4 中文移动端
-│   ├── ppocr-ch-server-v4/            #   PPOCRv4 中文服务端
-│   ├── ppocr-mobile-v5/               #   PPOCRv5 移动端
-│   └── ppocr-server-v5/               #   PPOCRv5 服务端
-├── car_plate/                          # 车牌识别模型
-│   ├── det.onnx                       #   车牌检测
-│   └── rec.onnx                       #   车牌识别
-├── table/                              # 表格识别模型
-│   ├── slanet_plus.onnx               #   SLANet+ 无线表格
-│   ├── unet.onnx                      #   UNet 有线表格
-│   ├── q_cls.onnx                     #   表格分类器
-│   ├── ch_ppstructure_mobile_v2_SLANet.onnx  # PP-Structure 中文
-│   └── en_ppstructure_mobile_v2_SLANet.onnx  # PP-Structure 英文
-└── layout/                             # 版面分析模型
-    ├── layout_cdla.onnx               #   PP-Structure CDLA（中文）
-    ├── layout_publaynet.onnx          #   PP-Structure PublayNet（英文）
-    └── doclayout_pp_v2.onnx           #   pp_doclayoutv2
+typedef struct { PointF bbox[4]; } TableCell;              // 4个角点
+// logic_points 为 RectBox 数组：x1=row_start, y1=row_end, x2=col_start, y2=col_end
 ```
 
 ## 技术细节
@@ -385,10 +319,11 @@ models/
 
 | 引擎 | 模型 | 输入尺寸 | 预处理 | 特点 |
 |------|------|---------|--------|------|
-| LayoutAnalyzer | PP-Structure (CDLA/PublayNet) | 800×608 | ImageNet 归一化 | DFL解码 + 多尺度NMS |
-| DocLayoutAnalyzer | pp_doclayoutv2 | 800×800 | Letterbox + /255 | 含阅读顺序，25类 |
-| YOLOv8LayoutAnalyzer | YOLOv8 | 640×640 | Letterbox + /255 | 轻量级，多种类别集 |
-| DocLayoutYOLOAnalyzer | DocLayout YOLO | 1024/1120/1600 | Letterbox + /255 | 高精度，11类 |
+| PP-Structure | CDLA/PublayNet | 800×608 | ImageNet 归一化 | DFL解码 + 多尺度NMS |
+| pp_doclayoutv2 | doclayout_pp_v2 | 800×800 | Letterbox + /255 | 含阅读顺序，25类 |
+| YOLOv8 | YOLOv8-paper/report/... | 640×640 | 直接resize + /255 | 轻量级，多种类别集 |
+| DocLayout YOLO | docstructbench/d4la/... | 1024/1120/1600 | Letterbox + /255 | 高精度，11类 |
+
 
 ### 表格识别引擎对比
 
@@ -397,7 +332,7 @@ models/
 | TableRecognizer (SLANet+) | slanet_plus.onnx | 488×488 | 无线表格（最高精度） |
 | TableRecognizer (PP-Structure) | ch/en_ppstructure_*.onnx | 488×488 | 无线表格（中/英文） |
 | UnetTableRecognizer | unet.onnx | 1024×1024 | 有线/边框表格 |
-| 自动分类模式 | q_cls.onnx + UNet + SLANet+ | — | 自动判断有线/无线 |
+| 自动分类模式 | cls.onnx + UNet + SLANet+ | — | 自动判断有线/无线 |
 
 ## 许可证
 

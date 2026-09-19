@@ -39,13 +39,19 @@ document.addEventListener('DOMContentLoaded', function () {
         var ratio = Math.min(cw / state.img.natW, ch / state.img.natH);
         var displayW = state.img.natW * ratio;
         var displayH = state.img.natH * ratio;
-        // stage 内左上角相对于 stage 的偏移（因为 contain 居中在 img 元素内）
         state.img.scaleX = ratio;
         state.img.scaleY = ratio;
         state.img.offsetX = (cw - displayW) / 2;
         state.img.offsetY = (ch - displayH) / 2;
 
-        // 同步 overlay & layer 的尺寸 = img 元素在 stage 内所占据的显示尺寸
+        var stage = Tools.$('ocr-img-stage');
+        var stageRect = stage ? stage.getBoundingClientRect() : null;
+        var imgRect = imgEl.getBoundingClientRect();
+        var stageOffX = stageRect ? Math.round(imgRect.left - stageRect.left) : 0;
+        var stageOffY = stageRect ? Math.round(imgRect.top - stageRect.top) : 0;
+        state.img.stageOffX = stageOffX;
+        state.img.stageOffY = stageOffY;
+
         var overlay = Tools.$('ocr-box-overlay');
         var layer = Tools.$('ocr-box-layer');
         var cropOverlay = Tools.$('ocr-crop-overlay');
@@ -55,10 +61,14 @@ document.addEventListener('DOMContentLoaded', function () {
             overlay.setAttribute('height', ch);
             overlay.style.width = cw + 'px';
             overlay.style.height = ch + 'px';
+            overlay.style.left = stageOffX + 'px';
+            overlay.style.top = stageOffY + 'px';
         }
         if (layer) {
             layer.style.width = cw + 'px';
             layer.style.height = ch + 'px';
+            layer.style.left = stageOffX + 'px';
+            layer.style.top = stageOffY + 'px';
         }
         if (cropOverlay) {
             cropOverlay.setAttribute('viewBox', '0 0 ' + cw + ' ' + ch);
@@ -66,6 +76,8 @@ document.addEventListener('DOMContentLoaded', function () {
             cropOverlay.setAttribute('height', ch);
             cropOverlay.style.width = cw + 'px';
             cropOverlay.style.height = ch + 'px';
+            cropOverlay.style.left = stageOffX + 'px';
+            cropOverlay.style.top = stageOffY + 'px';
         }
 
         // 如果当前有选区，按新布局重新映射一下（保持原自然坐标选区）
@@ -150,17 +162,37 @@ document.addEventListener('DOMContentLoaded', function () {
                 else b.classList.remove('ocr-selected');
             });
         }
-        var blocksEl = Tools.$('ocr-blocks');
-        if (blocksEl) {
-            var items = blocksEl.querySelectorAll('.ocr-block-item');
-            items.forEach(function (it, i) {
-                if (i === idx) it.style.outline = '2px solid var(--primary)';
-                else it.style.outline = '';
+        var editor = Tools.$('ocr-rich-editor');
+        if (editor) {
+            var items = editor.querySelectorAll('[data-idx]');
+            items.forEach(function (item) {
+                var i = parseInt(item.getAttribute('data-idx'), 10);
+                if (i === idx) item.classList.add('ocr-selected');
+                else item.classList.remove('ocr-selected');
             });
-            if (idx >= 0 && items[idx]) {
-                items[idx].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            if (idx >= 0) {
+                var target = editor.querySelector('[data-idx="' + idx + '"]');
+                if (target) target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
             }
         }
+    }
+
+    var LAYOUT_COLORS = {
+        title: '#e74c3c',
+        figure: '#3498db',
+        table: '#e67e22',
+        header: '#95a5a6',
+        footer: '#95a5a6',
+        list: '#27ae60',
+        figure_caption: '#3498db',
+        table_caption: '#e67e22',
+        reference: '#8e44ad',
+        equation: '#2c3e50',
+        text: '#2ecc71',
+    };
+
+    function getLayoutColor(type) {
+        return LAYOUT_COLORS[type] || LAYOUT_COLORS.text;
     }
 
     function renderBoxes(blocks) {
@@ -175,6 +207,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         blocks.forEach(function (block) {
             var pts = block.box || [];
+            var type = block.type || 'text';
+            var color = getLayoutColor(type);
             var screenPts = pts.map(function (p) {
                 var s = toScreen(+p.x, +p.y);
                 return s.x.toFixed(2) + ',' + s.y.toFixed(2);
@@ -193,6 +227,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     top: r.y + 'px',
                     width: r.w + 'px',
                     height: r.h + 'px',
+                    borderColor: color,
                 }
             });
             box.style.pointerEvents = 'none';
@@ -492,31 +527,33 @@ document.addEventListener('DOMContentLoaded', function () {
     function clearResult() {
         state.result = null;
         var empty = Tools.$('result-empty');
-        var content = Tools.$('result-content');
+        var editor = Tools.$('ocr-rich-editor');
+        var toolbar = Tools.$('ocr-result-toolbar');
+        var loading = Tools.$('result-loading');
         if (empty) empty.style.display = '';
-        if (content) content.style.display = 'none';
+        if (editor) { editor.style.display = 'none'; editor.innerHTML = ''; }
+        if (toolbar) toolbar.style.display = 'none';
+        if (loading) loading.style.display = 'none';
     }
 
     function showLoading(msg, extra) {
-        var area = Tools.$('result-area');
-        area.innerHTML = '';
-        var children = [
-            Tools.el('div', { class: 'ocr-spinner' }),
-            Tools.el('span', { text: msg || '正在识别，请稍候...' })
-        ];
-        if (extra) children.push(Tools.el('span', { class: 'ocr-loading-extra', text: extra }));
-        area.appendChild(Tools.el('div', { class: 'ocr-loading', id: 'result-loading' }, children));
+        var empty = Tools.$('result-empty');
+        var editor = Tools.$('ocr-rich-editor');
+        var toolbar = Tools.$('ocr-result-toolbar');
+        var loading = Tools.$('result-loading');
+        var loadingMsg = Tools.$('result-loading-msg');
+        var loadingExtra = Tools.$('result-loading-extra');
+        if (empty) empty.style.display = 'none';
+        if (editor) editor.style.display = 'none';
+        if (toolbar) toolbar.style.display = 'none';
+        if (loading) loading.style.display = '';
+        if (loadingMsg) loadingMsg.textContent = msg || '正在识别，请稍候...';
+        if (loadingExtra) loadingExtra.textContent = extra || '';
     }
 
     function updateLoadingMsg(extra) {
-        var el = Tools.$('result-loading');
-        if (!el) return;
-        var target = el.querySelector('.ocr-loading-extra');
-        if (target) {
-            target.textContent = extra || '';
-        } else {
-            el.appendChild(Tools.el('span', { class: 'ocr-loading-extra', text: extra || '' }));
-        }
+        var loadingExtra = Tools.$('result-loading-extra');
+        if (loadingExtra) loadingExtra.textContent = extra || '';
     }
 
     // 异步任务轮询
@@ -569,80 +606,101 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function renderResult(data) {
         state.result = data;
-        var area = Tools.$('result-area');
-        area.innerHTML = '';
 
-        var content = Tools.el('div', { class: 'ocr-result-content' });
+        var empty = Tools.$('result-empty');
+        var editor = Tools.$('ocr-rich-editor');
+        var toolbar = Tools.$('ocr-result-toolbar');
+        var statsEl = Tools.$('ocr-stats');
+        var loading = Tools.$('result-loading');
 
-        var stats = data.stats || {};
-        var statsEl = Tools.el('div', { class: 'ocr-stats' });
-        if (stats.blockCount !== undefined)
-            statsEl.appendChild(Tools.el('span', { text: '文本块: ' + stats.blockCount }));
-        if (stats.detectTime !== undefined)
-            statsEl.appendChild(Tools.el('span', { text: '耗时: ' + (+stats.detectTime).toFixed(1) + ' ms' }));
-        if (stats.dbNetTime !== undefined)
-            statsEl.appendChild(Tools.el('span', { text: '检测: ' + (+stats.dbNetTime).toFixed(1) + ' ms' }));
+        if (empty) empty.style.display = 'none';
+        if (loading) loading.style.display = 'none';
+
+        var statsParts = [];
+        var s = data.stats || {};
+        if (s.layoutCount !== undefined) statsParts.push('版面区域: ' + s.layoutCount);
+        if (s.blockCount !== undefined) statsParts.push('文本块: ' + s.blockCount);
+        if (s.detectTime !== undefined) statsParts.push('耗时: ' + (+s.detectTime).toFixed(1) + ' ms');
+        if (s.dbNetTime !== undefined) statsParts.push('检测: ' + (+s.dbNetTime).toFixed(1) + ' ms');
         if (data.crop && (data.crop.w > 0 || data.crop.h > 0)) {
-            statsEl.appendChild(Tools.el('span', {
-                text: '裁剪区域: ' + data.crop.w + '×' + data.crop.h + ' @(' + data.crop.x + ',' + data.crop.y + ')'
-            }));
+            statsParts.push('裁剪区域: ' + data.crop.w + '×' + data.crop.h + ' @(' + data.crop.x + ',' + data.crop.y + ')');
         }
-        content.appendChild(statsEl);
+        if (statsEl) statsEl.textContent = statsParts.join('  ·  ');
 
-        var toolbar = Tools.el('div', { class: 'ocr-toolbar' });
-        toolbar.appendChild(Tools.el('button', { class: 'btn btn-sm', id: 'btn-copy-text', text: '复制全部文本' }));
-        toolbar.appendChild(Tools.el('button', { class: 'btn btn-sm btn-outline', id: 'btn-download-text', text: '下载TXT' }));
-        toolbar.appendChild(Tools.el('span', { class: 'spacer' }));
-        toolbar.appendChild(Tools.el('span', { class: 'ocr-block-count', text: '共 ' + (data.blocks ? data.blocks.length : 0) + ' 个文本块' }));
-        content.appendChild(toolbar);
+        if (toolbar) toolbar.style.display = '';
 
-        content.appendChild(Tools.el('div', { class: 'ocr-fulltext', id: 'ocr-fulltext', text: data.text || '(未识别到文本)' }));
+        if (editor) {
+            editor.innerHTML = '';
+            if (data.blocks && data.blocks.length > 0) {
+                data.blocks.forEach(function (block, idx) {
+                    var type = block.type || 'text';
+                    var el;
 
-        content.appendChild(Tools.el('label', { class: 'tool-label', style: { marginTop: '1rem' }, text: '文本块详情' }));
-        var blocksEl = Tools.el('div', { class: 'ocr-blocks', id: 'ocr-blocks' });
-        if (data.blocks && data.blocks.length > 0) {
-            data.blocks.forEach(function (block, idx) {
-                var item = Tools.el('div', {
-                    class: 'ocr-block-item',
-                    'data-idx': String(idx),
-                });
-                item.appendChild(Tools.el('div', { class: 'ocr-block-index', text: String(idx + 1) }));
-                item.appendChild(Tools.el('div', { class: 'ocr-block-text', text: block.text || '' }));
-                item.appendChild(Tools.el('div', { class: 'ocr-block-score', text: block.score !== undefined ? (+block.score).toFixed(2) : '' }));
-
-                var copyBtn = Tools.el('button', {
-                    class: 'ocr-block-copy btn-icon',
-                    type: 'button',
-                    title: '复制此文本',
-                    html: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14"><rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" stroke-width="2"/><path d="M5 15V5C5 3.89543 5.89543 3 7 3H17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
-                });
-                copyBtn.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    if (block.text) {
-                        Tools.copyText(block.text, copyBtn);
+                    if (type === 'title') {
+                        el = document.createElement('h3');
+                        el.className = 'ocr-block-title';
+                    } else if (type === 'figure') {
+                        el = document.createElement('div');
+                        el.className = 'ocr-block-figure';
+                        el.innerHTML = '<span class="ocr-figure-placeholder">[图片区域]</span>';
+                    } else if (type === 'table') {
+                        el = document.createElement('div');
+                        el.className = 'ocr-block-table';
+                        if (block.table && block.table.rows) {
+                            var tbl = document.createElement('table');
+                            tbl.className = 'ocr-table';
+                            block.table.rows.forEach(function (row) {
+                                var allEmpty = row.every(function (cell) { return !cell || !cell.trim(); });
+                                if (allEmpty) return;
+                                var tr = document.createElement('tr');
+                                row.forEach(function (cell) {
+                                    var td = document.createElement('td');
+                                    td.textContent = cell || '';
+                                    td.setAttribute('contenteditable', 'true');
+                                    tr.appendChild(td);
+                                });
+                                tbl.appendChild(tr);
+                            });
+                            el.appendChild(tbl);
+                        }
+                    } else if (type === 'header' || type === 'footer') {
+                        el = document.createElement('div');
+                        el.className = 'ocr-block-' + type;
+                    } else if (type === 'list') {
+                        el = document.createElement('div');
+                        el.className = 'ocr-block-list';
+                    } else if (type === 'figure_caption' || type === 'table_caption') {
+                        el = document.createElement('div');
+                        el.className = 'ocr-block-caption';
+                    } else if (type === 'reference') {
+                        el = document.createElement('div');
+                        el.className = 'ocr-block-reference';
+                    } else if (type === 'equation') {
+                        el = document.createElement('div');
+                        el.className = 'ocr-block-equation';
+                    } else {
+                        el = document.createElement('div');
+                        el.className = 'ocr-block-text';
                     }
-                });
-                item.appendChild(copyBtn);
-                blocksEl.appendChild(item);
-            });
-        } else {
-            blocksEl.appendChild(Tools.el('div', { style: { color: 'var(--text-muted)', fontSize: '0.8125rem', padding: '0.5rem' }, text: '无文本块' }));
-        }
-        content.appendChild(blocksEl);
 
-        area.appendChild(content);
+                    el.setAttribute('data-idx', String(idx));
+                    if (type !== 'figure' && type !== 'table') {
+                        el.textContent = block.text || '';
+                    }
+                    el.addEventListener('click', function () {
+                        setSelected(idx);
+                    });
+                    editor.appendChild(el);
+                });
+            } else {
+                editor.textContent = data.text || '(未识别到文本)';
+            }
+            editor.style.display = '';
+        }
 
         computeImgLayout();
         renderBoxes(data.blocks || []);
         setSelected(-1);
-
-        Tools.$('btn-copy-text').addEventListener('click', function () {
-            Tools.copyText(data.text || '', Tools.$('btn-copy-text'));
-        });
-        Tools.$('btn-download-text').addEventListener('click', function () {
-            var name = state.file ? state.file.name.replace(/\.[^.]+$/, '') : 'ocr_result';
-            Tools.download(name + '.txt', data.text || '', 'text/plain;charset=utf-8');
-        });
     }
 
     function startOcr() {
@@ -662,10 +720,35 @@ document.addEventListener('DOMContentLoaded', function () {
         if (modelSel && modelSel.value) {
             formData.append('model', modelSel.value);
         }
+        var clsModeSel = Tools.$('param-cls-mode');
+        var clsModelSel = Tools.$('param-cls-model');
+        if (clsModeSel && clsModeSel.value && clsModelSel && clsModelSel.value) {
+            formData.append('clsModel', clsModelSel.value);
+        }
+        var layoutSel = Tools.$('param-layout');
+        if (layoutSel && layoutSel.value) {
+            formData.append('layout', layoutSel.value);
+        }
+        var tableSel = Tools.$('param-table');
+        if (tableSel && tableSel.value) {
+            formData.append('tableModel', tableSel.value);
+        }
+        var tableAlgoSel = Tools.$('param-table-algo');
+        if (tableAlgoSel && tableAlgoSel.value) {
+            formData.append('tableAlgo', tableAlgoSel.value);
+        }
+        var tableClsSel = Tools.$('param-table-cls');
+        if (tableClsSel && tableClsSel.value) {
+            formData.append('tableClsModel', tableClsSel.value);
+        }
+        var modeSel = Tools.$('param-mode');
+        if (modeSel && modeSel.value) {
+            formData.append('mode', modeSel.value);
+        }
         formData.append('maxSideLen', Tools.$('param-maxSideLen').value);
         formData.append('boxScoreThresh', Tools.$('param-boxScoreThresh').value);
         formData.append('unClipRatio', Tools.$('param-unClipRatio').value);
-        formData.append('doAngle', Tools.$('param-doAngle').checked ? '1' : '0');
+
 
         // 如果有选区，附带裁剪参数（原图坐标，整数）
         var nat = getCropNatural();
@@ -676,18 +759,8 @@ document.addEventListener('DOMContentLoaded', function () {
             formData.append('cropH', String(nat.h));
         }
 
-        function resetAreaEmpty() {
-            var area = Tools.$('result-area');
-            if (area) {
-                area.innerHTML = '';
-                area.appendChild(Tools.el('div', { class: 'ocr-result-empty', id: 'result-empty' }));
-                area.appendChild(Tools.el('div', { class: 'ocr-result-content', id: 'result-content', style: { display: 'none' } }));
-            }
-        }
-
         function finishWithData(data) {
             Tools.$('btn-ocr').disabled = false;
-            resetAreaEmpty();
             if (data) {
                 renderResult(data);
                 Tools.showBanner('banner', 'success', '识别完成');
@@ -700,7 +773,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         function finishWithError(msg) {
             Tools.$('btn-ocr').disabled = false;
-            resetAreaEmpty();
+            clearResult();
             clearOverlay();
             Tools.showBanner('banner', 'error', msg || '识别失败');
             state._pollCancel = null;
@@ -792,23 +865,165 @@ document.addEventListener('DOMContentLoaded', function () {
         renderCrop();
     }
 
-    function initModelSelect() {
-        var sel = Tools.$('param-model');
+    var modelData = null;
+
+    function fillSelect(id, items, label) {
+        var sel = Tools.$(id);
         if (!sel) return;
-        Api.tools.imageOcrModels().then(function (resp) {
-            if (!resp || !resp.success || !resp.models || resp.models.length === 0) {
-                sel.innerHTML = '<option value="">无可用模型</option>';
-                sel.disabled = true;
-                return;
-            }
-            var html = '';
-            resp.models.forEach(function (m) {
-                html += '<option value="' + escapeAttr(m.id) + '">' + Tools.escapeHtml(m.name || m.id) + '</option>';
+        if (!items || items.length === 0) {
+            sel.innerHTML = '<option value="">无可用' + label + '</option>';
+            sel.disabled = true;
+            return;
+        }
+        var html = '';
+        items.forEach(function (m) {
+            html += '<option value="' + escapeAttr(m.id) + '">' + Tools.escapeHtml(m.name || m.id) + '</option>';
+        });
+        sel.innerHTML = html;
+        sel.disabled = false;
+    }
+
+    function fillClsModeSelect(id, modes) {
+        var sel = Tools.$(id);
+        if (!sel) return;
+        var html = '<option value="">不使用</option>';
+        if (modes && modes.length > 0) {
+            modes.forEach(function (m) {
+                var label = m.mode === 'orientation' ? '方向检测' : '角度分类';
+                html += '<option value="' + escapeAttr(m.mode) + '">' + Tools.escapeHtml(label) + '</option>';
             });
-            sel.innerHTML = html;
-            sel.disabled = false;
+        }
+        sel.innerHTML = html;
+        sel.disabled = false;
+    }
+
+    function fillAlgoSelect(id, algos, label) {
+        var sel = Tools.$(id);
+        if (!sel) return;
+        if (!algos || algos.length === 0) {
+            sel.innerHTML = '<option value="">无可用' + label + '</option>';
+            sel.disabled = true;
+            return;
+        }
+        var html = '';
+        algos.forEach(function (a) {
+            var display = a.label || a.algo;
+            html += '<option value="' + escapeAttr(a.algo) + '">' + Tools.escapeHtml(display) + '</option>';
+        });
+        sel.innerHTML = html;
+        sel.disabled = false;
+    }
+
+    function onClsModeChange() {
+        if (!modelData) return;
+        var modeSel = Tools.$('param-cls-mode');
+        var mode = modeSel ? modeSel.value : '';
+        var models = [];
+        if (mode && modelData.clsModes) {
+            for (var i = 0; i < modelData.clsModes.length; i++) {
+                if (modelData.clsModes[i].mode === mode) {
+                    models = modelData.clsModes[i].models || [];
+                    break;
+                }
+            }
+        }
+        fillSelect('param-cls-model', models, '检测模型');
+    }
+
+    function onLayoutAlgoChange() {
+        if (!modelData) return;
+        var algoSel = Tools.$('param-layout-algo');
+        var algo = algoSel ? algoSel.value : '';
+        var models = [];
+        if (algo && modelData.layoutAlgos) {
+            for (var i = 0; i < modelData.layoutAlgos.length; i++) {
+                if (modelData.layoutAlgos[i].algo === algo) {
+                    models = modelData.layoutAlgos[i].models || [];
+                    break;
+                }
+            }
+        }
+        fillSelect('param-layout', models, '版面模型');
+    }
+
+    function onTableAlgoChange() {
+        if (!modelData) return;
+        var algoSel = Tools.$('param-table-algo');
+        var algo = algoSel ? algoSel.value : '';
+        var models = [];
+        if (algo && modelData.tableAlgos) {
+            for (var i = 0; i < modelData.tableAlgos.length; i++) {
+                if (modelData.tableAlgos[i].algo === algo) {
+                    models = modelData.tableAlgos[i].models || [];
+                    break;
+                }
+            }
+        }
+        fillSelect('param-table', models, '表格模型');
+
+        var clsGroup = Tools.$('table-cls-group');
+        if (clsGroup) {
+            clsGroup.style.display = (algo === 'combined') ? '' : 'none';
+        }
+        if (algo === 'combined' && modelData && modelData.tableClsModels) {
+            fillSelect('param-table-cls', modelData.tableClsModels, '类型检测模型');
+        }
+    }
+
+    function onModeChange() {
+        var modeSel = Tools.$('param-mode');
+        var isTable = modeSel && modeSel.value === 'table';
+        var fsLayout = Tools.$('fs-layout');
+        if (fsLayout) {
+            fsLayout.style.display = isTable ? 'none' : '';
+        }
+    }
+
+    function initModelSelect() {
+        Api.tools.imageOcrModels().then(function (resp) {
+            if (!resp || !resp.success) return;
+            modelData = resp;
+
+            fillSelect('param-model', resp.textModels, '识别模型');
+
+            fillClsModeSelect('param-cls-mode', resp.clsModes);
+            onClsModeChange();
+
+            fillAlgoSelect('param-layout-algo', resp.layoutAlgos, '版面算法');
+            onLayoutAlgoChange();
+
+            var tableAlgoSel = Tools.$('param-table-algo');
+            if (tableAlgoSel) {
+                tableAlgoSel.innerHTML = '';
+                if (resp.tableAlgos && resp.tableAlgos.length > 0) {
+                    resp.tableAlgos.forEach(function (a) {
+                        var opt = document.createElement('option');
+                        opt.value = a.algo;
+                        opt.textContent = a.label || a.algo;
+                        tableAlgoSel.appendChild(opt);
+                    });
+                    tableAlgoSel.disabled = false;
+                } else {
+                    tableAlgoSel.innerHTML = '<option value="">无可用表格算法</option>';
+                    tableAlgoSel.disabled = true;
+                }
+            }
+            onTableAlgoChange();
+
+            var clsModeSel = Tools.$('param-cls-mode');
+            if (clsModeSel) clsModeSel.addEventListener('change', onClsModeChange);
+            var layoutAlgoSel = Tools.$('param-layout-algo');
+            if (layoutAlgoSel) layoutAlgoSel.addEventListener('change', onLayoutAlgoChange);
+            var tableAlgoSel2 = Tools.$('param-table-algo');
+            if (tableAlgoSel2) tableAlgoSel2.addEventListener('change', onTableAlgoChange);
+            var modeSel = Tools.$('param-mode');
+            if (modeSel) modeSel.addEventListener('change', onModeChange);
+            onModeChange();
         }).catch(function (err) {
-            sel.innerHTML = '<option value="">加载失败</option>';
+            ['param-model', 'param-cls-mode', 'param-cls-model', 'param-layout-algo', 'param-layout', 'param-table-algo', 'param-table', 'param-table-cls'].forEach(function (id) {
+                var sel = Tools.$(id);
+                if (sel) { sel.innerHTML = '<option value="">加载失败</option>'; }
+            });
             void err;
         });
     }
@@ -817,12 +1032,33 @@ document.addEventListener('DOMContentLoaded', function () {
         return String(s || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
+    function initResultToolbar() {
+        var copyBtn = Tools.$('btn-copy-text');
+        var downloadBtn = Tools.$('btn-download-text');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', function () {
+                var editor = Tools.$('ocr-rich-editor');
+                var text = editor ? (editor.innerText || editor.textContent) : '';
+                Tools.copyText(text, copyBtn);
+            });
+        }
+        if (downloadBtn) {
+            downloadBtn.addEventListener('click', function () {
+                var editor = Tools.$('ocr-rich-editor');
+                var text = editor ? (editor.innerText || editor.textContent) : '';
+                var name = state.file ? state.file.name.replace(/\.[^.]+$/, '') : 'ocr_result';
+                Tools.download(name + '.txt', text, 'text/plain;charset=utf-8');
+            });
+        }
+    }
+
     function init() {
         initDropZone();
         initAdvanced();
         initResizeSync();
         initCrop();
         initModelSelect();
+        initResultToolbar();
         Tools.$('btn-ocr').addEventListener('click', startOcr);
         Tools.$('btn-clear').addEventListener('click', clearAll);
     }

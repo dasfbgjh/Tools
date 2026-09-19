@@ -85,14 +85,14 @@ public:
 
     /* 获取最后的错误信息（线程局部）。无错误时返回nullptr。 */
     const char* last_error() const {
-        return ocr_last_error_fn_();
+        return last_error_fn_();
     }
 
     /* 便捷辅助函数，出错时抛出异常。创建实例，如果创建失败则抛出DynamicLoaderError。 */
     OcrHandle* create_or_throw(const OcrConfig* config) {
         OcrHandle* h = ocr_create_fn_(config);
         if (!h) {
-            const char* err = ocr_last_error_fn_();
+            const char* err = last_error_fn_();
             throw DynamicLoaderError(err ? err : "ocr_create返回NULL");
         }
         return h;
@@ -134,50 +134,8 @@ public:
     PlateHandle* plate_create_or_throw(const PlateConfig* config) {
         PlateHandle* h = plate_create_fn_(config);
         if (!h) {
-            const char* err = ocr_last_error_fn_();
+            const char* err = last_error_fn_();
             throw DynamicLoaderError(err ? err : "plate_create返回NULL");
-        }
-        return h;
-    }
-
-    /* ---- 版面分析API ---- */
-
-    /* 创建版面分析器实例。出错时返回nullptr。 */
-    LayoutHandle* layout_create(const LayoutConfig* config) {
-        return layout_create_fn_(config);
-    }
-
-    /* 销毁版面分析器实例。 */
-    void layout_destroy(LayoutHandle* handle) {
-        layout_destroy_fn_(handle);
-    }
-
-    /* 在BGR uint8图像中分析版面（HWC布局）。成功返回0。 */
-    int layout_run(LayoutHandle* handle,
-                   const unsigned char* image_data,
-                   int width, int height,
-                   LayoutItemList* out_results) {
-        return layout_run_fn_(handle, image_data, width, height, out_results);
-    }
-
-    /* 在图像文件中分析版面。成功返回0。 */
-    int layout_run_file(LayoutHandle* handle,
-                        const char* image_path,
-                        LayoutItemList* out_results) {
-        return layout_run_file_fn_(handle, image_path, out_results);
-    }
-
-    /* 释放版面结果列表。 */
-    void layout_free_results(LayoutItemList* results) {
-        layout_free_results_fn_(results);
-    }
-
-    /* 便捷辅助函数，出错时抛出异常。 */
-    LayoutHandle* layout_create_or_throw(const LayoutConfig* config) {
-        LayoutHandle* h = layout_create_fn_(config);
-        if (!h) {
-            const char* err = ocr_last_error_fn_();
-            throw DynamicLoaderError(err ? err : "layout_create返回NULL");
         }
         return h;
     }
@@ -218,87 +176,13 @@ public:
     TableHandle* table_create_or_throw(const TableConfig* config) {
         TableHandle* h = table_create_fn_(config);
         if (!h) {
-            const char* err = ocr_last_error_fn_();
+            const char* err = last_error_fn_();
             throw DynamicLoaderError(err ? err : "table_create返回NULL");
         }
         return h;
     }
 
-    /* ---- 文档版面分析API ---- */
-
-    /* 创建文档版面分析器实例。出错时返回nullptr。 */
-    DocLayoutHandle* doc_layout_create(const DocLayoutConfig* config) {
-        return doc_layout_create_fn_(config);
-    }
-
-    /* 销毁文档版面分析器实例。 */
-    void doc_layout_destroy(DocLayoutHandle* handle) {
-        doc_layout_destroy_fn_(handle);
-    }
-
-    /* 在BGR uint8图像中分析文档版面（HWC布局）。成功返回0。 */
-    int doc_layout_run(DocLayoutHandle* handle,
-                       const unsigned char* image_data,
-                       int width, int height,
-                       DocLayoutItemList* out_results) {
-        return doc_layout_run_fn_(handle, image_data, width, height, out_results);
-    }
-
-    /* 在图像文件中分析文档版面。成功返回0。 */
-    int doc_layout_run_file(DocLayoutHandle* handle,
-                            const char* image_path,
-                            DocLayoutItemList* out_results) {
-        return doc_layout_run_file_fn_(handle, image_path, out_results);
-    }
-
-    /* 释放文档版面结果列表。 */
-    void doc_layout_free_results(DocLayoutItemList* results) {
-        doc_layout_free_results_fn_(results);
-    }
-
-    /* 便捷辅助函数，出错时抛出异常。 */
-    DocLayoutHandle* doc_layout_create_or_throw(const DocLayoutConfig* config) {
-        DocLayoutHandle* h = doc_layout_create_fn_(config);
-        if (!h) {
-            const char* err = ocr_last_error_fn_();
-            throw DynamicLoaderError(err ? err : "doc_layout_create返回NULL");
-        }
-        return h;
-    }
-
-    /* ---- YOLOv8版面分析API ---- */
-
-    YOLOv8LayoutHandle* yolov8_layout_create(const YOLOv8LayoutConfig* config) {
-        return yolov8_layout_create_fn_(config);
-    }
-
-    void yolov8_layout_destroy(YOLOv8LayoutHandle* handle) {
-        yolov8_layout_destroy_fn_(handle);
-    }
-
-    int yolov8_layout_run(YOLOv8LayoutHandle* handle,
-                          const unsigned char* image_data,
-                          int width, int height,
-                          LayoutItemList* out_results) {
-        return yolov8_layout_run_fn_(handle, image_data, width, height, out_results);
-    }
-
-    int yolov8_layout_run_file(YOLOv8LayoutHandle* handle,
-                               const char* image_path,
-                               LayoutItemList* out_results) {
-        return yolov8_layout_run_file_fn_(handle, image_path, out_results);
-    }
-
-    YOLOv8LayoutHandle* yolov8_layout_create_or_throw(const YOLOv8LayoutConfig* config) {
-        YOLOv8LayoutHandle* h = yolov8_layout_create_fn_(config);
-        if (!h) {
-            const char* err = ocr_last_error_fn_();
-            throw DynamicLoaderError(err ? err : "yolov8_layout_create返回NULL");
-        }
-        return h;
-    }
-
-    /* ---- DocLayout YOLO版面分析API ---- */
+    /* ---- 版面分析统一API ---- */
 
     DocLayoutYOLOHandle* doclayout_yolo_create(const DocLayoutYOLOConfig* config) {
         return doclayout_yolo_create_fn_(config);
@@ -324,10 +208,14 @@ public:
     DocLayoutYOLOHandle* doclayout_yolo_create_or_throw(const DocLayoutYOLOConfig* config) {
         DocLayoutYOLOHandle* h = doclayout_yolo_create_fn_(config);
         if (!h) {
-            const char* err = ocr_last_error_fn_();
+            const char* err = last_error_fn_();
             throw DynamicLoaderError(err ? err : "doclayout_yolo_create返回NULL");
         }
         return h;
+    }
+
+    void doc_layout_free_results(DocLayoutItemList* results) {
+        doc_layout_free_results_fn_(results);
     }
 
     /* ---- 图像显示辅助API ---- */
@@ -372,13 +260,6 @@ private:
     using PlateRunFileFn     = int (*)(PlateHandle*, const char*, PlateResultList*);
     using PlateFreeResultsFn = void (*)(PlateResultList*);
 
-    // ---- 版面分析函数指针类型 ----
-    using LayoutCreateFn      = LayoutHandle* (*)(const LayoutConfig*);
-    using LayoutDestroyFn     = void (*)(LayoutHandle*);
-    using LayoutRunFn         = int (*)(LayoutHandle*, const unsigned char*, int, int, LayoutItemList*);
-    using LayoutRunFileFn     = int (*)(LayoutHandle*, const char*, LayoutItemList*);
-    using LayoutFreeResultsFn = void (*)(LayoutItemList*);
-
     // ---- 表格识别函数指针类型 ----
     using TableCreateFn     = TableHandle* (*)(const TableConfig*);
     using TableDestroyFn    = void (*)(TableHandle*);
@@ -386,24 +267,12 @@ private:
     using TableRunFileFn    = int (*)(TableHandle*, const char*, TableResult*);
     using TableFreeResultFn = void (*)(TableResult*);
 
-    // ---- 文档版面分析函数指针类型 ----
-    using DocLayoutCreateFn      = DocLayoutHandle* (*)(const DocLayoutConfig*);
-    using DocLayoutDestroyFn     = void (*)(DocLayoutHandle*);
-    using DocLayoutRunFn         = int (*)(DocLayoutHandle*, const unsigned char*, int, int, DocLayoutItemList*);
-    using DocLayoutRunFileFn     = int (*)(DocLayoutHandle*, const char*, DocLayoutItemList*);
-    using DocLayoutFreeResultsFn = void (*)(DocLayoutItemList*);
-
-    // ---- YOLOv8版面分析函数指针类型 ----
-    using YOLOv8LayoutCreateFn    = YOLOv8LayoutHandle* (*)(const YOLOv8LayoutConfig*);
-    using YOLOv8LayoutDestroyFn   = void (*)(YOLOv8LayoutHandle*);
-    using YOLOv8LayoutRunFn       = int (*)(YOLOv8LayoutHandle*, const unsigned char*, int, int, LayoutItemList*);
-    using YOLOv8LayoutRunFileFn   = int (*)(YOLOv8LayoutHandle*, const char*, LayoutItemList*);
-
-    // ---- DocLayout YOLO版面分析函数指针类型 ----
+    // ---- 版面分析统一函数指针类型 ----
     using DocLayoutYOLOCreateFn    = DocLayoutYOLOHandle* (*)(const DocLayoutYOLOConfig*);
     using DocLayoutYOLODestroyFn   = void (*)(DocLayoutYOLOHandle*);
     using DocLayoutYOLORunFn       = int (*)(DocLayoutYOLOHandle*, const unsigned char*, int, int, DocLayoutItemList*);
     using DocLayoutYOLORunFileFn   = int (*)(DocLayoutYOLOHandle*, const char*, DocLayoutItemList*);
+    using DocLayoutFreeResultsFn   = void (*)(DocLayoutItemList*);
 
     // ---- 图像显示函数指针类型 ----
     using ImageShowRectsFn     = int (*)(const unsigned char*, int, int,
@@ -424,7 +293,7 @@ private:
     OcrRunFn         ocr_run_fn_         = nullptr;
     OcrRunFileFn     ocr_run_file_fn_    = nullptr;
     OcrFreeResultsFn ocr_free_results_fn_ = nullptr;
-    OcrLastErrorFn   ocr_last_error_fn_  = nullptr;
+    OcrLastErrorFn   last_error_fn_  = nullptr;
 
     // ---- 车牌识别已解析符号 ----
     PlateCreateFn      plate_create_fn_      = nullptr;
@@ -433,13 +302,6 @@ private:
     PlateRunFileFn     plate_run_file_fn_    = nullptr;
     PlateFreeResultsFn plate_free_results_fn_ = nullptr;
 
-    // ---- 版面分析已解析符号 ----
-    LayoutCreateFn      layout_create_fn_      = nullptr;
-    LayoutDestroyFn     layout_destroy_fn_     = nullptr;
-    LayoutRunFn         layout_run_fn_         = nullptr;
-    LayoutRunFileFn     layout_run_file_fn_    = nullptr;
-    LayoutFreeResultsFn layout_free_results_fn_ = nullptr;
-
     // ---- 表格识别已解析符号 ----
     TableCreateFn     table_create_fn_     = nullptr;
     TableDestroyFn    table_destroy_fn_    = nullptr;
@@ -447,24 +309,12 @@ private:
     TableRunFileFn    table_run_file_fn_   = nullptr;
     TableFreeResultFn table_free_result_fn_ = nullptr;
 
-    // ---- 文档版面分析已解析符号 ----
-    DocLayoutCreateFn      doc_layout_create_fn_      = nullptr;
-    DocLayoutDestroyFn     doc_layout_destroy_fn_     = nullptr;
-    DocLayoutRunFn         doc_layout_run_fn_         = nullptr;
-    DocLayoutRunFileFn     doc_layout_run_file_fn_    = nullptr;
-    DocLayoutFreeResultsFn doc_layout_free_results_fn_ = nullptr;
-
-    // ---- YOLOv8版面分析已解析符号 ----
-    YOLOv8LayoutCreateFn    yolov8_layout_create_fn_    = nullptr;
-    YOLOv8LayoutDestroyFn   yolov8_layout_destroy_fn_   = nullptr;
-    YOLOv8LayoutRunFn       yolov8_layout_run_fn_       = nullptr;
-    YOLOv8LayoutRunFileFn   yolov8_layout_run_file_fn_  = nullptr;
-
-    // ---- DocLayout YOLO版面分析已解析符号 ----
+    // ---- 版面分析统一已解析符号 ----
     DocLayoutYOLOCreateFn    doclayout_yolo_create_fn_    = nullptr;
     DocLayoutYOLODestroyFn   doclayout_yolo_destroy_fn_   = nullptr;
     DocLayoutYOLORunFn       doclayout_yolo_run_fn_       = nullptr;
     DocLayoutYOLORunFileFn   doclayout_yolo_run_file_fn_  = nullptr;
+    DocLayoutFreeResultsFn   doc_layout_free_results_fn_  = nullptr;
 
     // ---- 图像显示已解析符号 ----
     ImageShowRectsFn     image_show_rects_fn_     = nullptr;
@@ -579,60 +429,6 @@ private:
     PlateResultList list_ = {nullptr, 0};
 };
 
-/* RAII包装器，拥有通过加载器创建的LayoutHandle。
-   析构时自动调用layout_destroy()。 */
-class LayoutHandleGuard {
-public:
-    LayoutHandleGuard(OcrDynamicLoader& loader, LayoutHandle* handle)
-        : loader_(&loader), handle_(handle) {}
-
-    ~LayoutHandleGuard() {
-        if (handle_ && loader_) {
-            loader_->layout_destroy(handle_);
-        }
-    }
-
-    LayoutHandleGuard(const LayoutHandleGuard&) = delete;
-    LayoutHandleGuard& operator=(const LayoutHandleGuard&) = delete;
-
-    LayoutHandle* get() const noexcept { return handle_; }
-    LayoutHandle* release() noexcept {
-        LayoutHandle* h = handle_;
-        handle_ = nullptr;
-        return h;
-    }
-
-    explicit operator bool() const noexcept { return handle_ != nullptr; }
-
-private:
-    OcrDynamicLoader* loader_;
-    LayoutHandle* handle_;
-};
-
-/* RAII包装器，拥有LayoutItemList。
-   析构时自动调用layout_free_results()。 */
-class LayoutResultGuard {
-public:
-    LayoutResultGuard(OcrDynamicLoader& loader) : loader_(&loader) {}
-    ~LayoutResultGuard() {
-        if (loader_) loader_->layout_free_results(&list_);
-    }
-
-    LayoutResultGuard(const LayoutResultGuard&) = delete;
-    LayoutResultGuard& operator=(const LayoutResultGuard&) = delete;
-
-    LayoutItemList* get() noexcept { return &list_; }
-    const LayoutItemList* get() const noexcept { return &list_; }
-
-    int count() const noexcept { return list_.count; }
-    const LayoutItem& at(int i) const { return list_.items[i]; }
-    const LayoutItem& operator[](int i) const { return list_.items[i]; }
-
-private:
-    OcrDynamicLoader* loader_;
-    LayoutItemList list_ = {nullptr, 0};
-};
-
 /* RAII包装器，拥有通过加载器创建的TableHandle。
    析构时自动调用table_destroy()。 */
 class TableHandleGuard {
@@ -683,36 +479,6 @@ private:
     TableResult result_ = {nullptr, nullptr, 0, 0.0f};
 };
 
-/* RAII包装器，拥有通过加载器创建的DocLayoutHandle。
-   析构时自动调用doc_layout_destroy()。 */
-class DocLayoutHandleGuard {
-public:
-    DocLayoutHandleGuard(OcrDynamicLoader& loader, DocLayoutHandle* handle)
-        : loader_(&loader), handle_(handle) {}
-
-    ~DocLayoutHandleGuard() {
-        if (handle_ && loader_) {
-            loader_->doc_layout_destroy(handle_);
-        }
-    }
-
-    DocLayoutHandleGuard(const DocLayoutHandleGuard&) = delete;
-    DocLayoutHandleGuard& operator=(const DocLayoutHandleGuard&) = delete;
-
-    DocLayoutHandle* get() const noexcept { return handle_; }
-    DocLayoutHandle* release() noexcept {
-        DocLayoutHandle* h = handle_;
-        handle_ = nullptr;
-        return h;
-    }
-
-    explicit operator bool() const noexcept { return handle_ != nullptr; }
-
-private:
-    OcrDynamicLoader* loader_;
-    DocLayoutHandle* handle_;
-};
-
 /* RAII包装器，拥有DocLayoutItemList。
    析构时自动调用doc_layout_free_results()。 */
 class DocLayoutResultGuard {
@@ -735,35 +501,6 @@ public:
 private:
     OcrDynamicLoader* loader_;
     DocLayoutItemList list_ = {nullptr, 0};
-};
-
-/* RAII包装器，拥有通过加载器创建的YOLOv8LayoutHandle。 */
-class YOLOv8LayoutHandleGuard {
-public:
-    YOLOv8LayoutHandleGuard(OcrDynamicLoader& loader, YOLOv8LayoutHandle* handle)
-        : loader_(&loader), handle_(handle) {}
-
-    ~YOLOv8LayoutHandleGuard() {
-        if (handle_ && loader_) {
-            loader_->yolov8_layout_destroy(handle_);
-        }
-    }
-
-    YOLOv8LayoutHandleGuard(const YOLOv8LayoutHandleGuard&) = delete;
-    YOLOv8LayoutHandleGuard& operator=(const YOLOv8LayoutHandleGuard&) = delete;
-
-    YOLOv8LayoutHandle* get() const noexcept { return handle_; }
-    YOLOv8LayoutHandle* release() noexcept {
-        YOLOv8LayoutHandle* h = handle_;
-        handle_ = nullptr;
-        return h;
-    }
-
-    explicit operator bool() const noexcept { return handle_ != nullptr; }
-
-private:
-    OcrDynamicLoader* loader_;
-    YOLOv8LayoutHandle* handle_;
 };
 
 /* RAII包装器，拥有通过加载器创建的DocLayoutYOLOHandle。 */

@@ -16,22 +16,22 @@ namespace ocr {
 class MarkdownGenerator {
 public:
     struct Config {
-        /* 文档版面模型（pp_doclayoutv2.onnx）- 必填 */
+        /* 版面分析模型 - 必填 */
         std::string layout_model_path;
+        int layout_model_type = 0;  /* DocLayoutYOLOModelType枚举值，默认PP_DOCLAYOUT_V2 */
 
         /* OCR模型 - 必填 */
         std::string det_model_path;
         std::string rec_model_path;
         std::string rec_char_dict_path;
         std::string cls_model_path;
-        std::string orientation_model_path;
+        int cls_model_type = 0;  /* ClsModelType枚举值，默认CLS_MODEL_ANGLE */
 
         /* 表格模型 - 可选，空则禁用表格识别 */
         std::string table_model_path;
         int table_model_type = 0;
-        std::string table_cls_model_path;    /* 表格分类器（UNET_SLANET_PLUS时使用） */
-        std::string table_unet_model_path;   /* UNet模型（UNET_SLANET_PLUS时使用） */
-        std::string table_slanet_model_path; /* SLANet+模型（UNET_SLANET_PLUS时使用，空则用table_model_path） */
+        std::string table_cls_model_path;    /* 表格分类器（仅UNET_SLANET_PLUS模式使用） */
+        std::string table_unet_model_path;   /* UNet模型（仅UNET_SLANET_PLUS模式使用） */
 
         /* GPU设置 */
         int use_gpu = 0;
@@ -81,7 +81,7 @@ private:
     OcrDynamicLoader &loader_;
 
     OcrHandle *ocr_handle_ = nullptr;
-    DocLayoutHandle *layout_handle_ = nullptr;
+    DocLayoutYOLOHandle *layout_handle_ = nullptr;
     TableHandle *table_handle_ = nullptr;
     bool table_enabled_ = false;
     bool include_images_ = false;

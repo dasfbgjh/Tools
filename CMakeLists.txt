@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 project(Tools
-    VERSION 1.0.2
+    VERSION 1.0.3
     DESCRIPTION "Tools - A collection of useful tools for developers"
     HOMEPAGE_URL "https://github.com/dasfbgjh/Tools"
 )
@@ -65,6 +65,7 @@ add_executable(${APP_FILE_NAME} ${WIN_GUI}
     src/core/McpServer.cpp
     src/core/McpClient.cpp
     src/core/McpTools.cpp
+    src/core/CertGenerator.cpp
     src/routes/ADBTool.cpp
     src/routes/Admin.cpp
     src/routes/Auth.cpp
@@ -84,6 +85,7 @@ add_executable(${APP_FILE_NAME} ${WIN_GUI}
     src/routes/OcrTools.cpp
     src/routes/Mcp.cpp
     3rdparty/qrcodegen/qrcodegen.cpp
+    3rdparty/OnnxOCR/ocr_dynamic_loader.cpp
 )
 target_include_directories(${APP_FILE_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -99,6 +101,9 @@ target_include_directories(${APP_FILE_NAME} PRIVATE
 
     # stb_image
     ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/stb
+
+    # OnnxOCR
+    ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/OnnxOCR
 
     # webview2
     ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/webview/core/include

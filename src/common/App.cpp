@@ -7,6 +7,7 @@
 #include "core/HttpServerManager.h"
 #include "core/ProcManager.h"
 #include "routes/FfmpegTool.h"
+#include "routes/OcrTools.h"
 
 App *App::g_instance = nullptr;
 
@@ -121,6 +122,7 @@ int App::exec() {
     HttpServerManager::instance().shutdownAll();
     ProcManager::instance().shutdownAll();
     routes::ffmpeg::FfmpegManager::instance().shutdownAll();
+    routes::ocrTools::shutdown();
     webview.stop();
     m_server.stop();
     if ( serverTh1.joinable() )

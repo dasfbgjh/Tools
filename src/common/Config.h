@@ -38,7 +38,6 @@ private:
     static std::string logFilePath;
     static std::string pdfToolPath;
     static std::string ffmpegPath;
-    static std::string opensslPath;
     static std::string adbPath;
 
     static int parseConfig( int argc, char *argv[] );
@@ -89,7 +88,6 @@ public:
 
     static const std::string &getPdfToolPath();
     static const std::string &getFfmpegPath();
-    static const std::string &getOpensslPath();
     static const std::string &getAdbPath();
 };
 

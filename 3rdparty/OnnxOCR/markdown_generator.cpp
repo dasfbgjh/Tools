@@ -17,19 +17,20 @@ MarkdownGenerator::MarkdownGenerator( OcrDynamicLoader &loader, const Config &cf
     ocr_cfg.rec_model_path = cfg.rec_model_path.c_str();
     ocr_cfg.rec_char_dict_path = cfg.rec_char_dict_path.c_str();
     ocr_cfg.cls_model_path = cfg.cls_model_path.empty() ? nullptr : cfg.cls_model_path.c_str();
-    ocr_cfg.orientation_model_path = cfg.orientation_model_path.empty() ? nullptr : cfg.orientation_model_path.c_str();
+    ocr_cfg.cls_model_type = cfg.cls_model_type;
     ocr_cfg.use_gpu = cfg.use_gpu;
     ocr_cfg.gpu_id = cfg.gpu_id;
     ocr_handle_ = loader_.create_or_throw( &ocr_cfg );
 
-    /* 创建文档版面分析实例 */
-    DocLayoutConfig layout_cfg = {};
+    /* 创建版面分析实例 */
+    DocLayoutYOLOConfig layout_cfg = {};
     layout_cfg.model_path = cfg.layout_model_path.c_str();
+    layout_cfg.model_type = cfg.layout_model_type;
     layout_cfg.use_gpu = cfg.use_gpu;
     layout_cfg.gpu_id = cfg.gpu_id;
     layout_cfg.conf_thresh = cfg.layout_conf_thresh;
     layout_cfg.iou_thresh = cfg.layout_iou_thresh;
-    layout_handle_ = loader_.doc_layout_create_or_throw( &layout_cfg );
+    layout_handle_ = loader_.doclayout_yolo_create_or_throw( &layout_cfg );
 
     /* 创建表格识别实例（可选） */
     if ( table_enabled_ ) {
@@ -42,9 +43,6 @@ MarkdownGenerator::MarkdownGenerator( OcrDynamicLoader &loader, const Config &cf
         table_cfg.unet_model_path = cfg.table_unet_model_path.empty()
                                         ? nullptr
                                         : cfg.table_unet_model_path.c_str();
-        table_cfg.slanet_model_path = cfg.table_slanet_model_path.empty()
-                                          ? nullptr
-                                          : cfg.table_slanet_model_path.c_str();
         table_cfg.use_gpu = cfg.use_gpu;
         table_cfg.gpu_id = cfg.gpu_id;
         table_handle_ = loader_.table_create_or_throw( &table_cfg );
@@ -55,7 +53,7 @@ MarkdownGenerator::~MarkdownGenerator() {
     if ( table_handle_ )
         loader_.table_destroy( table_handle_ );
     if ( layout_handle_ )
-        loader_.doc_layout_destroy( layout_handle_ );
+        loader_.doclayout_yolo_destroy( layout_handle_ );
     if ( ocr_handle_ )
         loader_.destroy( ocr_handle_ );
 }
@@ -65,7 +63,7 @@ MarkdownGenerator::~MarkdownGenerator() {
 std::string MarkdownGenerator::convert_file( const char *image_path ) {
     /* Step 1: 文档版面分析 */
     DocLayoutResultGuard layout_results( loader_ );
-    int rc = loader_.doc_layout_run_file( layout_handle_, image_path, layout_results.get() );
+    int rc = loader_.doclayout_yolo_run_file( layout_handle_, image_path, layout_results.get() );
     if ( rc != 0 || layout_results.get()->count == 0 ) {
         /* 降级：对整页做OCR */
         OcrResultGuard ocr_results( loader_ );
@@ -173,7 +171,7 @@ std::string MarkdownGenerator::convert( const unsigned char *image_data,
                                         int width, int height ) {
     /* Step 1: 文档版面分析 */
     DocLayoutResultGuard layout_results( loader_ );
-    int rc = loader_.doc_layout_run( layout_handle_, image_data, width, height,
+    int rc = loader_.doclayout_yolo_run( layout_handle_, image_data, width, height,
                                      layout_results.get() );
     if ( rc != 0 || layout_results.get()->count == 0 ) {
         /* 降级：对整页做OCR */
@@ -413,11 +411,11 @@ std::vector<std::vector<std::string>> MarkdownGenerator::build_table_grid(
     /* Step 1: 确定表格行列数 */
     int max_row = 0, max_col = 0;
     for ( int i = 0; i < table_result.cell_count; ++i ) {
-        const TableLogicPoint &lp = table_result.logic_points[i];
-        if ( lp.row_end + 1 > max_row )
-            max_row = lp.row_end + 1;
-        if ( lp.col_end + 1 > max_col )
-            max_col = lp.col_end + 1;
+        const RectBox &lp = table_result.logic_points[i];
+        if ( lp.y1 + 1 > max_row )
+            max_row = lp.y1 + 1;
+        if ( lp.y2 + 1 > max_col )
+            max_col = lp.y2 + 1;
     }
     if ( max_row <= 0 || max_col <= 0 )
         return {};
@@ -429,15 +427,15 @@ std::vector<std::vector<std::string>> MarkdownGenerator::build_table_grid(
     /* Step 3: 对每个单元格做OCR并填入网格 */
     for ( int i = 0; i < table_result.cell_count; ++i ) {
         const TableCell &cell = table_result.cells[i];
-        const TableLogicPoint &lp = table_result.logic_points[i];
+        const RectBox &lp = table_result.logic_points[i];
 
-        /* 单元格bbox: 4个角点 [x0,y0, x1,y1, x2,y2, x3,y3]
+        /* 单元格bbox: 4个角点PointF
            取外接矩形作为裁剪区域 */
-        float min_x = cell.bbox[0], min_y = cell.bbox[1];
-        float max_x = cell.bbox[0], max_y = cell.bbox[1];
+        float min_x = cell.bbox[0].x, min_y = cell.bbox[0].y;
+        float max_x = cell.bbox[0].x, max_y = cell.bbox[0].y;
         for ( int k = 1; k < 4; ++k ) {
-            float cx = cell.bbox[k * 2];
-            float cy = cell.bbox[k * 2 + 1];
+            float cx = cell.bbox[k].x;
+            float cy = cell.bbox[k].y;
             if ( cx < min_x )
                 min_x = cx;
             if ( cx > max_x )
@@ -460,8 +458,8 @@ std::vector<std::vector<std::string>> MarkdownGenerator::build_table_grid(
             rects->push_back( { x1, y1, x2, y2 } );
 
         /* 填入网格（处理跨行跨列：所有覆盖位置都填入相同文本） */
-        for ( int r = lp.row_start; r <= lp.row_end && r < max_row; ++r ) {
-            for ( int c = lp.col_start; c <= lp.col_end && c < max_col; ++c ) {
+        for ( int r = lp.x1; r <= lp.y1 && r < max_row; ++r ) {
+            for ( int c = lp.x2; c <= lp.y2 && c < max_col; ++c ) {
                 grid[r][c] = text;
             }
         }
@@ -481,11 +479,11 @@ std::vector<std::vector<std::string>> MarkdownGenerator::build_table_grid_file(
 
     int max_row = 0, max_col = 0;
     for ( int i = 0; i < table_result.cell_count; ++i ) {
-        const TableLogicPoint &lp = table_result.logic_points[i];
-        if ( lp.row_end + 1 > max_row )
-            max_row = lp.row_end + 1;
-        if ( lp.col_end + 1 > max_col )
-            max_col = lp.col_end + 1;
+        const RectBox &lp = table_result.logic_points[i];
+        if ( lp.y1 + 1 > max_row )
+            max_row = lp.y1 + 1;
+        if ( lp.y2 + 1 > max_col )
+            max_col = lp.y2 + 1;
     }
     if ( max_row <= 0 || max_col <= 0 )
         return {};
@@ -495,13 +493,13 @@ std::vector<std::vector<std::string>> MarkdownGenerator::build_table_grid_file(
 
     for ( int i = 0; i < table_result.cell_count; ++i ) {
         const TableCell &cell = table_result.cells[i];
-        const TableLogicPoint &lp = table_result.logic_points[i];
+        const RectBox &lp = table_result.logic_points[i];
 
-        float min_x = cell.bbox[0], min_y = cell.bbox[1];
-        float max_x = cell.bbox[0], max_y = cell.bbox[1];
+        float min_x = cell.bbox[0].x, min_y = cell.bbox[0].y;
+        float max_x = cell.bbox[0].x, max_y = cell.bbox[0].y;
         for ( int k = 1; k < 4; ++k ) {
-            float cx = cell.bbox[k * 2];
-            float cy = cell.bbox[k * 2 + 1];
+            float cx = cell.bbox[k].x;
+            float cy = cell.bbox[k].y;
             if ( cx < min_x )
                 min_x = cx;
             if ( cx > max_x )
@@ -521,8 +519,8 @@ std::vector<std::vector<std::string>> MarkdownGenerator::build_table_grid_file(
         if ( rects )
             rects->push_back( { x1, y1, x2, y2 } );
 
-        for ( int r = lp.row_start; r <= lp.row_end && r < max_row; ++r ) {
-            for ( int c = lp.col_start; c <= lp.col_end && c < max_col; ++c ) {
+        for ( int r = lp.x1; r <= lp.y1 && r < max_row; ++r ) {
+            for ( int c = lp.x2; c <= lp.y2 && c < max_col; ++c ) {
                 grid[r][c] = text;
             }
         }

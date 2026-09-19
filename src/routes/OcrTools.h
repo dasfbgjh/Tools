@@ -5,8 +5,9 @@
 
 namespace routes::ocrTools {
 
-// 注册 OCR 相关路由
 void registerOcrRoutes( httplib::Server &svr );
+
+void shutdown();
 
 } // namespace routes::ocrTools
 

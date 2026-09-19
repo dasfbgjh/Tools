@@ -4,12 +4,13 @@
 #include "core/Server.h"
 #include "core/Utils.h"
 
+#include "ocr_dynamic_loader.h"
 #include "stb_image.h"
 #include "stb_image_write.h"
 
-#include <windows.h>
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <condition_variable>
 #include <cstring>
 #include <filesystem>
@@ -20,6 +21,8 @@
 #include <string>
 #include <thread>
 #include <vector>
+
+#define OnnxOCR_Dir Config::getAppPath() + "/OnnxOCR"
 
 namespace fs = std::filesystem;
 namespace routes::ocrTools {
@@ -34,152 +37,335 @@ struct CropRect {
     }
 };
 
-// 前置声明（TaskManager::runTask 中使用）
 static std::string cropImageToTemp( const std::string &srcPath, const CropRect &crop, std::string &errMsg );
 static void applyCropOffsetToResult( Server::json &data, int dx, int dy );
 
 // ========================================================================
-// RapidOcr C API 类型定义（动态加载，不链接 .lib，不包含 OcrLiteCApi.h）
-// ========================================================================
-typedef void *OCR_HANDLE;
-typedef char OCR_BOOL;
-
-typedef struct {
-    int padding;
-    int maxSideLen;
-    float boxScoreThresh;
-    float boxThresh;
-    float unClipRatio;
-    int doAngle;
-    int mostAngle;
-} OCR_PARAM;
-
-typedef struct {
-    double x;
-    double y;
-} OCR_POINT;
-
-typedef struct {
-    OCR_POINT *boxPoint;
-    float boxScore;
-    int angleIndex;
-    float angleScore;
-    double angleTime;
-    uint8_t *text;
-    float *charScores;
-    unsigned long long charScoresLength;
-    unsigned long long boxPointLength;
-    unsigned long long textLength;
-    double crnnTime;
-    double blockTime;
-} TEXT_BLOCK;
-
-typedef struct {
-    double dbNetTime;
-    TEXT_BLOCK *textBlocks;
-    unsigned long long textBlocksLength;
-    double detectTime;
-} OCR_RESULT;
-
-typedef OCR_HANDLE ( *OcrInitFn )( const char *, const char *, const char *, const char *, int );
-typedef OCR_BOOL ( *OcrInitLoggerFn )( OCR_HANDLE, bool, bool, bool );
-typedef OCR_BOOL ( *OcrDetectPathFn )( OCR_HANDLE, const char *, const char *, OCR_PARAM *, OCR_RESULT * );
-typedef OCR_BOOL ( *OcrFreeResultFn )( OCR_RESULT * );
-typedef void ( *OcrDestroyFn )( OCR_HANDLE );
-
-// ========================================================================
-// 模型元信息
+// OnnxOCR 模型元信息
 // ========================================================================
 struct OcrModelInfo {
-    std::string id;      // 子目录名，如 ch_mobile_v4
-    std::string name;    // 显示名
-    std::string dirPath; // 模型目录绝对路径
+    std::string id;
+    std::string name;
+    std::string dirPath;
     std::string detPath;
     std::string clsPath;
     std::string recPath;
     std::string keyPath;
 };
 
-// 扫描 RapidOCR 目录下符合条件的模型子目录
+struct LayoutModelInfo {
+    std::string id;
+    std::string name;
+    std::string modelPath;
+    int modelType = 0;
+};
+
+struct TableModelInfo {
+    std::string id;
+    std::string name;
+    std::string modelPath;
+    int modelType = 0;
+    std::string clsModelPath;
+    std::string unetModelPath;
+};
+
+struct ClsModelInfo {
+    std::string id;
+    std::string name;
+    std::string modelPath;
+    int clsModelType = 0;
+};
+
 static std::vector<OcrModelInfo> scanOcrModels() {
     std::vector<OcrModelInfo> result;
-    std::string rapidDir = utils::fs::toNative( Config::getAppPath() + "/RapidOCR" );
-    if ( !fs::exists( rapidDir ) ) {
-        LOG_WARN << "OCR RapidOCR 目录不存在: " << rapidDir;
+    std::string onnxDir = utils::fs::toNative( OnnxOCR_Dir );
+    std::string textDir = utils::fs::toNative( onnxDir + "/text" );
+    if ( !fs::exists( textDir ) ) {
+        LOG_WARN << "OCR OnnxOCR/text 目录不存在: " << textDir;
         return result;
     }
     std::error_code ec;
-    for ( const auto &entry : fs::directory_iterator( rapidDir, ec ) ) {
-        if ( ec ) {
-            LOG_WARN << "扫描 RapidOCR 目录出错: " << ec.message();
+    for ( const auto &entry : fs::directory_iterator( textDir, ec ) ) {
+        if ( ec )
             break;
-        }
         if ( !entry.is_directory() )
             continue;
         auto dirPath = entry.path();
         std::string id = dirPath.filename().string();
-        // 跳过以点开头的隐藏目录
         if ( id.empty() || id[0] == '.' )
             continue;
 
         std::string detPath = utils::fs::toNative( dirPath.string() + "/det.onnx" );
-        std::string clsPath = utils::fs::toNative( dirPath.string() + "/cls.onnx" );
         std::string recPath = utils::fs::toNative( dirPath.string() + "/rec.onnx" );
         std::string keyPath = utils::fs::toNative( dirPath.string() + "/keys.txt" );
 
-        if ( fs::exists( detPath ) && fs::exists( clsPath ) &&
-             fs::exists( recPath ) && fs::exists( keyPath ) ) {
+        if ( fs::exists( detPath ) && fs::exists( recPath ) && fs::exists( keyPath ) ) {
             OcrModelInfo info;
             info.id = id;
             info.name = id;
             info.dirPath = utils::fs::toNative( dirPath.string() );
             info.detPath = detPath;
-            info.clsPath = clsPath;
+            info.clsPath = utils::fs::toNative( dirPath.string() + "/cls.onnx" );
             info.recPath = recPath;
             info.keyPath = keyPath;
             result.push_back( std::move( info ) );
-            LOG_INFO << "发现 OCR 模型: " << id;
+            LOG_INFO << "发现 OCR 模型:" << id;
         }
     }
-    // 按目录名稳定排序
     std::sort( result.begin(), result.end(),
                []( const OcrModelInfo &a, const OcrModelInfo &b ) { return a.id < b.id; } );
     return result;
 }
 
-static const std::vector<OcrModelInfo> &getModelList() {
+static std::vector<LayoutModelInfo> scanLayoutModels() {
+    std::vector<LayoutModelInfo> result;
+    std::string onnxDir = utils::fs::toNative( OnnxOCR_Dir );
+    std::string layoutDir = utils::fs::toNative( onnxDir + "/layout" );
+    if ( !fs::exists( layoutDir ) )
+        return result;
+    std::error_code ec;
+    for ( const auto &entry : fs::directory_iterator( layoutDir, ec ) ) {
+        if ( ec )
+            break;
+        if ( !entry.is_directory() )
+            continue;
+        auto dirPath = entry.path();
+        std::string id = dirPath.filename().string();
+        if ( id.empty() || id[0] == '.' )
+            continue;
+        std::error_code ec2;
+        for ( const auto &f : fs::directory_iterator( dirPath, ec2 ) ) {
+            if ( ec2 )
+                break;
+            if ( !f.is_regular_file() )
+                continue;
+            std::string ext = f.path().extension().string();
+            if ( ext != ".onnx" )
+                continue;
+            std::string modelFile = f.path().filename().string();
+            std::string modelPath = utils::fs::toNative( f.path().string() );
+            LayoutModelInfo info;
+            info.id = id + "/" + modelFile;
+            info.name = id + " / " + modelFile;
+            info.modelPath = modelPath;
+            if ( id.find( "pp_doclayout" ) != std::string::npos )
+                info.modelType = PP_DOCLAYOUT_V2;
+            else if ( id.find( "pp_layout" ) != std::string::npos || id.find( "cdla" ) != std::string::npos )
+                info.modelType = PP_LAYOUT_CDLA;
+            else if ( id.find( "doclayout_yolo" ) != std::string::npos || id.find( "doclayout-yolo" ) != std::string::npos )
+                info.modelType = DOCLAYOUT_YOLO_DOCSTRUCTBENCH;
+            else if ( id.find( "yolov8" ) != std::string::npos || id.find( "yolo" ) != std::string::npos )
+                info.modelType = YOLO_LAYOUT_PAPER;
+            else
+                info.modelType = PP_DOCLAYOUT_V2;
+            LOG_INFO << "发现版面模型:" << info.id;
+            result.push_back( std::move( info ) );
+        }
+    }
+    std::sort( result.begin(), result.end(),
+               []( const LayoutModelInfo &a, const LayoutModelInfo &b ) { return a.id < b.id; } );
+    return result;
+}
+
+static std::vector<TableModelInfo> scanTableModels() {
+    std::vector<TableModelInfo> result;
+    std::string onnxDir = utils::fs::toNative( OnnxOCR_Dir );
+    std::string tableDir = utils::fs::toNative( onnxDir + "/table" );
+    if ( !fs::exists( tableDir ) )
+        return result;
+    std::error_code ec;
+    for ( const auto &entry : fs::directory_iterator( tableDir, ec ) ) {
+        if ( ec )
+            break;
+        if ( !entry.is_directory() )
+            continue;
+        auto dirPath = entry.path();
+        std::string id = dirPath.filename().string();
+        if ( id.empty() || id[0] == '.' )
+            continue;
+        if ( id == "cls" )
+            continue;
+        std::error_code ec2;
+        for ( const auto &f : fs::directory_iterator( dirPath, ec2 ) ) {
+            if ( ec2 )
+                break;
+            if ( !f.is_regular_file() )
+                continue;
+            std::string ext = f.path().extension().string();
+            if ( ext != ".onnx" )
+                continue;
+            std::string modelFile = f.path().filename().string();
+            std::string lowerFile = utils::toLower( modelFile );
+            if ( lowerFile.find( "cls" ) != std::string::npos )
+                continue;
+            std::string modelPath = utils::fs::toNative( f.path().string() );
+            TableModelInfo info;
+            info.id = id + "/" + modelFile;
+            info.name = id + " / " + modelFile;
+            info.modelPath = modelPath;
+            if ( lowerFile.find( "unet" ) != std::string::npos )
+                info.modelType = TABLE_MODEL_UNET;
+            else if ( lowerFile.find( "slanet" ) != std::string::npos )
+                info.modelType = TABLE_MODEL_SLANET_PLUS;
+            else
+                info.modelType = TABLE_MODEL_SLANET_PLUS;
+            LOG_INFO << "发现表格模型:" << info.id;
+            result.push_back( std::move( info ) );
+        }
+    }
+    std::sort( result.begin(), result.end(),
+               []( const TableModelInfo &a, const TableModelInfo &b ) { return a.id < b.id; } );
+    return result;
+}
+
+static std::vector<std::string> scanTableClsModels() {
+    std::vector<std::string> result;
+    std::string onnxDir = utils::fs::toNative( OnnxOCR_Dir );
+    std::string clsDir = utils::fs::toNative( onnxDir + "/table/cls" );
+    if ( !fs::exists( clsDir ) )
+        return result;
+    std::error_code ec;
+    for ( const auto &f : fs::directory_iterator( clsDir, ec ) ) {
+        if ( ec )
+            break;
+        if ( !f.is_regular_file() )
+            continue;
+        std::string ext = f.path().extension().string();
+        if ( ext != ".onnx" )
+            continue;
+        result.push_back( utils::fs::toNative( f.path().string() ) );
+        LOG_INFO << "发现表格类型检测模型:" << f.path().filename().string();
+    }
+    std::sort( result.begin(), result.end() );
+    return result;
+}
+
+static std::vector<ClsModelInfo> scanClsModels() {
+    std::vector<ClsModelInfo> result;
+    std::string onnxDir = utils::fs::toNative( OnnxOCR_Dir );
+    std::string clsDir = utils::fs::toNative( onnxDir + "/text_cls" );
+    if ( !fs::exists( clsDir ) )
+        return result;
+    std::error_code ec;
+    for ( const auto &entry : fs::directory_iterator( clsDir, ec ) ) {
+        if ( ec )
+            break;
+        if ( !entry.is_directory() )
+            continue;
+        auto dirPath = entry.path();
+        std::string id = dirPath.filename().string();
+        if ( id.empty() || id[0] == '.' )
+            continue;
+        std::error_code ec2;
+        for ( const auto &f : fs::directory_iterator( dirPath, ec2 ) ) {
+            if ( ec2 )
+                break;
+            if ( !f.is_regular_file() )
+                continue;
+            std::string ext = f.path().extension().string();
+            if ( ext != ".onnx" )
+                continue;
+            std::string modelFile = f.path().filename().string();
+            std::string modelPath = utils::fs::toNative( f.path().string() );
+            ClsModelInfo info;
+            info.id = id + "/" + modelFile;
+            info.name = id + " / " + modelFile;
+            info.modelPath = modelPath;
+            info.clsModelType = ( id.find( "orientation" ) != std::string::npos )
+                                    ? CLS_MODEL_ORIENTATION
+                                    : CLS_MODEL_ANGLE;
+            LOG_INFO << "发现分类模型:" << info.id;
+            result.push_back( std::move( info ) );
+        }
+    }
+    std::sort( result.begin(), result.end(),
+               []( const ClsModelInfo &a, const ClsModelInfo &b ) { return a.id < b.id; } );
+    return result;
+}
+
+static const std::vector<OcrModelInfo> &getOcrModelList() {
     static std::vector<OcrModelInfo> s_list = scanOcrModels();
     return s_list;
 }
 
-static const OcrModelInfo *findModelById( const std::string &id ) {
-    const auto &list = getModelList();
-    // 优先精确匹配
+static const std::vector<LayoutModelInfo> &getLayoutModelList() {
+    static std::vector<LayoutModelInfo> s_list = scanLayoutModels();
+    return s_list;
+}
+
+static const std::vector<TableModelInfo> &getTableModelList() {
+    static std::vector<TableModelInfo> s_list = scanTableModels();
+    return s_list;
+}
+
+static const std::vector<ClsModelInfo> &getClsModelList() {
+    static std::vector<ClsModelInfo> s_list = scanClsModels();
+    return s_list;
+}
+
+static const std::vector<std::string> &getTableClsModelList() {
+    static std::vector<std::string> s_list = scanTableClsModels();
+    return s_list;
+}
+
+static const OcrModelInfo *findOcrModelById( const std::string &id ) {
+    const auto &list = getOcrModelList();
     for ( const auto &m : list )
         if ( m.id == id )
             return &m;
-    // 回退：取第一个
     if ( !list.empty() )
         return &list[0];
     return nullptr;
 }
 
+static const LayoutModelInfo *findLayoutModelById( const std::string &id ) {
+    const auto &list = getLayoutModelList();
+    for ( const auto &m : list )
+        if ( m.id == id )
+            return &m;
+    if ( !list.empty() )
+        return &list[0];
+    return nullptr;
+}
+
+static const TableModelInfo *findTableModelById( const std::string &id ) {
+    const auto &list = getTableModelList();
+    for ( const auto &m : list )
+        if ( m.id == id )
+            return &m;
+    if ( !list.empty() )
+        return &list[0];
+    return nullptr;
+}
+
+static const ClsModelInfo *findClsModelById( const std::string &id ) {
+    const auto &list = getClsModelList();
+    for ( const auto &m : list )
+        if ( m.id == id )
+            return &m;
+    return nullptr;
+}
+
 // ========================================================================
-// OCR 引擎：懒加载 DLL + 模型，串行化调用，支持多模型切换
+// OCR 引擎：基于 OnnxOCR OcrDynamicLoader，懒加载 DLL + 模型，串行化调用
 // ========================================================================
+struct OcrRunParam {
+    int maxSideLen = 1024;
+    float boxScoreThresh = 0.5f;
+    float unClipRatio = 1.6f;
+};
+
 class OcrEngine {
 private:
-#ifdef _WIN32
-    HMODULE m_dll = nullptr;
-#endif
     std::mutex m_mutex;
-    OcrInitFn m_init = nullptr;
-    OcrInitLoggerFn m_initLogger = nullptr;
-    OcrDetectPathFn m_detectPath = nullptr;
-    OcrFreeResultFn m_freeResult = nullptr;
-    OcrDestroyFn m_destroy = nullptr;
-    OCR_HANDLE m_handle = nullptr;
+    std::unique_ptr<ocr::OcrDynamicLoader> m_loader;
+    OcrHandle *m_handle = nullptr;
+    DocLayoutYOLOHandle *m_layoutHandle = nullptr;
+    TableHandle *m_tableHandle = nullptr;
     std::string m_currentModelId;
+    std::string m_currentClsModelId;
+    std::string m_currentLayoutId;
+    std::string m_currentTableId;
     bool m_libraryLoadFailed = false;
     std::string m_lastError;
 
@@ -189,61 +375,133 @@ public:
         return inst;
     }
 
-    // 确保 DLL + 指定模型均已加载；成功返回 true
-    bool ensureLoaded( const std::string &modelId, std::string &err ) {
+    bool ensureLoaded( const std::string &modelId,
+                       const std::string &clsModelId,
+                       const std::string &layoutId,
+                       const std::string &tableId,
+                       const std::string &tableAlgo,
+                       const std::string &tableClsModelId,
+                       std::string &err ) {
         std::lock_guard<std::mutex> lk( m_mutex );
-        // 先确保 DLL 加载
         if ( !ensureDllLoadedInternal( err ) )
             return false;
-        // 查找模型信息
-        const OcrModelInfo *info = findModelById( modelId );
+        const OcrModelInfo *info = findOcrModelById( modelId );
         if ( !info ) {
-            err = "未找到有效的 OCR 模型目录（RapidOCR 下无 det.onnx/cls.onnx/rec.onnx/keys.txt 子目录）";
+            err = "未找到有效的 OCR 模型: " + modelId;
             LOG_ERROR << err;
             return false;
         }
-        // 已加载且模型匹配
-        if ( m_handle && m_currentModelId == info->id )
+        if ( m_handle && m_currentModelId == info->id ) {
+            bool clsChanged = !clsModelId.empty() && m_currentClsModelId != clsModelId;
+            bool layoutChanged = !layoutId.empty() && m_currentLayoutId != layoutId;
+            bool tableChanged = !tableId.empty() && m_currentTableId != tableId;
+            if ( !clsChanged && !layoutChanged && !tableChanged )
+                return true;
+            if ( clsChanged ) {
+                m_loader->destroy( m_handle );
+                m_handle = nullptr;
+                m_currentModelId.clear();
+                m_currentClsModelId.clear();
+                if ( !initModelInternal( *info, clsModelId, err ) )
+                    return false;
+                m_currentModelId = info->id;
+                m_currentClsModelId = clsModelId;
+            }
+            if ( layoutChanged && m_layoutHandle ) {
+                m_loader->doclayout_yolo_destroy( m_layoutHandle );
+                m_layoutHandle = nullptr;
+                m_currentLayoutId.clear();
+            }
+            if ( tableChanged && m_tableHandle ) {
+                m_loader->table_destroy( m_tableHandle );
+                m_tableHandle = nullptr;
+                m_currentTableId.clear();
+            }
+            if ( layoutChanged ) {
+                if ( !layoutId.empty() )
+                    initLayoutInternal( layoutId, err );
+                else
+                    initLayoutDefault( err );
+            }
+            if ( tableChanged ) {
+                if ( !tableId.empty() )
+                    initTableInternal( tableId, tableAlgo, tableClsModelId, err );
+                else
+                    initTableDefault( err );
+            }
             return true;
-        // 若已加载了别的模型，先销毁旧的
-        if ( m_handle && m_destroy ) {
-            m_destroy( m_handle );
-            m_handle = nullptr;
-            m_currentModelId.clear();
         }
-        return initModelInternal( *info, err );
+        if ( m_handle ) {
+            m_loader->destroy( m_handle );
+            m_handle = nullptr;
+        }
+        if ( m_layoutHandle ) {
+            m_loader->doclayout_yolo_destroy( m_layoutHandle );
+            m_layoutHandle = nullptr;
+        }
+        if ( m_tableHandle ) {
+            m_loader->table_destroy( m_tableHandle );
+            m_tableHandle = nullptr;
+        }
+        m_currentModelId.clear();
+        m_currentLayoutId.clear();
+        m_currentTableId.clear();
+        m_currentClsModelId.clear();
+        if ( !initModelInternal( *info, clsModelId, err ) )
+            return false;
+        m_currentClsModelId = clsModelId;
+        if ( !layoutId.empty() )
+            initLayoutInternal( layoutId, err );
+        else
+            initLayoutDefault( err );
+        if ( !tableId.empty() )
+            initTableInternal( tableId, tableAlgo, tableClsModelId, err );
+        else
+            initTableDefault( err );
+        return true;
     }
 
-    bool detect( const std::string &imgPath, const OCR_PARAM &param,
+    bool detect( const std::string &imgPath, const std::string &mode,
+                 int cropX1, int cropY1, int cropX2, int cropY2,
                  Server::json &out, std::string &err ) {
         std::lock_guard<std::mutex> lk( m_mutex );
-        if ( !m_handle ) {
+        if ( !m_handle || !m_loader ) {
             err = "OCR引擎未初始化";
             return false;
         }
 
-        OCR_RESULT result;
-        memset( &result, 0, sizeof( result ) );
+        if ( mode == "table" && m_tableHandle ) {
+            return detectTableOnly( imgPath, cropX1, cropY1, cropX2, cropY2, out, err );
+        }
 
-        OCR_PARAM p = param;
-        OCR_BOOL ok = m_detectPath( m_handle, imgPath.c_str(), "", &p, &result );
-        if ( !ok ) {
-            err = "OcrDetectPath 执行失败";
-            LOG_ERROR << "OCR识别失败 imgPath=" << imgPath;
+        if ( m_layoutHandle ) {
+            return detectWithLayout( imgPath, cropX1, cropY1, cropX2, cropY2, out, err );
+        }
+
+        OcrResultList results;
+        memset( &results, 0, sizeof( results ) );
+
+        int rc = m_loader->run_file( m_handle, imgPath.c_str(),
+                                     cropX1, cropY1, cropX2, cropY2, &results );
+        if ( rc != 0 ) {
+            const char *libErr = m_loader->last_error();
+            err = libErr ? std::string( "OCR识别失败: " ) + libErr : "OCR识别失败";
+            LOG_ERROR << "OCR识别失败 imgPath=" << imgPath << " err=" << err;
             return false;
         }
 
         Server::json blocks = Server::json::array();
         std::string fullText;
-        for ( unsigned long long i = 0; i < result.textBlocksLength; i++ ) {
-            const TEXT_BLOCK &tb = result.textBlocks[i];
-            std::string text = std::string( tb.text, tb.text + tb.textLength );
+        for ( int i = 0; i < results.count; i++ ) {
+            const OcrResult &r = results.items[i];
             Server::json box = Server::json::array();
-            for ( unsigned long long j = 0; j < tb.boxPointLength; j++ )
-                box.push_back( { { "x", tb.boxPoint[j].x }, { "y", tb.boxPoint[j].y } } );
+            for ( int j = 0; j < 4; j++ )
+                box.push_back( { { "x", r.box[j].x }, { "y", r.box[j].y } } );
+            std::string text = r.text ? r.text : "";
             blocks.push_back( {
+                { "type", std::string( "text" ) },
                 { "text", text },
-                { "score", tb.boxScore },
+                { "score", r.score },
                 { "box", box },
             } );
             if ( !fullText.empty() )
@@ -254,25 +512,26 @@ public:
         out = {
             { "text", fullText },
             { "blocks", blocks },
-            { "stats", { { "dbNetTime", result.dbNetTime }, { "detectTime", result.detectTime }, { "blockCount", result.textBlocksLength } } } };
+            { "stats", { { "blockCount", results.count } } } };
 
-        m_freeResult( &result );
-        LOG_DEBUG << "OCR识别成功 文本块数=" << result.textBlocksLength
-                  << " 检测耗时=" << result.detectTime << "ms";
+        m_loader->free_results( &results );
+        LOG_DEBUG << "OCR识别成功 文本块数=" << results.count;
         return true;
     }
 
     ~OcrEngine() {
-        if ( m_handle && m_destroy ) {
-            m_destroy( m_handle );
+        if ( m_tableHandle && m_loader ) {
+            m_loader->table_destroy( m_tableHandle );
+            m_tableHandle = nullptr;
+        }
+        if ( m_layoutHandle && m_loader ) {
+            m_loader->doclayout_yolo_destroy( m_layoutHandle );
+            m_layoutHandle = nullptr;
+        }
+        if ( m_handle && m_loader ) {
+            m_loader->destroy( m_handle );
             m_handle = nullptr;
         }
-#ifdef _WIN32
-        if ( m_dll ) {
-            FreeLibrary( m_dll );
-            m_dll = nullptr;
-        }
-#endif
     }
 
 private:
@@ -280,82 +539,533 @@ private:
     OcrEngine( const OcrEngine & ) = delete;
     OcrEngine &operator=( const OcrEngine & ) = delete;
 
-    // 只负责加载 DLL + 获取函数指针；成功或已加载返回 true
     bool ensureDllLoadedInternal( std::string &err ) {
-#ifdef _WIN32
-        if ( m_dll )
+        if ( m_loader )
             return true;
         if ( m_libraryLoadFailed ) {
             err = m_lastError;
             return false;
         }
 
-        // 先在 RapidOCR 子目录查找，再在程序根目录查找
-        std::vector<std::string> candidates = {
-            utils::fs::toNative( Config::getAppPath() + "/RapidOCR/RapidOcrOnnx.dll" ),
-            utils::fs::toNative( Config::getAppPath() + "/RapidOcrOnnx.dll" ),
-        };
-        for ( const auto &c : candidates ) {
-            if ( fs::exists( c ) ) {
-                m_dll = LoadLibraryA( c.c_str() );
-                if ( m_dll ) {
-                    LOG_INFO << "已加载 RapidOCR DLL: " << c;
-                    break;
-                }
-                LOG_WARN << "LoadLibrary 失败 (" << c << "): " << GetLastError();
-            }
-        }
-        if ( !m_dll ) {
-            m_lastError = "无法加载 RapidOcrOnnx.dll，请确认该文件存在于 RapidOCR 目录或程序目录";
+        std::string dllPath = utils::fs::toNative( OnnxOCR_Dir + "/OnnxOCR.dll" );
+        if ( !fs::exists( dllPath ) ) {
+            m_lastError = "无法加载 OnnxOCR.dll，请确认该文件存在于 " + OnnxOCR_Dir + " 目录";
             m_libraryLoadFailed = true;
-            LOG_ERROR << m_lastError;
+            LOG_ERROR << m_lastError << " path=" << dllPath;
             err = m_lastError;
             return false;
         }
 
-        m_init = (OcrInitFn)GetProcAddress( m_dll, "OcrInit" );
-        m_initLogger = (OcrInitLoggerFn)GetProcAddress( m_dll, "OcrInitLogger" );
-        m_detectPath = (OcrDetectPathFn)GetProcAddress( m_dll, "OcrDetectPath" );
-        m_freeResult = (OcrFreeResultFn)GetProcAddress( m_dll, "OcrFreeResult" );
-        m_destroy = (OcrDestroyFn)GetProcAddress( m_dll, "OcrDestroy" );
-
-        if ( !m_init || !m_initLogger || !m_detectPath || !m_freeResult || !m_destroy ) {
-            m_lastError = "DLL函数指针获取失败，RapidOcrOnnx.dll版本可能不兼容";
-            LOG_ERROR << m_lastError;
-            if ( m_dll ) {
-                FreeLibrary( m_dll );
-                m_dll = nullptr;
-            }
+        try {
+            m_loader = std::make_unique<ocr::OcrDynamicLoader>( dllPath );
+            LOG_INFO << "已加载 OnnxOCR DLL: " << dllPath;
+        } catch ( const ocr::DynamicLoaderError &e ) {
+            m_lastError = std::string( "加载 OnnxOCR.dll 失败: " ) + e.what();
             m_libraryLoadFailed = true;
+            LOG_ERROR << m_lastError;
             err = m_lastError;
             return false;
         }
         return true;
-#else
-        m_libraryLoadFailed = true;
-        return false;
-#endif
     }
 
-    // 初始化指定模型（DLL 必须已加载）
-    bool initModelInternal( const OcrModelInfo &info, std::string &err ) {
-        m_handle = m_init( info.detPath.c_str(), info.clsPath.c_str(),
-                           info.recPath.c_str(), info.keyPath.c_str(), 4 );
+    bool initModelInternal( const OcrModelInfo &info, const std::string &clsModelId, std::string &err ) {
+        OcrConfig cfg = {};
+        cfg.det_model_path = info.detPath.c_str();
+        cfg.rec_model_path = info.recPath.c_str();
+        cfg.rec_char_dict_path = info.keyPath.c_str();
+
+        const ClsModelInfo *clsInfo = nullptr;
+        if ( !clsModelId.empty() )
+            clsInfo = findClsModelById( clsModelId );
+
+        if ( clsInfo && !clsInfo->modelPath.empty() && fs::exists( clsInfo->modelPath ) ) {
+            cfg.cls_model_path = clsInfo->modelPath.c_str();
+            cfg.cls_model_type = clsInfo->clsModelType;
+        } else {
+            cfg.cls_model_path = nullptr;
+            cfg.cls_model_type = CLS_MODEL_ANGLE;
+        }
+        cfg.use_gpu = 0;
+        cfg.gpu_id = 0;
+
+        cfg.det_limit_side_len = 960.f;
+        cfg.det_limit_type = "max";
+        cfg.det_db_thresh = 0.3f;
+        cfg.det_db_box_thresh = 0.6f;
+        cfg.det_db_unclip_ratio = 1.5f;
+        cfg.use_dilation = 0;
+        cfg.det_db_score_mode = "fast";
+        cfg.det_box_type = "quad";
+
+        cfg.rec_batch_num = 6;
+        cfg.rec_image_c = 3;
+        cfg.rec_image_h = 48;
+        cfg.rec_image_w = 320;
+        cfg.use_space_char = 1;
+        cfg.drop_score = 0.5f;
+
+        cfg.cls_batch_num = 6;
+        cfg.cls_image_c = 3;
+        cfg.cls_image_h = 48;
+        cfg.cls_image_w = 192;
+        cfg.cls_thresh = 0.9f;
+
+        m_handle = m_loader->create( &cfg );
         if ( !m_handle ) {
-            m_lastError = "OcrInit 初始化失败 (模型: " + info.id + ")";
+            const char *libErr = m_loader->last_error();
+            m_lastError = libErr ? std::string( "OnnxOCR 初始化失败: " ) + libErr
+                                 : "OnnxOCR 初始化失败 (模型: " + info.id + ")";
             LOG_ERROR << m_lastError;
             err = m_lastError;
             return false;
         }
-        m_initLogger( m_handle, false, false, false );
         m_currentModelId = info.id;
         LOG_INFO << "OCR 引擎初始化成功，模型: " << info.id;
         return true;
     }
+
+    void initLayoutInternal( const std::string &layoutId, std::string &err ) {
+        if ( m_layoutHandle )
+            return;
+        const LayoutModelInfo *info = findLayoutModelById( layoutId );
+        if ( !info ) {
+            LOG_WARN << "未找到版面模型: " << layoutId;
+            return;
+        }
+        DocLayoutYOLOConfig cfg = {};
+        cfg.model_path = info->modelPath.c_str();
+        cfg.model_type = info->modelType;
+        cfg.use_gpu = 0;
+        cfg.gpu_id = 0;
+        cfg.conf_thresh = 0.5f;
+        cfg.iou_thresh = 0.5f;
+
+        m_layoutHandle = m_loader->doclayout_yolo_create( &cfg );
+        if ( !m_layoutHandle ) {
+            const char *libErr = m_loader->last_error();
+            LOG_WARN << "版面分析引擎初始化失败（将回退为纯OCR）: "
+                     << ( libErr ? libErr : "unknown" );
+        } else {
+            m_currentLayoutId = layoutId;
+            LOG_INFO << "版面分析引擎初始化成功，模型: " << layoutId;
+        }
+    }
+
+    void initLayoutDefault( std::string &err ) {
+        const auto &list = getLayoutModelList();
+        if ( list.empty() ) {
+            LOG_WARN << "无可用版面模型，跳过版面分析";
+            return;
+        }
+        initLayoutInternal( list[0].id, err );
+    }
+
+    void initTableInternal( const std::string &tableId,
+                            const std::string &tableAlgo,
+                            const std::string &tableClsModelId,
+                            std::string &err ) {
+        if ( m_tableHandle )
+            return;
+        const TableModelInfo *info = findTableModelById( tableId );
+        if ( !info ) {
+            LOG_WARN << "未找到表格模型: " << tableId;
+            return;
+        }
+        TableConfig cfg = {};
+        cfg.model_path = info->modelPath.c_str();
+        cfg.model_type = info->modelType;
+
+        if ( tableAlgo == "combined" ) {
+            if ( !tableClsModelId.empty() && fs::exists( tableClsModelId ) )
+                cfg.cls_model_path = tableClsModelId.c_str();
+            else {
+                const auto &clsList = getTableClsModelList();
+                if ( !clsList.empty() )
+                    cfg.cls_model_path = clsList[0].c_str();
+                else
+                    cfg.cls_model_path = nullptr;
+            }
+            const auto &allModels = getTableModelList();
+            for ( const auto &m : allModels ) {
+                if ( m.modelType == TABLE_MODEL_UNET && !m.modelPath.empty() ) {
+                    cfg.unet_model_path = m.modelPath.c_str();
+                    break;
+                }
+            }
+        } else {
+            cfg.cls_model_path = nullptr;
+            cfg.unet_model_path = nullptr;
+        }
+
+        cfg.use_gpu = 0;
+        cfg.gpu_id = 0;
+
+        m_tableHandle = m_loader->table_create( &cfg );
+        if ( !m_tableHandle ) {
+            const char *libErr = m_loader->last_error();
+            LOG_WARN << "表格识别引擎初始化失败（表格将降级为OCR）: "
+                     << ( libErr ? libErr : "unknown" );
+        } else {
+            m_currentTableId = tableId;
+            LOG_INFO << "表格识别引擎初始化成功，模型: " << tableId
+                     << " 算法: " << tableAlgo;
+        }
+    }
+
+    void initTableDefault( std::string &err ) {
+        const auto &list = getTableModelList();
+        if ( list.empty() ) {
+            LOG_WARN << "无可用表格模型，跳过表格识别";
+            return;
+        }
+        initTableInternal( list[0].id, {}, {}, err );
+    }
+
+    static std::string layoutClassToType( const std::string &className ) {
+        if ( className == "title" || className == "Title" )
+            return "title";
+        if ( className == "text" || className == "Text" || className == "paragraph" )
+            return "text";
+        if ( className == "figure" || className == "Figure" || className == "image" )
+            return "figure";
+        if ( className == "figure_caption" || className == "Figure Caption" )
+            return "figure_caption";
+        if ( className == "table" || className == "Table" )
+            return "table";
+        if ( className == "table_caption" || className == "Table Caption" )
+            return "table_caption";
+        if ( className == "header" || className == "Header" )
+            return "header";
+        if ( className == "footer" || className == "Footer" )
+            return "footer";
+        if ( className == "reference" || className == "Reference" )
+            return "reference";
+        if ( className == "equation" || className == "Equation" )
+            return "equation";
+        if ( className == "list" || className == "List" )
+            return "list";
+        if ( className == "abandon" )
+            return "abandon";
+        return "text";
+    }
+
+    bool detectWithLayout( const std::string &imgPath,
+                           int cropX1, int cropY1, int cropX2, int cropY2,
+                           Server::json &out, std::string &err ) {
+        DocLayoutItemList layoutResults;
+        memset( &layoutResults, 0, sizeof( layoutResults ) );
+
+        int layoutRc = m_loader->doclayout_yolo_run_file( m_layoutHandle, imgPath.c_str(), &layoutResults );
+        if ( layoutRc != 0 ) {
+            const char *libErr = m_loader->last_error();
+            LOG_WARN << "版面分析失败，回退为纯OCR: " << ( libErr ? libErr : "unknown" );
+            m_loader->doc_layout_free_results( &layoutResults );
+            OcrResultList ocrResults;
+            memset( &ocrResults, 0, sizeof( ocrResults ) );
+            int rc = m_loader->run_file( m_handle, imgPath.c_str(),
+                                         cropX1, cropY1, cropX2, cropY2, &ocrResults );
+            if ( rc != 0 ) {
+                libErr = m_loader->last_error();
+                err = libErr ? std::string( "OCR识别失败: " ) + libErr : "OCR识别失败";
+                return false;
+            }
+            Server::json blocks = Server::json::array();
+            std::string fullText;
+            for ( int i = 0; i < ocrResults.count; i++ ) {
+                const OcrResult &r = ocrResults.items[i];
+                Server::json box = Server::json::array();
+                for ( int j = 0; j < 4; j++ )
+                    box.push_back( { { "x", r.box[j].x }, { "y", r.box[j].y } } );
+                std::string text = r.text ? r.text : "";
+                blocks.push_back( { { "type", std::string( "text" ) }, { "text", text }, { "score", r.score }, { "box", box } } );
+                if ( !fullText.empty() )
+                    fullText += "\n";
+                fullText += text;
+            }
+            out = { { "text", fullText }, { "blocks", blocks }, { "stats", { { "blockCount", ocrResults.count } } } };
+            m_loader->free_results( &ocrResults );
+            return true;
+        }
+
+        LOG_DEBUG << "版面分析完成 区域数=" << layoutResults.count;
+
+        std::vector<std::pair<int, DocLayoutItem>> sortedItems;
+        for ( int i = 0; i < layoutResults.count; i++ )
+            sortedItems.emplace_back( layoutResults.items[i].order, layoutResults.items[i] );
+        std::sort( sortedItems.begin(), sortedItems.end(),
+                   []( const auto &a, const auto &b ) { return a.first < b.first; } );
+
+        Server::json blocks = Server::json::array();
+        std::string fullText;
+        int textBlockCount = 0;
+
+        for ( auto &[order, item] : sortedItems ) {
+            std::string className = item.class_name ? item.class_name : "";
+            std::string type = layoutClassToType( className );
+
+            if ( type == "abandon" )
+                continue;
+
+            Server::json boxJson = Server::json::array();
+            float x1 = item.box[0], y1 = item.box[1], x2 = item.box[2], y2 = item.box[3];
+            boxJson.push_back( { { "x", x1 }, { "y", y1 } } );
+            boxJson.push_back( { { "x", x2 }, { "y", y1 } } );
+            boxJson.push_back( { { "x", x2 }, { "y", y2 } } );
+            boxJson.push_back( { { "x", x1 }, { "y", y2 } } );
+
+            if ( type == "figure" ) {
+                blocks.push_back( {
+                    { "type", std::string( "figure" ) },
+                    { "text", std::string( "" ) },
+                    { "score", item.score },
+                    { "box", boxJson },
+                    { "class", className },
+                } );
+                continue;
+            }
+
+            int cx1 = static_cast<int>( std::floor( x1 ) );
+            int cy1 = static_cast<int>( std::floor( y1 ) );
+            int cx2 = static_cast<int>( std::ceil( x2 ) );
+            int cy2 = static_cast<int>( std::ceil( y2 ) );
+
+            if ( type == "table" && m_tableHandle ) {
+                Server::json tableJson = recognizeTable( imgPath, cx1, cy1, cx2, cy2 );
+                if ( !tableJson.is_null() ) {
+                    blocks.push_back( {
+                        { "type", std::string( "table" ) },
+                        { "text", std::string( "" ) },
+                        { "score", item.score },
+                        { "box", boxJson },
+                        { "class", className },
+                        { "table", tableJson },
+                    } );
+                    textBlockCount++;
+                    continue;
+                }
+            }
+
+            OcrResultList ocrResults;
+            memset( &ocrResults, 0, sizeof( ocrResults ) );
+            int rc = m_loader->run_file( m_handle, imgPath.c_str(),
+                                         cx1, cy1, cx2, cy2, &ocrResults );
+            if ( rc != 0 ) {
+                m_loader->free_results( &ocrResults );
+                continue;
+            }
+
+            std::string regionText;
+            for ( int i = 0; i < ocrResults.count; i++ ) {
+                const OcrResult &r = ocrResults.items[i];
+                std::string t = r.text ? r.text : "";
+                if ( !regionText.empty() )
+                    regionText += "\n";
+                regionText += t;
+            }
+            m_loader->free_results( &ocrResults );
+
+            if ( regionText.empty() )
+                continue;
+
+            blocks.push_back( {
+                { "type", type },
+                { "text", regionText },
+                { "score", item.score },
+                { "box", boxJson },
+                { "class", className },
+            } );
+            textBlockCount++;
+            if ( !fullText.empty() )
+                fullText += "\n";
+            fullText += regionText;
+        }
+
+        m_loader->doc_layout_free_results( &layoutResults );
+
+        out = {
+            { "text", fullText },
+            { "blocks", blocks },
+            { "stats", { { "blockCount", textBlockCount }, { "layoutCount", layoutResults.count } } } };
+
+        LOG_DEBUG << "文档识别完成 版面区域=" << layoutResults.count << " 文本块=" << textBlockCount;
+        return true;
+    }
+
+    bool detectTableOnly( const std::string &imgPath,
+                          int cropX1, int cropY1, int cropX2, int cropY2,
+                          Server::json &out, std::string &err ) {
+        Server::json tableJson = recognizeTable( imgPath, cropX1, cropY1, cropX2, cropY2 );
+        if ( tableJson.is_null() ) {
+            err = "表格识别失败";
+            return false;
+        }
+
+        Server::json blocks = Server::json::array();
+
+        Server::json cellBoxes = tableJson.value( "cellBoxes", Server::json::array() );
+        if ( cellBoxes.is_array() && !cellBoxes.empty() ) {
+            float overallMinX = 1e9f, overallMinY = 1e9f;
+            float overallMaxX = 0, overallMaxY = 0;
+            for ( const auto &cb : cellBoxes ) {
+                if ( !cb.is_array() || cb.size() < 4 )
+                    continue;
+                float bx1 = cb[0].get<float>(), by1 = cb[1].get<float>();
+                float bx2 = cb[2].get<float>(), by2 = cb[3].get<float>();
+                if ( bx1 < overallMinX )
+                    overallMinX = bx1;
+                if ( by1 < overallMinY )
+                    overallMinY = by1;
+                if ( bx2 > overallMaxX )
+                    overallMaxX = bx2;
+                if ( by2 > overallMaxY )
+                    overallMaxY = by2;
+            }
+            if ( overallMinX < 1e9f ) {
+                Server::json tableBox = Server::json::array();
+                tableBox.push_back( { { "x", overallMinX }, { "y", overallMinY } } );
+                tableBox.push_back( { { "x", overallMaxX }, { "y", overallMinY } } );
+                tableBox.push_back( { { "x", overallMaxX }, { "y", overallMaxY } } );
+                tableBox.push_back( { { "x", overallMinX }, { "y", overallMaxY } } );
+                blocks.push_back( {
+                    { "type", std::string( "table" ) },
+                    { "text", std::string( "" ) },
+                    { "score", 1.0 },
+                    { "box", tableBox },
+                    { "table", tableJson },
+                } );
+            } else {
+                blocks.push_back( {
+                    { "type", std::string( "table" ) },
+                    { "text", std::string( "" ) },
+                    { "score", 1.0 },
+                    { "box", Server::json::array() },
+                    { "table", tableJson },
+                } );
+            }
+        } else {
+            Server::json boxJson = Server::json::array();
+            if ( cropX1 > 0 || cropY1 > 0 || cropX2 > 0 || cropY2 > 0 ) {
+                boxJson.push_back( { { "x", cropX1 }, { "y", cropY1 } } );
+                boxJson.push_back( { { "x", cropX2 }, { "y", cropY1 } } );
+                boxJson.push_back( { { "x", cropX2 }, { "y", cropY2 } } );
+                boxJson.push_back( { { "x", cropX1 }, { "y", cropY2 } } );
+            }
+            blocks.push_back( {
+                { "type", std::string( "table" ) },
+                { "text", std::string( "" ) },
+                { "score", 1.0 },
+                { "box", boxJson },
+                { "table", tableJson },
+            } );
+        }
+
+        out = {
+            { "text", std::string( "" ) },
+            { "blocks", blocks },
+            { "stats", { { "blockCount", 1 }, { "tableRows", tableJson.value( "rowCount", 0 ) }, { "tableCols", tableJson.value( "colCount", 0 ) } } } };
+
+        LOG_DEBUG << "表格识别完成 行=" << tableJson.value( "rowCount", 0 )
+                  << " 列=" << tableJson.value( "colCount", 0 );
+        return true;
+    }
+
+    Server::json recognizeTable( const std::string &imgPath,
+                                 int cropX1, int cropY1, int cropX2, int cropY2 ) {
+        if ( !m_tableHandle )
+            return {};
+
+        TableResult tableResult;
+        memset( &tableResult, 0, sizeof( tableResult ) );
+
+        int rc = m_loader->table_run_file( m_tableHandle, imgPath.c_str(), &tableResult );
+        if ( rc != 0 || tableResult.cell_count <= 0 || !tableResult.logic_points ) {
+            m_loader->table_free_result( &tableResult );
+            LOG_DEBUG << "表格结构识别失败或无单元格";
+            return {};
+        }
+
+        int maxRow = 0, maxCol = 0;
+        for ( int i = 0; i < tableResult.cell_count; ++i ) {
+            const RectBox &lp = tableResult.logic_points[i];
+            if ( lp.y1 + 1 > maxRow )
+                maxRow = lp.y1 + 1;
+            if ( lp.y2 + 1 > maxCol )
+                maxCol = lp.y2 + 1;
+        }
+        if ( maxRow <= 0 || maxCol <= 0 ) {
+            m_loader->table_free_result( &tableResult );
+            return {};
+        }
+
+        std::vector<std::vector<std::string>> grid(
+            maxRow, std::vector<std::string>( maxCol ) );
+        Server::json cellBoxes = Server::json::array();
+
+        for ( int i = 0; i < tableResult.cell_count; ++i ) {
+            const TableCell &cell = tableResult.cells[i];
+            const RectBox &lp = tableResult.logic_points[i];
+
+            float minX = cell.bbox[0].x, minY = cell.bbox[0].y;
+            float maxX = cell.bbox[0].x, maxY = cell.bbox[0].y;
+            for ( int k = 1; k < 4; ++k ) {
+                float cx = cell.bbox[k].x;
+                float cy = cell.bbox[k].y;
+                if ( cx < minX )
+                    minX = cx;
+                if ( cx > maxX )
+                    maxX = cx;
+                if ( cy < minY )
+                    minY = cy;
+                if ( cy > maxY )
+                    maxY = cy;
+            }
+
+            cellBoxes.push_back( { minX, minY, maxX, maxY } );
+
+            int x1 = static_cast<int>( minX );
+            int y1 = static_cast<int>( minY );
+            int x2 = static_cast<int>( maxX );
+            int y2 = static_cast<int>( maxY );
+
+            OcrResultList ocrResults;
+            memset( &ocrResults, 0, sizeof( ocrResults ) );
+            int ocrRc = m_loader->run_file( m_handle, imgPath.c_str(),
+                                            x1, y1, x2, y2, &ocrResults );
+            if ( ocrRc == 0 ) {
+                std::string cellText;
+                for ( int j = 0; j < ocrResults.count; ++j ) {
+                    const char *t = ocrResults.items[j].text;
+                    if ( t && t[0] != '\0' ) {
+                        if ( !cellText.empty() )
+                            cellText += " ";
+                        cellText += t;
+                    }
+                }
+                for ( int r = lp.x1; r <= lp.y1 && r < maxRow; ++r )
+                    for ( int c = lp.x2; c <= lp.y2 && c < maxCol; ++c )
+                        grid[r][c] = cellText;
+            }
+            m_loader->free_results( &ocrResults );
+        }
+
+        m_loader->table_free_result( &tableResult );
+
+        Server::json rows = Server::json::array();
+        for ( int r = 0; r < maxRow; ++r ) {
+            Server::json row = Server::json::array();
+            for ( int c = 0; c < maxCol; ++c )
+                row.push_back( grid[r][c] );
+            rows.push_back( row );
+        }
+
+        LOG_DEBUG << "表格识别成功 行=" << maxRow << " 列=" << maxCol << " 单元格=" << tableResult.cell_count;
+        return { { "rows", rows }, { "rowCount", maxRow }, { "colCount", maxCol }, { "cellBoxes", cellBoxes } };
+    }
 };
 
 // ========================================================================
-// 异步任务系统：单 worker 串行处理 OCR（detect 内部已串行，没必要并发）
+// 异步任务系统
 // ========================================================================
 enum class TaskStatus : int {
     Queued = 0,
@@ -366,13 +1076,19 @@ enum class TaskStatus : int {
 
 struct OcrTask {
     std::string id;
-    std::string imgPath; // 临时文件路径
-    std::string modelId; // 使用的模型ID
-    OCR_PARAM param{};
-    CropRect crop; // 用户选区（原图坐标），无效=全图识别
+    std::string imgPath;
+    std::string modelId;
+    std::string clsModelId;
+    std::string layoutId;
+    std::string tableId;
+    std::string tableAlgo;
+    std::string tableClsModelId;
+    std::string mode;
+    OcrRunParam param{};
+    CropRect crop;
     TaskStatus status = TaskStatus::Queued;
     std::string error;
-    Server::json result; // 成功时填充
+    Server::json result;
     int64_t createdAtMs = 0;
     int64_t startedAtMs = 0;
     int64_t finishedAtMs = 0;
@@ -389,18 +1105,29 @@ public:
         m_worker = std::thread( [this] { workerLoop(); } );
     }
 
-    ~TaskManager() {
+    void shutdown() {
         {
             std::lock_guard<std::mutex> lk( m_mutex );
+            if ( m_shutdown )
+                return;
             m_shutdown = true;
         }
         m_cv.notify_all();
         if ( m_worker.joinable() )
             m_worker.join();
+        if ( m_cleanup.joinable() )
+            m_cleanup.join();
     }
 
-    std::string submit( std::string imgPath, std::string modelId,
-                        const OCR_PARAM &param, const CropRect &crop = {} ) {
+    ~TaskManager() {
+        shutdown();
+    }
+
+    std::string submit( std::string imgPath, std::string modelId, std::string clsModelId,
+                        std::string layoutId, std::string tableId,
+                        std::string tableAlgo, std::string tableClsModelId,
+                        std::string mode,
+                        const OcrRunParam &param, const CropRect &crop = {} ) {
         int64_t nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                             std::chrono::system_clock::now().time_since_epoch() )
                             .count();
@@ -410,6 +1137,12 @@ public:
         t->id = id;
         t->imgPath = std::move( imgPath );
         t->modelId = std::move( modelId );
+        t->clsModelId = std::move( clsModelId );
+        t->layoutId = std::move( layoutId );
+        t->tableId = std::move( tableId );
+        t->tableAlgo = std::move( tableAlgo );
+        t->tableClsModelId = std::move( tableClsModelId );
+        t->mode = std::move( mode );
         t->param = param;
         t->crop = crop;
         t->createdAtMs = nowMs;
@@ -419,9 +1152,8 @@ public:
             m_tasks[id] = t;
             m_queue.push( t );
         }
-        m_cv.notify_one();
+        m_cv.notify_all();
 
-        // 启动清理线程（首次）
         std::call_once( m_cleanupOnce, [this] {
             m_cleanup = std::thread( [this] { cleanupLoop(); } );
         } );
@@ -459,7 +1191,6 @@ public:
         return true;
     }
 
-    // 读取完结果后，可立刻释放结果占用和临时文件（但仍在 m_tasks 里保留一小段让重复 status 查询返回 404/410 或失败态）
     void dismiss( const std::string &id ) {
         std::lock_guard<std::mutex> lk( m_mutex );
         auto it = m_tasks.find( id );
@@ -481,8 +1212,15 @@ private:
                 task = m_queue.front();
                 m_queue.pop();
             }
-
-            runTask( task );
+            try {
+                runTask( task );
+            } catch ( const std::exception &e ) {
+                LOG_ERROR << "OCR任务异常: " << e.what();
+                finishTask( task, TaskStatus::Failed, {}, std::string( "任务异常: " ) + e.what() );
+            } catch ( ... ) {
+                LOG_ERROR << "OCR任务未知异常";
+                finishTask( task, TaskStatus::Failed, {}, "任务未知异常" );
+            }
         }
     }
 
@@ -497,24 +1235,21 @@ private:
             t->startedAtMs = startMs;
         }
 
-        // 首次请求才初始化引擎（避免懒加载阻塞 worker 启动）
         std::string err;
-        if ( !OcrEngine::instance().ensureLoaded( t->modelId, err ) ) {
+        if ( !OcrEngine::instance().ensureLoaded( t->modelId, t->clsModelId, t->layoutId, t->tableId, t->tableAlgo, t->tableClsModelId, err ) ) {
             finishTask( t, TaskStatus::Failed, {}, "OCR引擎不可用: " + err );
             return;
         }
 
-        // 若提供选区：先裁剪到临时 PNG
         std::string usePath = t->imgPath;
         std::string croppedPath;
-        CropRect appliedCrop; // 实际生效的 crop（夹紧后）
+        CropRect appliedCrop;
         if ( t->crop.valid() && !t->imgPath.empty() ) {
             std::string cropErr;
             croppedPath = cropImageToTemp( t->imgPath, t->crop, cropErr );
             if ( !croppedPath.empty() ) {
                 usePath = croppedPath;
                 appliedCrop = t->crop;
-                // 记录实际裁剪窗口（此处未读取真实夹紧值，采用用户传入的；若有差异不影响偏移计算，因为 offset=x,y 是用户原图坐标）
                 LOG_DEBUG << "OCR 使用裁剪区 " << appliedCrop.w << "x" << appliedCrop.h
                           << " @(" << appliedCrop.x << "," << appliedCrop.y << ")";
             } else {
@@ -522,19 +1257,18 @@ private:
             }
         }
 
-        Server::json out;
-        bool ok = OcrEngine::instance().detect( usePath, t->param, out, err );
+        int cx1 = -1, cy1 = -1, cx2 = -1, cy2 = -1;
 
-        // 清理裁剪临时文件（不管成功与否都释放）
+        Server::json out;
+        bool ok = OcrEngine::instance().detect( usePath, t->mode, cx1, cy1, cx2, cy2, out, err );
+
         if ( !croppedPath.empty() && fs::exists( croppedPath ) ) {
             std::error_code ec;
             fs::remove( croppedPath, ec );
         }
 
-        // OCR 成功后：坐标回写偏移 + 塞入 crop 信息
         if ( ok && appliedCrop.valid() ) {
             applyCropOffsetToResult( out, appliedCrop.x, appliedCrop.y );
-            // 裁剪区信息附带给前端显示
             out["crop"] = {
                 { "x", appliedCrop.x },
                 { "y", appliedCrop.y },
@@ -547,7 +1281,6 @@ private:
     }
 
     void finishTask( std::shared_ptr<OcrTask> t, TaskStatus s, Server::json data, std::string errMsg ) {
-        // OCR 完成即释放临时文件（结果已在 data 里），仅保留元信息一段时间
         std::error_code ec;
         if ( !t->imgPath.empty() && fs::exists( t->imgPath ) )
             fs::remove( t->imgPath, ec );
@@ -567,26 +1300,23 @@ private:
         }
     }
 
-    // 任务对象和内存资源清理
     void cleanupTask( std::shared_ptr<OcrTask> &t ) {
         if ( !t->imgPath.empty() ) {
             std::error_code ec;
             fs::remove( t->imgPath, ec );
             t->imgPath.clear();
         }
-        t->result = Server::json(); // 释放大 JSON
+        t->result = Server::json();
     }
 
     void cleanupLoop() {
-        // 每 30s 扫描一次：完成/失败的结果保留 5 分钟，超时则丢弃元信息
         using namespace std::chrono_literals;
         for ( ;; ) {
             {
                 std::unique_lock<std::mutex> lk( m_mutex );
-                if ( m_shutdown )
+                if ( m_cv.wait_for( lk, 30s, [this] { return m_shutdown; } ) )
                     return;
             }
-            std::this_thread::sleep_for( 30s );
             int64_t nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
                                 std::chrono::system_clock::now().time_since_epoch() )
                                 .count();
@@ -604,7 +1334,6 @@ private:
                         toErase.push_back( kv.first );
                     }
                 } else if ( !t->finishedAtMs && ( nowMs - t->createdAtMs ) > 20 * 60 * 1000 ) {
-                    // 排队/运行超过 20 分钟的异常任务也清理
                     cleanupTask( t );
                     toErase.push_back( kv.first );
                 }
@@ -625,18 +1354,10 @@ private:
 };
 
 // ========================================================================
-// 公共辅助：从 req.form（httplib 的 MultipartFormData，含 fields/files）抽参数/文件/写临时文件
+// 辅助函数
 // ========================================================================
-static OCR_PARAM parseParamsFromForm( const httplib::MultipartFormData &form ) {
-    OCR_PARAM param;
-    param.padding = 10;
-    param.maxSideLen = 1024;
-    param.boxScoreThresh = 0.5f;
-    param.boxThresh = 0.3f;
-    param.unClipRatio = 1.6f;
-    param.doAngle = 1;
-    param.mostAngle = 0;
-
+static OcrRunParam parseParamsFromForm( const httplib::MultipartFormData &form ) {
+    OcrRunParam param;
     auto parseInt = [&]( const char *field, int minV, int maxV, int defV ) -> int {
         if ( !form.has_field( field ) )
             return defV;
@@ -657,14 +1378,9 @@ static OCR_PARAM parseParamsFromForm( const httplib::MultipartFormData &form ) {
             return defV;
         }
     };
-
     param.maxSideLen = parseInt( "maxSideLen", 32, 4096, 1024 );
     param.boxScoreThresh = parseFloat( "boxScoreThresh", 0.1f, 0.9f, 0.5f );
     param.unClipRatio = parseFloat( "unClipRatio", 0.5f, 4.0f, 1.6f );
-    if ( form.has_field( "doAngle" ) ) {
-        std::string v = form.get_field( "doAngle" );
-        param.doAngle = ( v == "1" || v == "true" ) ? 1 : 0;
-    }
     return param;
 }
 
@@ -694,7 +1410,6 @@ static CropRect parseCropFromForm( const httplib::MultipartFormData &form ) {
     return c;
 }
 
-// 使用 stb_image 加载原图，按 crop 裁剪后写临时 PNG 文件；失败返回空串
 static std::string cropImageToTemp( const std::string &srcPath, const CropRect &crop, std::string &errMsg ) {
     if ( !crop.valid() ) {
         errMsg = "invalid crop rect";
@@ -706,16 +1421,11 @@ static std::string cropImageToTemp( const std::string &srcPath, const CropRect &
         errMsg = std::string( "stbi_load 失败: " ) + ( stbi_failure_reason() ? stbi_failure_reason() : "unknown" );
         return {};
     }
-    // 夹紧裁剪区
     int cx = std::max( 0, std::min( w - 1, crop.x ) );
     int cy = std::max( 0, std::min( h - 1, crop.y ) );
     int cw = std::max( 1, std::min( w - cx, crop.w ) );
     int ch = std::max( 1, std::min( h - cy, crop.h ) );
-    if ( cw != crop.w || ch != crop.h ) {
-        LOG_WARN << "OCR 裁剪区被夹紧 原=" << crop.w << "x" << crop.h << " 实际=" << cw << "x" << ch;
-    }
 
-    // 复制矩形区域（通道数保持不变）
     std::vector<unsigned char> buf( size_t( cw ) * ch * channels );
     for ( int y = 0; y < ch; y++ ) {
         const stbi_uc *srcRow = pixels + ( ( cy + y ) * w + cx ) * channels;
@@ -723,9 +1433,7 @@ static std::string cropImageToTemp( const std::string &srcPath, const CropRect &
         std::memcpy( dstRow, srcRow, size_t( cw ) * channels );
     }
     stbi_image_free( pixels );
-    pixels = nullptr;
 
-    // 写 PNG 临时文件
     std::string tempDir = utils::fs::toNative( Config::getTempPath() + "/ocr" );
     std::error_code ec;
     fs::create_directories( tempDir, ec );
@@ -735,7 +1443,6 @@ static std::string cropImageToTemp( const std::string &srcPath, const CropRect &
     std::string tempPath = utils::fs::toNative(
         tempDir + "/crop_" + std::to_string( nowMs ) + "_" + utils::generateId() + ".png" );
 
-    // 写为 PNG (lossless)
     int strideBytes = cw * channels;
     int writeOk = stbi_write_png( tempPath.c_str(), cw, ch, channels, buf.data(), strideBytes );
     if ( !writeOk ) {
@@ -745,7 +1452,6 @@ static std::string cropImageToTemp( const std::string &srcPath, const CropRect &
     return tempPath;
 }
 
-// 把 OCR 结果 JSON 中每个 block 的 box 点加上 (dx, dy) 偏移
 static void applyCropOffsetToResult( Server::json &data, int dx, int dy ) {
     if ( !dx && !dy )
         return;
@@ -803,32 +1509,123 @@ static std::string writeTempFile( const httplib::FormData &file ) {
     return tempPath;
 }
 
-// 从 form 中读取模型 ID 字段（空串时由 findModelById 回退到第一个）
 static std::string parseModelIdFromForm( const httplib::MultipartFormData &form ) {
     if ( !form.has_field( "model" ) )
         return {};
     return form.get_field( "model" );
 }
 
+static std::string parseLayoutIdFromForm( const httplib::MultipartFormData &form ) {
+    if ( !form.has_field( "layout" ) )
+        return {};
+    return form.get_field( "layout" );
+}
+
+static std::string parseClsModelIdFromForm( const httplib::MultipartFormData &form ) {
+    if ( !form.has_field( "clsModel" ) )
+        return {};
+    return form.get_field( "clsModel" );
+}
+
+static std::string parseTableIdFromForm( const httplib::MultipartFormData &form ) {
+    if ( !form.has_field( "tableModel" ) )
+        return {};
+    return form.get_field( "tableModel" );
+}
+
+static std::string parseTableAlgoFromForm( const httplib::MultipartFormData &form ) {
+    if ( !form.has_field( "tableAlgo" ) )
+        return {};
+    return form.get_field( "tableAlgo" );
+}
+
+static std::string parseTableClsModelIdFromForm( const httplib::MultipartFormData &form ) {
+    if ( !form.has_field( "tableClsModel" ) )
+        return {};
+    return form.get_field( "tableClsModel" );
+}
+
+static std::string parseModeFromForm( const httplib::MultipartFormData &form ) {
+    if ( !form.has_field( "mode" ) )
+        return "doc";
+    std::string m = form.get_field( "mode" );
+    if ( m != "doc" && m != "table" )
+        return "doc";
+    return m;
+}
+
 // ========================================================================
 // 路由
 // ========================================================================
-
-// 模型列表接口：GET /api/tools/image/ocr/models
 static void imageOcrModels( const httplib::Request &req, httplib::Response &res ) {
     (void)req;
-    const auto &list = getModelList();
-    Server::json arr = Server::json::array();
-    for ( const auto &m : list ) {
-        arr.push_back( {
-            { "id", m.id },
-            { "name", m.name },
-        } );
+
+    Server::json textArr = Server::json::array();
+    for ( const auto &m : getOcrModelList() )
+        textArr.push_back( { { "id", m.id }, { "name", m.name } } );
+
+    Server::json clsModes = Server::json::array();
+    {
+        std::map<std::string, Server::json> clsGrouped;
+        for ( const auto &m : getClsModelList() ) {
+            std::string mode = ( m.clsModelType == CLS_MODEL_ORIENTATION ) ? "orientation" : "angle";
+            if ( clsGrouped.find( mode ) == clsGrouped.end() )
+                clsGrouped[mode] = Server::json::array();
+            clsGrouped[mode].push_back( { { "id", m.id }, { "name", m.name }, { "path", m.modelPath } } );
+        }
+        for ( auto &[k, v] : clsGrouped )
+            clsModes.push_back( { { "mode", k }, { "models", v } } );
     }
-    Server::sendJson( res, { { "success", true }, { "models", arr } } );
+
+    Server::json layoutAlgos = Server::json::array();
+    {
+        std::map<std::string, Server::json> layoutGrouped;
+        for ( const auto &m : getLayoutModelList() ) {
+            auto slashPos = m.id.find( '/' );
+            std::string algo = ( slashPos != std::string::npos ) ? m.id.substr( 0, slashPos ) : m.id;
+            if ( layoutGrouped.find( algo ) == layoutGrouped.end() )
+                layoutGrouped[algo] = Server::json::array();
+            layoutGrouped[algo].push_back( { { "id", m.id }, { "name", m.name }, { "path", m.modelPath }, { "modelType", m.modelType } } );
+        }
+        for ( auto &[k, v] : layoutGrouped )
+            layoutAlgos.push_back( { { "algo", k }, { "models", v } } );
+    }
+
+    Server::json tableAlgos = Server::json::array();
+    {
+        Server::json wirelessModels = Server::json::array();
+        Server::json wiredModels = Server::json::array();
+        for ( const auto &m : getTableModelList() ) {
+            Server::json item = { { "id", m.id }, { "name", m.name }, { "path", m.modelPath }, { "modelType", m.modelType } };
+            if ( m.modelType == TABLE_MODEL_UNET )
+                wiredModels.push_back( item );
+            else
+                wirelessModels.push_back( item );
+        }
+        if ( !wirelessModels.empty() )
+            tableAlgos.push_back( { { "algo", "wireless" }, { "label", "无线" }, { "models", wirelessModels } } );
+        if ( !wiredModels.empty() )
+            tableAlgos.push_back( { { "algo", "wired" }, { "label", "有线" }, { "models", wiredModels } } );
+        if ( !wirelessModels.empty() && !wiredModels.empty() )
+            tableAlgos.push_back( { { "algo", "combined" }, { "label", "组合" }, { "models", wirelessModels } } );
+    }
+
+    Server::json tableClsArr = Server::json::array();
+    for ( const auto &p : getTableClsModelList() ) {
+        auto fn = fs::path( p ).filename().string();
+        tableClsArr.push_back( { { "id", p }, { "name", fn } } );
+    }
+
+    Server::sendJson( res, {
+                               { "success", true },
+                               { "textModels", textArr },
+                               { "clsModes", clsModes },
+                               { "layoutAlgos", layoutAlgos },
+                               { "tableAlgos", tableAlgos },
+                               { "tableClsModels", tableClsArr },
+                           } );
 }
 
-// 异步：提交任务 → 返回 taskId
 static void imageOcrSubmit( const httplib::Request &req, httplib::Response &res ) {
     if ( !req.is_multipart_form_data() )
         return Server::sendError( res, "需要multipart上传", 400 );
@@ -842,13 +1639,17 @@ static void imageOcrSubmit( const httplib::Request &req, httplib::Response &res 
         return Server::sendError( res, "图片超过20MB限制", 400 );
 
     std::string modelId = parseModelIdFromForm( req.form );
-    OCR_PARAM param = parseParamsFromForm( req.form );
+    std::string clsModelId = parseClsModelIdFromForm( req.form );
+    std::string layoutId = parseLayoutIdFromForm( req.form );
+    std::string tableId = parseTableIdFromForm( req.form );
+    std::string tableAlgo = parseTableAlgoFromForm( req.form );
+    std::string tableClsModelId = parseTableClsModelIdFromForm( req.form );
+    std::string mode = parseModeFromForm( req.form );
+    OcrRunParam param = parseParamsFromForm( req.form );
     CropRect crop = parseCropFromForm( req.form );
 
     std::string err;
-    // 提交时只做基础校验，真实加载延迟到 worker 中；此处只是尽早提示 Dll 缺失
-    if ( !OcrEngine::instance().ensureLoaded( modelId, err ) ) {
-        // 只给出警告性提示，但仍提交（worker 里会再次尝试）
+    if ( !OcrEngine::instance().ensureLoaded( modelId, clsModelId, layoutId, tableId, tableAlgo, tableClsModelId, err ) ) {
         LOG_WARN << "OCR引擎尚未就绪，将在后台线程重试: " << err;
     }
 
@@ -856,11 +1657,14 @@ static void imageOcrSubmit( const httplib::Request &req, httplib::Response &res 
     if ( tempPath.empty() )
         return Server::sendError( res, "临时文件创建失败", 500 );
 
-    std::string id = TaskManager::instance().submit( std::move( tempPath ), std::move( modelId ), param, crop );
+    std::string id = TaskManager::instance().submit(
+        std::move( tempPath ), std::move( modelId ), std::move( clsModelId ),
+        std::move( layoutId ), std::move( tableId ),
+        std::move( tableAlgo ), std::move( tableClsModelId ),
+        std::move( mode ), param, crop );
     Server::sendJson( res, { { "success", true }, { "taskId", id } } );
 }
 
-// 异步：查询状态
 static void imageOcrStatus( const httplib::Request &req, httplib::Response &res ) {
     std::string id = req.path_params.at( "id" );
     Server::json status;
@@ -869,11 +1673,14 @@ static void imageOcrStatus( const httplib::Request &req, httplib::Response &res 
     Server::sendJson( res, { { "success", true }, { "data", status } } );
 }
 
-// 异步：手动 dismiss（释放结果和记录）
 static void imageOcrDismiss( const httplib::Request &req, httplib::Response &res ) {
     std::string id = req.path_params.at( "id" );
     TaskManager::instance().dismiss( id );
     Server::sendJson( res, { { "success", true } } );
+}
+
+void shutdown() {
+    TaskManager::instance().shutdown();
 }
 
 void registerOcrRoutes( httplib::Server &svr ) {

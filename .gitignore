@@ -29,6 +29,5 @@ CMakeUserPresets.json
 /bin/uploads
 /bin/temp
 /bin/database*
-/bin/OnnxOCR/text/ppocr-ch-mobile-v4
-/bin/OnnxOCR/text/ppocr-ch-server-v4
-/bin/OnnxOCR/text/ppocr-server-v5
+/bin/OnnxOCR/**/*.onnx
+/bin/games
